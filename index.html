@@ -328,6 +328,14 @@
         </div>
     </main>
 
+    <!-- BANNER RECORDATORIO DE RESPALDO -->
+    <div id="banner-respaldo" class="hidden fixed top-0 inset-x-0 z-40 bg-yellow-50 border-b border-yellow-200 px-4 py-3 flex items-center gap-2 shadow-sm">
+        <span class="text-lg">⚠️</span>
+        <span class="text-xs text-yellow-800 flex-1" id="banner-respaldo-texto"></span>
+        <button onclick="exportarDatos()" class="text-xs font-bold text-white px-3 py-2 rounded-lg shadow-sm" style="background:#0f8080">Respaldar</button>
+        <button onclick="cerrarBannerRespaldo()" class="text-yellow-700 text-lg px-1">✕</button>
+    </div>
+
     <!-- NAVEGACIÓN -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 px-6 flex justify-between items-center z-30 max-w-md mx-auto">
         <button onclick="cambiarVista('clientes')" id="nav-clientes" class="flex flex-col items-center text-blue-600 text-[10px] font-bold">
@@ -2114,9 +2122,11 @@ function exportarDatos() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `respaldo_yimi_${hoy()}.json`;
+    a.download = `respaldo_yimi.json`;
     a.click();
     URL.revokeObjectURL(url);
+    localStorage.setItem('yimi_ultimo_respaldo', new Date().toISOString());
+    cerrarBannerRespaldo();
 }
 
 function importarDatosPrompt() {
@@ -2152,6 +2162,29 @@ function aplicarRespaldo(json) {
     } catch (e) {
         alert('Ese archivo no es un respaldo válido de YIMI POS');
     }
+}
+
+function diasDesdeUltimoRespaldo() {
+    const ultimo = localStorage.getItem('yimi_ultimo_respaldo');
+    if (!ultimo) return Infinity;
+    const diff = Date.now() - new Date(ultimo).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function verificarRecordatorioRespaldo() {
+    const dias = diasDesdeUltimoRespaldo();
+    if (dias < 7) return;
+    const el = $('banner-respaldo');
+    if (!el) return;
+    $('banner-respaldo-texto').innerText = (dias === Infinity)
+        ? 'Aún no has hecho ningún respaldo de tus datos.'
+        : `Han pasado ${dias} días desde tu último respaldo.`;
+    el.classList.remove('hidden');
+}
+
+function cerrarBannerRespaldo() {
+    const el = $('banner-respaldo');
+    if (el) el.classList.add('hidden');
 }
 
 function borrarTodo() {
@@ -2212,6 +2245,7 @@ function intentarLogin() {
 function ocultarLogin() {
     const overlay = $('pantalla-login');
     if (overlay) overlay.remove();
+    verificarRecordatorioRespaldo();
 }
 
 // -------------------- INICIALIZACIÓN --------------------

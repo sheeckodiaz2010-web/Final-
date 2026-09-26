@@ -1437,6 +1437,7 @@ function agregarAlCarrito(id, cantidad = 1) {
     const item = carrito.find(x => x.id === id);
     if (item) item.cant += cant;
     else carrito.push({ ...p, precioPersonalizado: p.precio, cant });
+    if (navigator.vibrate) navigator.vibrate(20);
     renderVenta($('buscador-venta').value);
 }
 

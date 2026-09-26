@@ -2,6 +2,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>POS Yimi Style</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f8080">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YIMI POS">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Estilos mínimos propios (Tailwind se carga por CDN) */
@@ -2200,6 +2207,15 @@ actualizarContadorClientesUI();
 renderVenta();
 renderListaClientesInicio();
 initPantallaLogin();
+
+// -------------------- REGISTRO SERVICE WORKER (PWA) --------------------
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => {
+            console.warn('No se pudo registrar el service worker:', err);
+        });
+    });
+}
 </script>
 
 

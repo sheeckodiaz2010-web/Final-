@@ -2,11 +2,11 @@
   "background_color": "#0f8080",
   "dir": "ltr",
   "display": "standalone",
-  "name": "sheeckodiaz2010-web.github",
+  "name": "YIMI POS",
   "orientation": "any",
-  "scope": "/",
+  "scope": "./",
   "short_name": "YIMI POS",
-  "start_url": "/",
+  "start_url": "./",
   "theme_color": "#0f8080",
   "icons": [
     {

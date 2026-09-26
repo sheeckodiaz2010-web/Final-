@@ -321,6 +321,13 @@
                     <span class="flex items-center gap-2">📄 Mi ticket</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
+                <button onclick="abrirModalCreditos()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">💳 Créditos Pendientes</span>
+                    <span class="flex items-center gap-2">
+                        <span id="badge-creditos-total" class="text-xs font-bold text-amber-600"></span>
+                        <span class="text-gray-400">&gt;</span>
+                    </span>
+                </button>
                 <button onclick="abrirModalBackup()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
                     <span class="flex items-center gap-2">🗄️ Backup y Seguridad</span>
                     <span class="text-gray-400">&gt;</span>
@@ -559,6 +566,37 @@
         </div>
     </div>
 
+    <!-- Modal Créditos Pendientes -->
+    <div id="modal-creditos" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">💳 Créditos Pendientes</h3>
+                <button onclick="cerrarModal('modal-creditos')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <div id="lista-creditos-clientes" class="space-y-2 pt-1"></div>
+        </div>
+    </div>
+
+    <!-- Modal detalle de crédito de un cliente / registrar pago -->
+    <div id="modal-detalle-credito" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base" id="detalle-credito-nombre">Cliente</h3>
+                <button onclick="cerrarModal('modal-detalle-credito')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <div class="text-center py-2">
+                <span class="text-gray-400 text-xs">Debe en total</span>
+                <h1 class="text-3xl font-black text-amber-600" id="detalle-credito-saldo">$0.00</h1>
+            </div>
+            <div id="detalle-credito-lista" class="space-y-1 text-xs text-gray-500 max-h-32 overflow-y-auto border-t border-b py-2"></div>
+            <div class="space-y-2 pt-1">
+                <label class="text-xs font-semibold text-gray-500">Monto que te está pagando ahora:</label>
+                <input type="number" id="input-abono-credito" class="w-full p-3 bg-gray-50 border rounded-xl text-center text-xl font-bold focus:outline-none focus:border-blue-600">
+            </div>
+            <button onclick="registrarPagoCredito()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-1">Registrar pago recibido</button>
+        </div>
+    </div>
+
     <!-- Modal cantidad (long press producto) -->
     <div id="modal-cantidad" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
         <div class="bg-white rounded-t-3xl p-5 space-y-4">
@@ -654,13 +692,17 @@
             <div class="w-full space-y-2">
                 <label class="text-xs font-semibold text-gray-500">Efectivo recibido:</label>
                 <input type="number" id="pago-efectivo" placeholder="0.00" oninput="calcularCambioModal()" class="w-full p-3 bg-gray-50 border rounded-xl text-center text-xl font-bold focus:outline-none focus:border-blue-600">
-                <div class="flex justify-between text-base font-bold pt-1 px-1">
+                <div class="flex justify-between text-base font-bold pt-1 px-1" id="pago-cambio-fila">
                     <span>Cambio:</span>
                     <span id="pago-cambio-txt" class="text-emerald-600">$0.00</span>
                 </div>
             </div>
+            <label class="flex items-center gap-2 text-sm bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <input type="checkbox" id="pago-es-credito" onchange="alternarModoCredito()" class="rounded">
+                <span>💳 Dejar a crédito (fiado) — se cobra después</span>
+            </label>
         </div>
-        <button onclick="ejecutarCobroFinal()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">Cobrar e Imprimir</button>
+        <button onclick="ejecutarCobroFinal()" id="btn-cobrar-final" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">Cobrar e Imprimir</button>
     </div>
 
     <!-- Modal Éxito Venta -->
@@ -1262,7 +1304,7 @@ function cambiarVista(v) {
     if (v === 'venta') renderVenta();
     if (v === 'productos') renderInventario();
     if (v === 'transacciones') { inicializarFiltrosFechas(); renderTransacciones(); }
-    if (v === 'mas') actualizarContadorClientesUI();
+    if (v === 'mas') { actualizarContadorClientesUI(); actualizarBadgeCreditos(); }
     if (v === 'estadisticas') renderEstadisticas();
 }
 
@@ -1286,6 +1328,9 @@ function bindProductoToque(el, prodId) {
     };
     const end = (e) => {
         clearTimeout(timer);
+        // Evita que el navegador dispare también un evento de mouse sintético
+        // después del touch (eso era lo que agregaba el producto 2 veces).
+        if (e.cancelable) e.preventDefault();
         if (!longPress) agregarAlCarrito(prodId, 1);
     };
     const cancel = () => { clearTimeout(timer); };
@@ -1497,7 +1542,25 @@ function abrirPantallaPago() {
     $('modal-carrito').classList.add('hidden');
     $('modal-pago').classList.remove('hidden');
     $('pago-efectivo').value = total.toFixed(2);
+    $('pago-es-credito').checked = false;
+    $('pago-cambio-fila').classList.remove('hidden');
+    $('pago-efectivo').closest('.w-full.space-y-2').classList.remove('hidden');
+    $('btn-cobrar-final').innerText = 'Cobrar e Imprimir';
     calcularCambioModal();
+}
+
+function alternarModoCredito() {
+    const esCredito = $('pago-es-credito').checked;
+    $('pago-cambio-fila').classList.toggle('hidden', esCredito);
+    $('pago-efectivo').closest('.w-full.space-y-2').classList.toggle('hidden', esCredito);
+    $('btn-cobrar-final').innerText = esCredito ? '💳 Dejar a Crédito e Imprimir' : 'Cobrar e Imprimir';
+    if (esCredito && clienteSeleccionado.nombre === 'Cliente General') {
+        alert('Para dejar a crédito, primero elige un cliente específico (no "Cliente General"), así puedes cobrarle después.');
+        $('pago-es-credito').checked = false;
+        $('pago-cambio-fila').classList.remove('hidden');
+        $('pago-efectivo').closest('.w-full.space-y-2').classList.remove('hidden');
+        $('btn-cobrar-final').innerText = 'Cobrar e Imprimir';
+    }
 }
 
 function calcularCambioModal() {
@@ -1508,8 +1571,9 @@ function calcularCambioModal() {
 
 async function ejecutarCobroFinal() {
     const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    const esCredito = $('pago-es-credito').checked;
     const ef = parseFloat($('pago-efectivo').value) || 0;
-    if (ef < total) return alert('Efectivo insuficiente');
+    if (!esCredito && ef < total) return alert('Efectivo insuficiente');
 
     const gananciaTotal = carrito.reduce((a, b) => a + ((b.precioPersonalizado - (b.costo || 0)) * b.cant), 0);
     const ahora = new Date();
@@ -1526,7 +1590,11 @@ async function ejecutarCobroFinal() {
         fecha: fechaFormateada,
         monto: total,
         ganancia: gananciaTotal,
-        items: [...carrito]
+        items: [...carrito],
+        esCredito: esCredito,
+        pagado: !esCredito,
+        saldoPendiente: esCredito ? total : 0,
+        abonos: []
     };
 
     transacciones.unshift(nuevaVenta);
@@ -1577,6 +1645,82 @@ function cerrarExitoNuevaVenta() {
         if (btnPago) btnPago.innerText = clienteSeleccionado.nombre;
         renderListaClientesInicio();
     }
+}
+
+// -------------------- CREDITOS --------------------
+function obtenerCreditosPorCliente() {
+    const mapa = {};
+    transacciones.filter(t => t.esCredito && t.saldoPendiente > 0).forEach(t => {
+        const nombre = t.clienteNombre || 'General';
+        if (!mapa[nombre]) mapa[nombre] = { nombre, saldo: 0, ventas: [] };
+        mapa[nombre].saldo += t.saldoPendiente;
+        mapa[nombre].ventas.push(t);
+    });
+    return Object.values(mapa).sort((a, b) => b.saldo - a.saldo);
+}
+
+function actualizarBadgeCreditos() {
+    const badge = $('badge-creditos-total');
+    if (!badge) return;
+    const total = obtenerCreditosPorCliente().reduce((a, c) => a + c.saldo, 0);
+    badge.innerText = total > 0 ? money(total) : '';
+}
+
+function abrirModalCreditos() {
+    const listaClientes = obtenerCreditosPorCliente();
+    const cont = $('lista-creditos-clientes');
+    if (listaClientes.length === 0) {
+        cont.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">No hay créditos pendientes 🎉</p>`;
+    } else {
+        cont.innerHTML = listaClientes.map(c => `
+            <button onclick="abrirDetalleCredito('${c.nombre.replace(/'/g, "\\'")}')" class="w-full flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="font-bold text-sm">${c.nombre}</span>
+                <span class="font-bold text-amber-600">${money(c.saldo)}</span>
+            </button>
+        `).join('');
+    }
+    actualizarBadgeCreditos();
+    $('modal-creditos').classList.remove('hidden');
+}
+
+let clienteCreditoActivo = null;
+
+function abrirDetalleCredito(nombre) {
+    clienteCreditoActivo = nombre;
+    const c = obtenerCreditosPorCliente().find(x => x.nombre === nombre);
+    if (!c) return;
+    $('detalle-credito-nombre').innerText = nombre;
+    $('detalle-credito-saldo').innerText = money(c.saldo);
+    $('detalle-credito-lista').innerHTML = c.ventas.map(v =>
+        `<div class="flex justify-between"><span>#${String(v.id).slice(-3)} - ${v.fecha}</span><span>${money(v.saldoPendiente)}</span></div>`
+    ).join('');
+    $('input-abono-credito').value = c.saldo.toFixed(2);
+    $('modal-detalle-credito').classList.remove('hidden');
+}
+
+function registrarPagoCredito() {
+    let monto = parseFloat($('input-abono-credito').value) || 0;
+    if (monto <= 0) return alert('Ingresa un monto válido');
+    if (!clienteCreditoActivo) return;
+
+    const ventasPendientes = transacciones
+        .filter(t => t.esCredito && t.saldoPendiente > 0 && (t.clienteNombre || 'General') === clienteCreditoActivo)
+        .sort((a, b) => a.id - b.id); // se paga primero lo más viejo
+
+    for (const v of ventasPendientes) {
+        if (monto <= 0) break;
+        const abono = Math.min(monto, v.saldoPendiente);
+        v.saldoPendiente -= abono;
+        v.abonos = v.abonos || [];
+        v.abonos.push({ monto: abono, fecha: fechaBonita(new Date()) });
+        if (v.saldoPendiente <= 0) v.pagado = true;
+        monto -= abono;
+    }
+
+    guardarTodo();
+    cerrarModal('modal-detalle-credito');
+    abrirModalCreditos();
+    alert('Pago registrado correctamente');
 }
 
 // -------------------- INVENTARIO --------------------
@@ -2081,11 +2225,25 @@ async function enviarImpresionTicketESC_POS(t) {
 
     cmds.push(enc(`--------------------------------\n`));
 
+    // Total de piezas, en formato de suma (cada cantidad, raya, total)
+    if (t.items && t.items.length > 0) {
+        cmds.push(enc(`Piezas:\n`));
+        t.items.forEach(i => cmds.push(enc(`${padLeft(i.cant, 10)}\n`)));
+        cmds.push(enc(`${padLeft('_'.repeat(3), 10)}\n`));
+        const totalPiezas = t.items.reduce((a, i) => a + i.cant, 0);
+        cmds.push(enc(`${padLeft(totalPiezas, 10)}\n`));
+        cmds.push(enc(`--------------------------------\n`));
+    }
+
     // Total en letra grande y centrada
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01])); // Centrado
     cmds.push(new Uint8Array([0x1D, 0x21, 0x11]));  // GS ! - doble ancho y alto
     cmds.push(enc(`\nTOTAL\n${money(t.monto)}\n`));
     cmds.push(new Uint8Array([0x1D, 0x21, 0x00]));  // Restaurar tamaño normal
+
+    if (t.esCredito) {
+        cmds.push(enc(`\n** VENTA A CREDITO **\n** PENDIENTE DE PAGO **\n`));
+    }
 
     cmds.push(enc(`\n================================\n`));
     cmds.push(enc(`${configTicket.pie}\n`));
@@ -2410,6 +2568,11 @@ actualizarContadorClientesUI();
 renderVenta();
 renderListaClientesInicio();
 initPantallaLogin();
+
+// Intento adicional de fijar la orientación vertical (funciona en modo instalado; en pestaña normal del navegador puede no aplicar, ahí manda el manifest)
+if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('portrait').catch(() => {});
+}
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) --------------------
 if ('serviceWorker' in navigator) {

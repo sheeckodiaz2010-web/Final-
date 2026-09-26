@@ -1,12 +1,12 @@
 <html lang="es"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POS Yimi Style</title>
+    <title>DIGAR POS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f8080">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="YIMI POS">
+    <meta name="apple-mobile-web-app-title" content="DIGAR POS">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon-192.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,7 +30,7 @@
                     <div class="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center mx-auto mb-2">
                         <span class="text-white text-2xl">🔒</span>
                     </div>
-                    <p class="text-white font-bold text-base">YIMI POS</p>
+                    <p class="text-white font-bold text-base">DIGAR POS</p>
                     <p class="text-white/75 text-xs mt-1" id="login-subtitulo">Acceso privado</p>
                 </div>
                 <div class="p-5 bg-white">
@@ -52,19 +52,22 @@
 
     <!-- BARRA SUPERIOR -->
     <div class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-between items-center">
-        <span>Sistema POS Yimi - Clientes Comerciales</span>
+        <span>Sistema POS DIGAR - Clientes Comerciales</span>
         <button onclick="copiarCodigoFuente(this)" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-[11px] font-bold">Copiar Código</button>
     </div>
 
     <!-- HEADER -->
     <header class="bg-white border-b sticky top-0 z-20 px-4 py-3 flex justify-between items-center shadow-sm">
         <div class="flex items-center gap-2">
-            <span class="text-blue-600 font-black text-xl tracking-tight">YIMI</span>
+            <span class="text-blue-600 font-black text-xl tracking-tight">DIGAR</span>
             <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo">Clientes</span>
         </div>
-        <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-            🏪 <span id="txt-cliente-actual">Cliente General</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="exportarDatos()" title="Guardar respaldo" class="text-lg bg-gray-100 w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">💾</button>
+            <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+                🏪 <span id="txt-cliente-actual">Cliente General</span>
+            </button>
+        </div>
     </header>
 
     <!-- CONTENEDOR DE VISTAS -->
@@ -743,7 +746,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ============================================================
-   POS YIMI - VERSIÓN OPTIMIZADA
+   POS DIGAR - VERSIÓN OPTIMIZADA
    ============================================================ */
 
 // -------------------- HELPERS --------------------
@@ -1964,39 +1967,48 @@ async function enviarImpresionTicketESC_POS(t) {
             new Uint8Array([0x1B, 0x61, 0x01])  // Centrado
         ];
 
+        // -------- Helpers de columnas (ancho asumido: 32 caracteres) --------
+        const padRight = (s, len) => { s = String(s); return s.length >= len ? s.slice(0, len) : s + ' '.repeat(len - s.length); };
+        const padLeft = (s, len) => { s = String(s); return s.length >= len ? s.slice(-len) : ' '.repeat(len - s.length) + s; };
+
         cmds.push(encoder.encode(`\n${configTicket.negocio}\n`));
-        if (configTicket.direccion) cmds.push(encoder.encode(`${configTicket.direccion}\n`));
-        if (configTicket.telefono) cmds.push(encoder.encode(`Tel: ${configTicket.telefono}\n`));
+        const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
+        if (linea2) cmds.push(encoder.encode(`${linea2}\n`));
         if (configTicket.rfc) cmds.push(encoder.encode(`RFC: ${configTicket.rfc}\n`));
-        cmds.push(encoder.encode(`\n--------------------------------\n`));
+        cmds.push(encoder.encode(`================================\n`));
+
+        cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
+        const folioTxt = configTicket.showFolio !== false ? `Folio #${String(t.id).slice(-3)}` : '';
+        cmds.push(encoder.encode(`${padRight(folioTxt, 16)}${padLeft(t.fecha, 16)}\n`));
         cmds.push(encoder.encode(`Cliente: ${t.clienteNombre || 'General'}\n`));
         if (configTicket.showDirCliente !== false) {
             cmds.push(encoder.encode(`Direccion: ${t.clienteDir || 'Mostrador'}\n`));
         }
-        if (configTicket.showFolio !== false) {
-            cmds.push(encoder.encode(`Folio: #${String(t.id).slice(-3)}\n`));
-        }
         if (configTicket.atendio) {
             cmds.push(encoder.encode(`Atendio: ${configTicket.atendio}\n`));
         }
-        cmds.push(encoder.encode(`${t.fecha}\n`));
         cmds.push(encoder.encode(`--------------------------------\n`));
-        cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
+        cmds.push(encoder.encode(`${padRight('CANT', 5)}${padRight('DESCRIPCION', 17)}${padLeft('IMPORTE', 10)}\n`));
 
         if (t.items) {
             t.items.forEach(i => {
-                const lineaCant = `${i.cant}x ${i.nombre}`;
-                const precioSub = money(i.precioPersonalizado * i.cant);
-                cmds.push(encoder.encode(`${lineaCant}\n  -> ${i.cant} x ${money(i.precioPersonalizado)} = ${precioSub}\n`));
+                const importe = money(i.precioPersonalizado * i.cant);
+                cmds.push(encoder.encode(`${padRight(i.cant, 5)}${padRight(i.nombre, 17)}${padLeft(importe, 10)}\n`));
             });
         } else {
             cmds.push(encoder.encode(`${t.categoria}: ${t.descripcion}\n`));
         }
 
-        cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
         cmds.push(encoder.encode(`--------------------------------\n`));
-        cmds.push(encoder.encode(`\nTOTAL: ${money(t.monto)}\n`));
-        cmds.push(encoder.encode(`\n${configTicket.pie}\n`));
+
+        // Total en letra grande y centrada
+        cmds.push(new Uint8Array([0x1B, 0x61, 0x01])); // Centrado
+        cmds.push(new Uint8Array([0x1D, 0x21, 0x11]));  // GS ! - doble ancho y alto
+        cmds.push(encoder.encode(`\nTOTAL\n${money(t.monto)}\n`));
+        cmds.push(new Uint8Array([0x1D, 0x21, 0x00]));  // Restaurar tamaño normal
+
+        cmds.push(encoder.encode(`\n================================\n`));
+        cmds.push(encoder.encode(`${configTicket.pie}\n`));
         cmds.push(encoder.encode(`\n\n\n`));
 
         for (const cmd of cmds) {
@@ -2135,7 +2147,7 @@ function exportarDatos() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `respaldo_yimi.json`;
+    a.download = `respaldo_digar.json`;
     a.click();
     URL.revokeObjectURL(url);
     localStorage.setItem('yimi_ultimo_respaldo', new Date().toISOString());
@@ -2173,7 +2185,7 @@ function aplicarRespaldo(json) {
         renderListaClientesInicio();
         renderInventario();
     } catch (e) {
-        alert('Ese archivo no es un respaldo válido de YIMI POS');
+        alert('Ese archivo no es un respaldo válido de DIGAR POS');
     }
 }
 

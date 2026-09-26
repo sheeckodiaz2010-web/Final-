@@ -1,6 +1,6 @@
-// Service Worker - YIMI POS
+// Service Worker - DIGAR POS
 // Cachea el shell de la app para que funcione sin conexión.
-const CACHE_NAME = 'yimi-pos-v4';
+const CACHE_NAME = 'digar-pos-v5';
 const ASSETS = [
   './',
   './index.html',

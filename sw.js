@@ -1,6 +1,6 @@
 // Service Worker - DIGAR POS
 // Cachea el shell de la app para que funcione sin conexión.
-const CACHE_NAME = 'digar-pos-v8';
+const CACHE_NAME = 'digar-pos-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -25,16 +25,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estrategia: red primero, si falla usa la copia en caché (los datos reales viven en localStorage).
+// Estrategia: caché primero (abre al instante aunque no haya señal), y de pasada
+// actualiza la copia guardada en segundo plano para la próxima vez.
+// (los datos reales de tus ventas viven en localStorage, no aquí)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    caches.match(event.request).then((cachedResponse) => {
+      const actualizarEnSegundoPlano = fetch(event.request)
+        .then((networkResponse) => {
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+      return cachedResponse || actualizarEnSegundoPlano;
+    })
   );
 });

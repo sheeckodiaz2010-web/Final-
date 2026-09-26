@@ -1,6 +1,6 @@
 // Service Worker - YIMI POS
 // Cachea el shell de la app para que funcione sin conexión.
-const CACHE_NAME = 'yimi-pos-v3';
+const CACHE_NAME = 'yimi-pos-v4';
 const ASSETS = [
   './',
   './index.html',

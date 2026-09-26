@@ -13,6 +13,7 @@
     <style>
         /* Estilos mínimos propios (Tailwind se carga por CDN) */
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        html, body { overscroll-behavior-y: contain; }
         body { -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -323,6 +324,7 @@
                 <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
                 <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
                 <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
+                <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
         </div>
@@ -496,6 +498,10 @@
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Mensaje de pie de página</label>
                 <input type="text" id="config-ticket-pie" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Atendió (tu nombre)</label>
+                <input type="text" id="config-ticket-atendio" placeholder="Ej. Sergio" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-2 pt-1">
                 <span class="text-xs font-semibold text-gray-500">Mostrar en el ticket:</span>
@@ -789,7 +795,8 @@ let configTicket = JSON.parse(localStorage.getItem('yimi_config_ticket')) || {
     rfc: '',
     pie: '¡GRACIAS POR SU COMPRA!',
     showDirCliente: true,
-    showFolio: true
+    showFolio: true,
+    atendio: ''
 };
 let productoCantidadId = null;
 let statsPeriodo = 'hoy';
@@ -1961,13 +1968,16 @@ async function enviarImpresionTicketESC_POS(t) {
         if (configTicket.direccion) cmds.push(encoder.encode(`${configTicket.direccion}\n`));
         if (configTicket.telefono) cmds.push(encoder.encode(`Tel: ${configTicket.telefono}\n`));
         if (configTicket.rfc) cmds.push(encoder.encode(`RFC: ${configTicket.rfc}\n`));
-        cmds.push(encoder.encode(`--------------------------------\n`));
+        cmds.push(encoder.encode(`\n--------------------------------\n`));
         cmds.push(encoder.encode(`Cliente: ${t.clienteNombre || 'General'}\n`));
         if (configTicket.showDirCliente !== false) {
             cmds.push(encoder.encode(`Direccion: ${t.clienteDir || 'Mostrador'}\n`));
         }
         if (configTicket.showFolio !== false) {
             cmds.push(encoder.encode(`Folio: #${String(t.id).slice(-3)}\n`));
+        }
+        if (configTicket.atendio) {
+            cmds.push(encoder.encode(`Atendio: ${configTicket.atendio}\n`));
         }
         cmds.push(encoder.encode(`${t.fecha}\n`));
         cmds.push(encoder.encode(`--------------------------------\n`));
@@ -1985,8 +1995,9 @@ async function enviarImpresionTicketESC_POS(t) {
 
         cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
         cmds.push(encoder.encode(`--------------------------------\n`));
-        cmds.push(encoder.encode(`TOTAL: ${money(t.monto)}\n\n`));
-        cmds.push(encoder.encode(`${configTicket.pie}\n\n\n`));
+        cmds.push(encoder.encode(`\nTOTAL: ${money(t.monto)}\n`));
+        cmds.push(encoder.encode(`\n${configTicket.pie}\n`));
+        cmds.push(encoder.encode(`\n\n\n`));
 
         for (const cmd of cmds) {
             await bluetoothCharacteristic.writeValue(cmd);
@@ -2004,6 +2015,7 @@ function abrirConfigTicket() {
     $('config-ticket-tel').value = configTicket.telefono || '';
     $('config-ticket-rfc').value = configTicket.rfc || '';
     $('config-ticket-pie').value = configTicket.pie || '';
+    $('config-ticket-atendio').value = configTicket.atendio || '';
     $('config-ticket-show-dir-cli').checked = configTicket.showDirCliente !== false;
     $('config-ticket-show-folio').checked = configTicket.showFolio !== false;
     $('modal-config-ticket').classList.remove('hidden');
@@ -2015,6 +2027,7 @@ function guardarConfigTicket() {
     configTicket.telefono = $('config-ticket-tel').value || '';
     configTicket.rfc = $('config-ticket-rfc').value || '';
     configTicket.pie = $('config-ticket-pie').value || '¡GRACIAS!';
+    configTicket.atendio = $('config-ticket-atendio').value || '';
     configTicket.showDirCliente = $('config-ticket-show-dir-cli').checked;
     configTicket.showFolio = $('config-ticket-show-folio').checked;
     guardarTodo();
@@ -2240,6 +2253,11 @@ function intentarLogin() {
     } else {
         mostrarErrorLogin('Teléfono o contraseña incorrectos.');
     }
+}
+
+function cerrarSesion() {
+    if (!confirm('¿Cerrar sesión? Tus datos no se borran, solo tendrás que volver a ingresar tu clave.')) return;
+    location.reload();
 }
 
 function ocultarLogin() {

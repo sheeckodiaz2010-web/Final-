@@ -321,7 +321,8 @@
 
             <div class="pt-2 space-y-2">
                 <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
-                <button onclick="importarDatosPrompt()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
+                <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
+                <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
         </div>
@@ -2121,6 +2122,21 @@ function exportarDatos() {
 function importarDatosPrompt() {
     const json = prompt('Pega el contenido del archivo JSON de respaldo:');
     if (!json) return;
+    aplicarRespaldo(json);
+}
+
+function importarDatosArchivo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => aplicarRespaldo(e.target.result);
+    reader.onerror = () => alert('No se pudo leer el archivo');
+    reader.readAsText(file);
+    event.target.value = ''; // permite volver a elegir el mismo archivo despues
+}
+
+function aplicarRespaldo(json) {
+    if (!confirm('Esto va a reemplazar los datos actuales de la app con los del respaldo. ¿Continuar?')) return;
     try {
         const data = JSON.parse(json);
         if (data.productos) productos = data.productos;
@@ -2134,7 +2150,7 @@ function importarDatosPrompt() {
         renderListaClientesInicio();
         renderInventario();
     } catch (e) {
-        alert('JSON inválido');
+        alert('Ese archivo no es un respaldo válido de YIMI POS');
     }
 }
 

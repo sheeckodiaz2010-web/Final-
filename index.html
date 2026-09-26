@@ -62,12 +62,9 @@
             <span class="text-blue-600 font-black text-xl tracking-tight">DIGAR</span>
             <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo">Clientes</span>
         </div>
-        <div class="flex items-center gap-2">
-            <button onclick="exportarDatos()" title="Guardar respaldo" class="text-lg bg-gray-100 w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center">💾</button>
-            <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-                🏪 <span id="txt-cliente-actual">Cliente General</span>
-            </button>
-        </div>
+        <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+            🏪 <span id="txt-cliente-actual">Cliente General</span>
+        </button>
     </header>
 
     <!-- CONTENEDOR DE VISTAS -->
@@ -321,14 +318,10 @@
                     <span class="flex items-center gap-2">📄 Mi ticket</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
-            </div>
-
-            <div class="pt-2 space-y-2">
-                <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
-                <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
-                <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
-                <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
-                <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
+                <button onclick="abrirModalBackup()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">🗄️ Backup y Seguridad</span>
+                    <span class="text-gray-400">&gt;</span>
+                </button>
             </div>
         </div>
     </main>
@@ -512,6 +505,39 @@
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="config-ticket-show-folio" class="rounded"> Folio de venta</label>
             </div>
             <button onclick="guardarConfigTicket()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Guardar cambios</button>
+        </div>
+    </div>
+
+    <!-- Modal Backup y Seguridad -->
+    <div id="modal-backup" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">🗄️ Backup y Seguridad</h3>
+                <button onclick="cerrarModal('modal-backup')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <p class="text-xs text-gray-400 -mt-1">Tus ventas, clientes e inventario viven solo en este celular. Respalda de vez en cuando para no perderlos.</p>
+            <div class="pt-1 space-y-2">
+                <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
+                <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
+                <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
+                <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
+                <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal confirmar exportar respaldo (pantalla "pro") -->
+    <div id="modal-confirmar-respaldo" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col justify-center items-center max-w-md mx-auto p-6">
+        <div class="bg-white rounded-3xl p-6 w-full text-center shadow-xl">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style="background:#e6f5f5">
+                <span class="text-3xl">💾</span>
+            </div>
+            <h3 class="font-bold text-base mb-1">Guardar respaldo</h3>
+            <p class="text-xs text-gray-500 mb-5">Se va a descargar un archivo con todas tus ventas, clientes e inventario a este celular. ¿Quieres continuar?</p>
+            <div class="flex gap-2">
+                <button onclick="cerrarModal('modal-confirmar-respaldo')" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-sm">Cancelar</button>
+                <button onclick="procesarExportarDatos()" class="flex-1 text-white font-bold py-3 rounded-xl text-sm shadow-sm" style="background:#0f8080">Sí, guardar</button>
+            </div>
         </div>
     </div>
 
@@ -2142,6 +2168,10 @@ function renderEstadisticas() {
 
 // -------------------- RESPALDO --------------------
 function exportarDatos() {
+    $('modal-confirmar-respaldo').classList.remove('hidden');
+}
+
+function procesarExportarDatos() {
     const data = JSON.stringify({ productos, clientes, transacciones, configTicket }, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2152,6 +2182,11 @@ function exportarDatos() {
     URL.revokeObjectURL(url);
     localStorage.setItem('yimi_ultimo_respaldo', new Date().toISOString());
     cerrarBannerRespaldo();
+    cerrarModal('modal-confirmar-respaldo');
+}
+
+function abrirModalBackup() {
+    $('modal-backup').classList.remove('hidden');
 }
 
 function importarDatosPrompt() {

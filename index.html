@@ -231,7 +231,10 @@
         <div id="vista-productos" class="hidden space-y-3">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-bold">Artículos</h2>
-                <button onclick="abrirModalProducto()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
+                <div class="flex items-center gap-2">
+                    <button onclick="imprimirInventario()" title="Imprimir inventario" class="bg-white border border-gray-200 text-gray-700 w-9 h-9 rounded-full font-bold text-base flex items-center justify-center shadow-sm">🖨️</button>
+                    <button onclick="abrirModalProducto()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
+                </div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
@@ -537,6 +540,21 @@
             <div class="flex gap-2">
                 <button onclick="cerrarModal('modal-confirmar-respaldo')" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-sm">Cancelar</button>
                 <button onclick="procesarExportarDatos()" class="flex-1 text-white font-bold py-3 rounded-xl text-sm shadow-sm" style="background:#0f8080">Sí, guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal confirmar imprimir inventario -->
+    <div id="modal-confirmar-inventario" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col justify-center items-center max-w-md mx-auto p-6">
+        <div class="bg-white rounded-3xl p-6 w-full text-center shadow-xl">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style="background:#e6f5f5">
+                <span class="text-3xl">🖨️</span>
+            </div>
+            <h3 class="font-bold text-base mb-1">Imprimir inventario</h3>
+            <p class="text-xs text-gray-500 mb-5">Se va a imprimir la lista completa de tus productos con su stock y precio.</p>
+            <div class="flex gap-2">
+                <button onclick="cerrarModal('modal-confirmar-inventario')" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-sm">Cancelar</button>
+                <button onclick="procesarImprimirInventario()" class="flex-1 text-white font-bold py-3 rounded-xl text-sm shadow-sm" style="background:#0f8080">Sí, imprimir</button>
             </div>
         </div>
     </div>
@@ -1980,70 +1998,140 @@ async function imprimirTransaccionEspecifica(id) {
     if (t) await enviarImpresionTicketESC_POS(t);
 }
 
-async function enviarImpresionTicketESC_POS(t) {
+// Quita acentos y símbolos que la mayoría de impresoras térmicas no soportan (evita que salgan caracteres raros)
+function limpiarTxt(s) {
+    return String(s)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[¡¿]/g, '')
+        .replace(/[^\x00-\x7F]/g, '');
+}
+
+// Fecha corta y 100% ASCII para imprimir (evita cortes y caracteres raros de fechaBonita)
+function fechaCompactaImpresion(timestampMs) {
+    const d = new Date(timestampMs);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = d.getFullYear();
+    let hh = d.getHours();
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12; if (hh === 0) hh = 12;
+    return `${dd}/${mm}/${yy} ${hh}:${min}${ampm}`;
+}
+
+// Envía los comandos ya armados a la impresora Bluetooth conectada
+async function enviarComandosImpresora(cmds) {
     if (!bluetoothCharacteristic) {
         alert('Primero conecta tu impresora térmica en el menú "Más" > "Impresora Bluetooth"');
         abrirConfigurarImpresora();
-        return;
+        return false;
     }
     try {
-        const encoder = new TextEncoder();
-        const cmds = [
-            new Uint8Array([0x1B, 0x40]),       // ESC @ Reset
-            new Uint8Array([0x1B, 0x61, 0x01])  // Centrado
-        ];
-
-        // -------- Helpers de columnas (ancho asumido: 32 caracteres) --------
-        const padRight = (s, len) => { s = String(s); return s.length >= len ? s.slice(0, len) : s + ' '.repeat(len - s.length); };
-        const padLeft = (s, len) => { s = String(s); return s.length >= len ? s.slice(-len) : ' '.repeat(len - s.length) + s; };
-
-        cmds.push(encoder.encode(`\n${configTicket.negocio}\n`));
-        const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
-        if (linea2) cmds.push(encoder.encode(`${linea2}\n`));
-        if (configTicket.rfc) cmds.push(encoder.encode(`RFC: ${configTicket.rfc}\n`));
-        cmds.push(encoder.encode(`================================\n`));
-
-        cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
-        const folioTxt = configTicket.showFolio !== false ? `Folio #${String(t.id).slice(-3)}` : '';
-        cmds.push(encoder.encode(`${padRight(folioTxt, 16)}${padLeft(t.fecha, 16)}\n`));
-        cmds.push(encoder.encode(`Cliente: ${t.clienteNombre || 'General'}\n`));
-        if (configTicket.showDirCliente !== false) {
-            cmds.push(encoder.encode(`Direccion: ${t.clienteDir || 'Mostrador'}\n`));
-        }
-        if (configTicket.atendio) {
-            cmds.push(encoder.encode(`Atendio: ${configTicket.atendio}\n`));
-        }
-        cmds.push(encoder.encode(`--------------------------------\n`));
-        cmds.push(encoder.encode(`${padRight('CANT', 5)}${padRight('DESCRIPCION', 17)}${padLeft('IMPORTE', 10)}\n`));
-
-        if (t.items) {
-            t.items.forEach(i => {
-                const importe = money(i.precioPersonalizado * i.cant);
-                cmds.push(encoder.encode(`${padRight(i.cant, 5)}${padRight(i.nombre, 17)}${padLeft(importe, 10)}\n`));
-            });
-        } else {
-            cmds.push(encoder.encode(`${t.categoria}: ${t.descripcion}\n`));
-        }
-
-        cmds.push(encoder.encode(`--------------------------------\n`));
-
-        // Total en letra grande y centrada
-        cmds.push(new Uint8Array([0x1B, 0x61, 0x01])); // Centrado
-        cmds.push(new Uint8Array([0x1D, 0x21, 0x11]));  // GS ! - doble ancho y alto
-        cmds.push(encoder.encode(`\nTOTAL\n${money(t.monto)}\n`));
-        cmds.push(new Uint8Array([0x1D, 0x21, 0x00]));  // Restaurar tamaño normal
-
-        cmds.push(encoder.encode(`\n================================\n`));
-        cmds.push(encoder.encode(`${configTicket.pie}\n`));
-        cmds.push(encoder.encode(`\n\n\n`));
-
         for (const cmd of cmds) {
             await bluetoothCharacteristic.writeValue(cmd);
         }
+        return true;
     } catch (e) {
         console.error(e);
         alert('Error al enviar los datos a la impresora térmica. Vuelve a vincularla.');
+        return false;
     }
+}
+
+// -------- Helpers de columnas (ancho asumido: 32 caracteres) --------
+const padRight = (s, len) => { s = String(s); return s.length >= len ? s.slice(0, len) : s + ' '.repeat(len - s.length); };
+const padLeft = (s, len) => { s = String(s); return s.length >= len ? s.slice(-len) : ' '.repeat(len - s.length) + s; };
+
+async function enviarImpresionTicketESC_POS(t) {
+    const encoder = new TextEncoder();
+    const enc = (s) => encoder.encode(limpiarTxt(s));
+    const cmds = [
+        new Uint8Array([0x1B, 0x40]),       // ESC @ Reset
+        new Uint8Array([0x1B, 0x61, 0x01])  // Centrado
+    ];
+
+    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
+    if (linea2) cmds.push(enc(`${linea2}\n`));
+    if (configTicket.rfc) cmds.push(enc(`RFC: ${configTicket.rfc}\n`));
+    cmds.push(enc(`================================\n`));
+
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
+    const folioTxt = configTicket.showFolio !== false ? `Folio #${String(t.id).slice(-3)}` : '';
+    const fechaTxt = fechaCompactaImpresion(t.id);
+    cmds.push(enc(`${padRight(folioTxt, 13)}${padLeft(fechaTxt, 19)}\n`));
+    cmds.push(enc(`Cliente: ${t.clienteNombre || 'General'}\n`));
+    if (configTicket.showDirCliente !== false) {
+        cmds.push(enc(`Direccion: ${t.clienteDir || 'Mostrador'}\n`));
+    }
+    if (configTicket.atendio) {
+        cmds.push(enc(`Atendio: ${configTicket.atendio}\n`));
+    }
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`${padRight('CANT', 5)}${padRight('DESCRIPCION', 17)}${padLeft('IMPORTE', 10)}\n`));
+
+    if (t.items) {
+        t.items.forEach(i => {
+            const importe = money(i.precioPersonalizado * i.cant);
+            cmds.push(enc(`${padRight(i.cant, 5)}${padRight(i.nombre, 17)}${padLeft(importe, 10)}\n`));
+        });
+    } else {
+        cmds.push(enc(`${t.categoria}: ${t.descripcion}\n`));
+    }
+
+    cmds.push(enc(`--------------------------------\n`));
+
+    // Total en letra grande y centrada
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x01])); // Centrado
+    cmds.push(new Uint8Array([0x1D, 0x21, 0x11]));  // GS ! - doble ancho y alto
+    cmds.push(enc(`\nTOTAL\n${money(t.monto)}\n`));
+    cmds.push(new Uint8Array([0x1D, 0x21, 0x00]));  // Restaurar tamaño normal
+
+    cmds.push(enc(`\n================================\n`));
+    cmds.push(enc(`${configTicket.pie}\n`));
+    cmds.push(enc(`\n\n\n`));
+
+    await enviarComandosImpresora(cmds);
+}
+
+function imprimirInventario() {
+    $('modal-confirmar-inventario').classList.remove('hidden');
+}
+
+async function procesarImprimirInventario() {
+    cerrarModal('modal-confirmar-inventario');
+    const encoder = new TextEncoder();
+    const enc = (s) => encoder.encode(limpiarTxt(s));
+    const cmds = [
+        new Uint8Array([0x1B, 0x40]),
+        new Uint8Array([0x1B, 0x61, 0x01])
+    ];
+
+    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
+    if (linea2) cmds.push(enc(`${linea2}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`REPORTE DE INVENTARIO\n`));
+    cmds.push(enc(`${fechaCompactaImpresion(Date.now())}\n`));
+
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`${padRight('PRODUCTO', 17)}${padLeft('STOCK', 6)}${padLeft('PRECIO', 9)}\n`));
+
+    let totalItems = 0, valorInventario = 0;
+    productos.forEach(p => {
+        totalItems += (p.stock || 0);
+        valorInventario += (p.stock || 0) * (p.precio || 0);
+        cmds.push(enc(`${padRight(p.nombre, 17)}${padLeft(p.stock || 0, 6)}${padLeft(money(p.precio), 9)}\n`));
+    });
+
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`Total de items: ${totalItems}\n`));
+    cmds.push(enc(`Valor de inventario: ${money(valorInventario)}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`\n\n\n`));
+
+    await enviarComandosImpresora(cmds);
 }
 
 // -------------------- CONFIG TICKET --------------------

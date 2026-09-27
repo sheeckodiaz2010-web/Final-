@@ -322,6 +322,15 @@
                 </div>
             </div>
 
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="imprimirPreliquidacionProductos()" class="bg-blue-600 text-white text-xs font-bold py-3 px-2 rounded-xl shadow-sm active:scale-[0.98] transition">
+                    📦 Preliq. Productos
+                </button>
+                <button onclick="imprimirPreliquidacionClientes()" class="bg-emerald-600 text-white text-xs font-bold py-3 px-2 rounded-xl shadow-sm active:scale-[0.98] transition">
+                    🏪 Preliq. Clientes
+                </button>
+            </div>
+
             <div class="pt-1"><h3 class="text-sm font-bold text-gray-600">Historial</h3></div>
             <div id="lista-transacciones" class="space-y-2"></div>
         </div>
@@ -2333,6 +2342,155 @@ async function enviarImpresionTicketESC_POS(t) {
     cmds.push(enc(`\n================================\n`));
     cmds.push(enc(`${configTicket.pie}\n`));
     cmds.push(enc(`\n\n\n`));
+
+    await enviarComandosImpresora(cmds);
+}
+
+function obtenerVentasFiltradasPreliq() {
+    const desde = $('filtro-fecha-desde').value;
+    const hasta = $('filtro-fecha-hasta').value;
+    return transacciones.filter(t => {
+        if (t.tipo !== 'Venta') return false;
+        const f = t.fechaStr || '';
+        if (desde && f < desde) return false;
+        if (hasta && f > hasta) return false;
+        return true;
+    });
+}
+
+function textoRangoPreliq() {
+    const desde = $('filtro-fecha-desde').value;
+    const hasta = $('filtro-fecha-hasta').value;
+    if (desde && hasta && desde === hasta) return desde;
+    if (desde && hasta) return `${desde} a ${hasta}`;
+    if (desde) return `Desde ${desde}`;
+    if (hasta) return `Hasta ${hasta}`;
+    return 'Todo el historial';
+}
+
+async function imprimirPreliquidacionProductos() {
+    const ventas = obtenerVentasFiltradasPreliq();
+    if (ventas.length === 0) return alert('No hay ventas en el rango de fechas seleccionado.');
+
+    let totalVendido = 0, totalGanancia = 0, totalContado = 0, totalCredito = 0;
+    const porProducto = {};
+
+    ventas.forEach(t => {
+        totalVendido += t.monto || 0;
+        totalGanancia += t.ganancia || 0;
+        if (t.esCredito) totalCredito += t.monto || 0;
+        else totalContado += t.monto || 0;
+        if (t.items) {
+            t.items.forEach(i => {
+                const nom = i.nombre || 'Sin nombre';
+                if (!porProducto[nom]) porProducto[nom] = { cant: 0, monto: 0 };
+                porProducto[nom].cant += i.cant || 0;
+                porProducto[nom].monto += (i.precioPersonalizado || 0) * (i.cant || 0);
+            });
+        }
+    });
+
+    const productosOrden = Object.entries(porProducto).sort((a, b) => b[1].cant - a[1].cant);
+    const totalPiezas = productosOrden.reduce((a, [, d]) => a + d.cant, 0);
+
+    const encoder = new TextEncoder();
+    const enc = (s) => encoder.encode(limpiarTxt(s));
+    const cmds = [
+        new Uint8Array([0x1B, 0x40]),
+        new Uint8Array([0x1B, 0x61, 0x01])
+    ];
+
+    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
+    if (linea2) cmds.push(enc(`${linea2}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`PRELIQUIDACION PRODUCTOS\n`));
+    cmds.push(enc(`${textoRangoPreliq()}\n`));
+    cmds.push(enc(`================================\n`));
+
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x00]));
+    cmds.push(enc(`Ventas: ${ventas.length}\n`));
+    cmds.push(enc(`Contado: ${money(totalContado)}\n`));
+    cmds.push(enc(`Credito: ${money(totalCredito)}\n`));
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`TOTAL VENDIDO: ${money(totalVendido)}\n`));
+    cmds.push(enc(`Ganancia: ${money(totalGanancia)}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`${padRight('CANT', 5)}${padRight('PRODUCTO', 17)}${padLeft('IMPORTE', 10)}\n`));
+    cmds.push(enc(`--------------------------------\n`));
+
+    productosOrden.forEach(([nombre, d]) => {
+        cmds.push(enc(`${padRight(d.cant, 5)}${padRight(nombre, 17)}${padLeft(money(d.monto), 10)}\n`));
+    });
+
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`Total de piezas: ${totalPiezas}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
+    cmds.push(enc(`Fin del reporte\n\n\n`));
+
+    await enviarComandosImpresora(cmds);
+}
+
+async function imprimirPreliquidacionClientes() {
+    const ventas = obtenerVentasFiltradasPreliq();
+    if (ventas.length === 0) return alert('No hay ventas en el rango de fechas seleccionado.');
+
+    let totalVendido = 0, totalGanancia = 0, totalContado = 0, totalCredito = 0;
+    const porCliente = {};
+
+    ventas.forEach(t => {
+        totalVendido += t.monto || 0;
+        totalGanancia += t.ganancia || 0;
+        if (t.esCredito) totalCredito += t.monto || 0;
+        else totalContado += t.monto || 0;
+        const nom = t.clienteNombre || 'Cliente General';
+        if (!porCliente[nom]) porCliente[nom] = { monto: 0, ventas: 0, credito: 0 };
+        porCliente[nom].monto += t.monto || 0;
+        porCliente[nom].ventas += 1;
+        if (t.esCredito) porCliente[nom].credito += t.monto || 0;
+    });
+
+    const clientesOrden = Object.entries(porCliente).sort((a, b) => b[1].monto - a[1].monto);
+
+    const encoder = new TextEncoder();
+    const enc = (s) => encoder.encode(limpiarTxt(s));
+    const cmds = [
+        new Uint8Array([0x1B, 0x40]),
+        new Uint8Array([0x1B, 0x61, 0x01])
+    ];
+
+    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
+    if (linea2) cmds.push(enc(`${linea2}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`PRELIQUIDACION CLIENTES\n`));
+    cmds.push(enc(`${textoRangoPreliq()}\n`));
+    cmds.push(enc(`================================\n`));
+
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x00]));
+    cmds.push(enc(`Ventas: ${ventas.length}\n`));
+    cmds.push(enc(`Contado: ${money(totalContado)}\n`));
+    cmds.push(enc(`Credito: ${money(totalCredito)}\n`));
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`TOTAL VENDIDO: ${money(totalVendido)}\n`));
+    cmds.push(enc(`Ganancia: ${money(totalGanancia)}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`${padRight('CLIENTE', 20)}${padLeft('TOTAL', 12)}\n`));
+    cmds.push(enc(`--------------------------------\n`));
+
+    clientesOrden.forEach(([nombre, d]) => {
+        cmds.push(enc(`${padRight(nombre, 20)}${padLeft(money(d.monto), 12)}\n`));
+        let det = `  ${d.ventas} venta${d.ventas === 1 ? '' : 's'}`;
+        if (d.credito > 0) det += ` · Credito ${money(d.credito)}`;
+        cmds.push(enc(`${det}\n`));
+    });
+
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`TOTAL: ${money(totalVendido)}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
+    cmds.push(enc(`Fin del reporte\n\n\n`));
 
     await enviarComandosImpresora(cmds);
 }

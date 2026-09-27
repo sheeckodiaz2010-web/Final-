@@ -17,20 +17,29 @@
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         html, body { overscroll-behavior-y: contain; }
         /* Fuerza que la app se siga viendo en vertical aunque el celular esté acostado (funciona en iPhone y Android) */
-        @media screen and (orientation: landscape) {
-            html {
-                transform: rotate(-90deg);
-                transform-origin: left top;
-                width: 100vh;
-                height: 100vw;
-                overflow-x: hidden;
-                position: absolute;
-                top: 100%;
-                left: 0;
-            }
+        /* Bloqueo de orientación vertical por CSS puro, cubriendo los 4 ángulos posibles.
+           Las clases rot-* las pone el JS (ver aplicarCorreccionOrientacion) según el ángulo real del celular. */
+        html.rot-90 {
+            transform: rotate(-90deg);
+            transform-origin: left top;
+            width: 100vh;
+            height: 100vw;
+            overflow-x: hidden;
+            position: absolute;
+            top: 100%;
+            left: 0;
         }
-        /* Corrige cuando el celular queda "boca abajo" en vertical (detectado por JS, ver corregirOrientacionInvertida) */
-        html.pos-boca-abajo {
+        html.rot-270 {
+            transform: rotate(90deg);
+            transform-origin: left top;
+            width: 100vh;
+            height: 100vw;
+            overflow-x: hidden;
+            position: absolute;
+            top: 0;
+            left: 100%;
+        }
+        html.rot-180 {
             transform: rotate(180deg);
         }
         body { -webkit-tap-highlight-color: transparent; }
@@ -2619,20 +2628,30 @@ try {
     }
 } catch (e) { /* algunos navegadores no lo permiten fuera de pantalla completa; se ignora */ }
 
-// Corrige cuando el celular queda "boca abajo" en vertical (portrait-secondary).
-// El CSS por sí solo no distingue esto de la posición normal, hay que detectarlo por JS.
-function corregirOrientacionInvertida() {
-    let invertido = false;
-    if (screen.orientation && screen.orientation.type) {
-        invertido = screen.orientation.type === 'portrait-secondary';
+// Bloqueo de orientación por CSS: calcula el ángulo exacto (0, 90, 180, 270) al que
+// está el celular y le pone al <html> la clase correspondiente (rot-90 / rot-180 / rot-270),
+// que lo regresa visualmente a vertical sin importar cómo lo gires (funciona en Android e iPhone).
+function aplicarCorreccionOrientacion() {
+    let angulo = 0;
+    if (screen.orientation && typeof screen.orientation.angle === 'number') {
+        angulo = screen.orientation.angle;
     } else if (typeof window.orientation === 'number') {
-        invertido = window.orientation === 180;
+        angulo = window.orientation < 0 ? 360 + window.orientation : window.orientation;
     }
-    document.documentElement.classList.toggle('pos-boca-abajo', invertido);
+    angulo = ((angulo % 360) + 360) % 360;
+
+    const html = document.documentElement;
+    html.classList.remove('rot-90', 'rot-180', 'rot-270');
+    if (angulo === 90) html.classList.add('rot-90');
+    else if (angulo === 180) html.classList.add('rot-180');
+    else if (angulo === 270) html.classList.add('rot-270');
 }
-window.addEventListener('orientationchange', corregirOrientacionInvertida);
-window.addEventListener('resize', corregirOrientacionInvertida);
-corregirOrientacionInvertida();
+window.addEventListener('orientationchange', aplicarCorreccionOrientacion);
+window.addEventListener('resize', aplicarCorreccionOrientacion);
+if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', aplicarCorreccionOrientacion);
+}
+aplicarCorreccionOrientacion();
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) --------------------
 if ('serviceWorker' in navigator) {

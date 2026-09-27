@@ -2262,16 +2262,53 @@ function abrirDetalleVenta(id) {
 }
 
 function cancelarOrdenActual() {
-    if (!confirm('¿Eliminar transacción?')) return;
     const idx = transacciones.findIndex(x => x.id === ventaSeleccionadaId);
     if (idx === -1) return;
+
     const t = transacciones[idx];
-    if (t.items) {
-        t.items.forEach(i => {
-            const p = productos.find(x => x.id === i.id);
-            if (p) p.stock += i.cant;
+    const esFacturaCompra = Array.isArray(t.itemsCompra);
+    const confirmacion = esFacturaCompra
+        ? '¿Eliminar esta factura de compra? Se descontarán del inventario las cantidades que agregó.'
+        : '¿Eliminar transacción?';
+    if (!confirm(confirmacion)) return;
+
+    const buscarProducto = id => productos.find(x => String(x.id) === String(id));
+
+    if (esFacturaCompra) {
+        // Validar primero todas las cantidades para no dejar el stock negativo.
+        const cantidadesPorProducto = new Map();
+        t.itemsCompra.forEach(item => {
+            const clave = String(item.id);
+            const cantidad = Math.max(0, Number(item.cant) || 0);
+            cantidadesPorProducto.set(clave, (cantidadesPorProducto.get(clave) || 0) + cantidad);
+        });
+
+        for (const [idProducto, cantidad] of cantidadesPorProducto) {
+            const producto = buscarProducto(idProducto);
+            const stockActual = producto ? (Number(producto.stock) || 0) : 0;
+            if (producto && stockActual < cantidad) {
+                alert(`No se puede eliminar la factura: ${producto.nombre} tiene ${stockActual} en stock y habría que descontar ${cantidad}. Revisa las ventas o ajusta el inventario primero.`);
+                return;
+            }
+        }
+
+        // La factura de compra había sumado estas unidades; revertir ese aumento.
+        t.itemsCompra.forEach(item => {
+            const producto = buscarProducto(item.id);
+            if (producto) {
+                producto.stock = (Number(producto.stock) || 0) - Math.max(0, Number(item.cant) || 0);
+            }
+        });
+    } else if (Array.isArray(t.items)) {
+        // Al borrar una venta, devolver al inventario las unidades vendidas.
+        t.items.forEach(item => {
+            const producto = buscarProducto(item.id);
+            if (producto) {
+                producto.stock = (Number(producto.stock) || 0) + Math.max(0, Number(item.cant) || 0);
+            }
         });
     }
+
     transacciones.splice(idx, 1);
     guardarTodo();
     cerrarModal('modal-detalle-venta');

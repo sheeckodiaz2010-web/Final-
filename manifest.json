@@ -1,12 +1,11 @@
 {
-  "background_color": "#0f8080",
-  "dir": "ltr",
-  "display": "standalone",
   "name": "DIGAR POS",
-  "orientation": "portrait",
-  "scope": "./",
   "short_name": "DIGAR POS",
-  "start_url": "./",
+  "description": "Sistema POS DIGAR - Clientes Comerciales",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f8080",
   "theme_color": "#0f8080",
   "icons": [
     {

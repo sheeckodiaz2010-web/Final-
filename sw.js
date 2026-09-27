@@ -1,6 +1,6 @@
 // Service Worker - DIGAR POS
 // Cachea el shell de la app para que funcione sin conexión.
-const CACHE_NAME = 'digar-pos-v19';
+const CACHE_NAME = 'digar-pos-v20';
 const ASSETS = [
   './',
   './index.html',

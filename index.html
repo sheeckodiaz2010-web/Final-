@@ -1341,15 +1341,29 @@ function alternarModoVista() {
 function bindProductoToque(el, prodId) {
     let timer = null;
     let longPress = false;
+    let movido = false;
     let inicioToque = 0;
+    let x0 = 0, y0 = 0;
     const UMBRAL_MIN_MS = 130; // debajo de esto se considera un roce accidental, no un toque real
+    const UMBRAL_MOVIMIENTO_PX = 10; // si el dedo se movió más que esto, es un scroll, no un toque
+
     const start = (e) => {
         longPress = false;
+        movido = false;
         inicioToque = Date.now();
+        const t = e.touches ? e.touches[0] : e;
+        x0 = t.clientX; y0 = t.clientY;
         timer = setTimeout(() => {
             longPress = true;
             abrirModalCantidad(prodId);
         }, 450);
+    };
+    const move = (e) => {
+        const t = e.touches ? e.touches[0] : e;
+        if (Math.abs(t.clientX - x0) > UMBRAL_MOVIMIENTO_PX || Math.abs(t.clientY - y0) > UMBRAL_MOVIMIENTO_PX) {
+            movido = true;
+            clearTimeout(timer);
+        }
     };
     const end = (e) => {
         clearTimeout(timer);
@@ -1357,12 +1371,13 @@ function bindProductoToque(el, prodId) {
         // después del touch (eso era lo que agregaba el producto 2 veces).
         if (e.cancelable) e.preventDefault();
         const duracion = Date.now() - inicioToque;
-        if (!longPress && duracion >= UMBRAL_MIN_MS) agregarAlCarrito(prodId, 1);
+        // Si el dedo se movió (estabas haciendo scroll), NO se agrega el producto.
+        if (!longPress && !movido && duracion >= UMBRAL_MIN_MS) agregarAlCarrito(prodId, 1);
     };
-    const cancel = () => { clearTimeout(timer); };
+    const cancel = () => { clearTimeout(timer); movido = true; };
     el.addEventListener('touchstart', start, { passive: true });
     el.addEventListener('touchend', end);
-    el.addEventListener('touchmove', cancel);
+    el.addEventListener('touchmove', move, { passive: true });
     el.addEventListener('mousedown', start);
     el.addEventListener('mouseup', end);
     el.addEventListener('mouseleave', cancel);

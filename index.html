@@ -1340,44 +1340,20 @@ function alternarModoVista() {
 
 function bindProductoToque(el, prodId) {
     let timer = null;
-    let longPress = false;
-    let movido = false;
-    let inicioToque = 0;
-    let x0 = 0, y0 = 0;
-    const UMBRAL_MIN_MS = 130; // debajo de esto se considera un roce accidental, no un toque real
-    const UMBRAL_MOVIMIENTO_PX = 10; // si el dedo se movió más que esto, es un scroll, no un toque
-
-    const start = (e) => {
-        longPress = false;
-        movido = false;
-        inicioToque = Date.now();
-        const t = e.touches ? e.touches[0] : e;
-        x0 = t.clientX; y0 = t.clientY;
+    const start = () => {
         timer = setTimeout(() => {
-            longPress = true;
             abrirModalCantidad(prodId);
         }, 450);
     };
-    const move = (e) => {
-        const t = e.touches ? e.touches[0] : e;
-        if (Math.abs(t.clientX - x0) > UMBRAL_MOVIMIENTO_PX || Math.abs(t.clientY - y0) > UMBRAL_MOVIMIENTO_PX) {
-            movido = true;
-            clearTimeout(timer);
-        }
-    };
     const end = (e) => {
         clearTimeout(timer);
-        // Evita que el navegador dispare también un evento de mouse sintético
-        // después del touch (eso era lo que agregaba el producto 2 veces).
+        // Un toque simple ya no hace nada: solo sostener el dedo abre la cantidad.
         if (e.cancelable) e.preventDefault();
-        const duracion = Date.now() - inicioToque;
-        // Si el dedo se movió (estabas haciendo scroll), NO se agrega el producto.
-        if (!longPress && !movido && duracion >= UMBRAL_MIN_MS) agregarAlCarrito(prodId, 1);
     };
-    const cancel = () => { clearTimeout(timer); movido = true; };
+    const cancel = () => { clearTimeout(timer); };
     el.addEventListener('touchstart', start, { passive: true });
     el.addEventListener('touchend', end);
-    el.addEventListener('touchmove', move, { passive: true });
+    el.addEventListener('touchmove', cancel, { passive: true });
     el.addEventListener('mousedown', start);
     el.addEventListener('mouseup', end);
     el.addEventListener('mouseleave', cancel);

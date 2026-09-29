@@ -73,6 +73,7 @@
                     </div>
                     <p id="login-error" class="text-xs text-red-600 mb-2 hidden"></p>
                     <button onclick="intentarLogin()" id="login-btn" class="w-full text-white font-bold py-3 rounded-xl text-sm bg-blue-600">Iniciar sesión</button>
+                    <button onclick="loginConHuella()" id="login-huella-btn" class="hidden w-full mt-2 bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-sm">👆 Entrar con huella</button>
                     <p class="text-[11px] text-gray-400 text-center mt-3">Bloquea el acceso en este dispositivo</p>
                 </div>
             </div>
@@ -578,6 +579,7 @@
                 <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
                 <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
                 <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
+                <button onclick="alternarHuella()" id="btn-huella-config" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">👆 Activar entrada con huella</button>
                 <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
@@ -3007,6 +3009,7 @@ async function procesarExportarDatos() {
 }
 
 function abrirModalBackup() {
+    actualizarBotonHuella();
     $('modal-backup').classList.remove('hidden');
 }
 
@@ -3135,6 +3138,102 @@ function ocultarLogin() {
     verificarRecordatorioRespaldo();
 }
 
+// -------------------- HUELLA (WebAuthn) --------------------
+// Usa el lector de huella / Face ID del propio celular. Es un candado local:
+// el navegador pide la huella y, si la valida, se entra sin escribir la contraseña.
+const HUELLA_KEY = 'digar_huella_id';
+
+function bufToB64(buf) {
+    let str = '';
+    new Uint8Array(buf).forEach(b => { str += String.fromCharCode(b); });
+    return btoa(str);
+}
+function b64ToBuf(b64) {
+    const bin = atob(b64);
+    const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u.buffer;
+}
+function huellaActivada() { return !!localStorage.getItem(HUELLA_KEY); }
+
+async function huellaDisponible() {
+    try {
+        return !!(window.PublicKeyCredential && window.isSecureContext &&
+            await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+    } catch (e) { return false; }
+}
+
+function actualizarBotonHuella() {
+    const b = $('btn-huella-config');
+    if (b) b.innerText = huellaActivada() ? '👆 Desactivar entrada con huella' : '👆 Activar entrada con huella';
+}
+
+async function activarHuella() {
+    if (!(await huellaDisponible())) {
+        return alert('Este celular o navegador no permite entrar con huella aquí. Necesita abrir la app desde https (por ejemplo GitHub Pages) y tener huella configurada en el celular.');
+    }
+    try {
+        const cred = await navigator.credentials.create({
+            publicKey: {
+                challenge: crypto.getRandomValues(new Uint8Array(32)),
+                rp: { name: 'DIGAR POS', id: location.hostname },
+                user: {
+                    id: crypto.getRandomValues(new Uint8Array(16)),
+                    name: (yimiAuth && yimiAuth.telefono) || 'digar',
+                    displayName: 'DIGAR POS'
+                },
+                pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+                timeout: 60000,
+                attestation: 'none'
+            }
+        });
+        localStorage.setItem(HUELLA_KEY, bufToB64(cred.rawId));
+        alert('Listo: la próxima vez podrás entrar con tu huella.');
+    } catch (e) {
+        if (e && e.name !== 'NotAllowedError') alert('No se pudo activar la huella: ' + (e.message || e.name));
+    }
+    actualizarBotonHuella();
+}
+
+function alternarHuella() {
+    if (huellaActivada()) {
+        if (!confirm('¿Desactivar la entrada con huella? Volverás a entrar solo con contraseña.')) return;
+        localStorage.removeItem(HUELLA_KEY);
+        actualizarBotonHuella();
+    } else {
+        activarHuella();
+    }
+}
+
+async function loginConHuella() {
+    if (!huellaActivada() || !yimiAuth || !$('pantalla-login')) return;
+    try {
+        await navigator.credentials.get({
+            publicKey: {
+                challenge: crypto.getRandomValues(new Uint8Array(32)),
+                rpId: location.hostname,
+                allowCredentials: [{ type: 'public-key', id: b64ToBuf(localStorage.getItem(HUELLA_KEY)), transports: ['internal'] }],
+                userVerification: 'required',
+                timeout: 60000
+            }
+        });
+        iniciarFirebase(yimiAuth.telefono, yimiAuth.password);
+        ocultarLogin();
+    } catch (e) {
+        if (e && e.name !== 'NotAllowedError' && e.name !== 'AbortError') {
+            mostrarErrorLogin('No se pudo usar la huella. Entra con tu contraseña.');
+        }
+    }
+}
+
+async function initHuellaLogin() {
+    if (!yimiAuth || !huellaActivada() || !(await huellaDisponible())) return;
+    const btn = $('login-huella-btn');
+    if (btn) btn.classList.remove('hidden');
+    loginConHuella(); // pide la huella automáticamente al abrir
+}
+
 // -------------------- INICIALIZACIÓN --------------------
 $('buscador-venta').addEventListener('input', e => filtrarVenta(e.target.value));
 $('buscador-inventario').addEventListener('input', e => filtrarInventario(e.target.value));
@@ -3144,6 +3243,7 @@ actualizarContadorClientesUI();
 renderVenta();
 renderListaClientesInicio();
 initPantallaLogin();
+initHuellaLogin();
 
 // Bloqueo de orientación: solo vertical. Funciona mejor si la app está instalada (PWA / Agregar a inicio).
 function forzarOrientacionVertical() {

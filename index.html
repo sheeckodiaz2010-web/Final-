@@ -560,6 +560,7 @@
                 <span class="text-xs font-semibold text-gray-500">Mostrar en el ticket:</span>
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="config-ticket-show-dir-cli" class="rounded"> Dirección del cliente</label>
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="config-ticket-show-folio" class="rounded"> Folio de venta</label>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="config-ticket-show-nombre" class="rounded"> Nombre de la empresa</label>
             </div>
             <button onclick="guardarConfigTicket()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Guardar cambios</button>
         </div>
@@ -969,6 +970,7 @@ let configTicket = JSON.parse(localStorage.getItem('yimi_config_ticket')) || {
     pie: '¡GRACIAS POR SU COMPRA!',
     showDirCliente: true,
     showFolio: true,
+    showNombre: true,
     atendio: ''
 };
 let productoCantidadId = null;
@@ -1785,6 +1787,7 @@ async function ejecutarCobroFinal() {
 
     // Llenar recibo
     $('recibo-negocio-txt').innerText = configTicket.negocio;
+    $('recibo-negocio-txt').classList.toggle('hidden', configTicket.showNombre === false);
     const dirNeg = [configTicket.direccion, configTicket.telefono].filter(Boolean).join(' • ');
     const rfcLine = configTicket.rfc ? ` · RFC: ${configTicket.rfc}` : '';
     $('recibo-dir-negocio-txt').innerText = (dirNeg || '') + rfcLine;
@@ -2484,7 +2487,7 @@ async function enviarImpresionTicketESC_POS(t) {
         new Uint8Array([0x1B, 0x61, 0x01])  // Centrado
     ];
 
-    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
     const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
     if (linea2) cmds.push(enc(`${linea2}\n`));
     if (configTicket.rfc) cmds.push(enc(`RFC: ${configTicket.rfc}\n`));
@@ -2501,7 +2504,7 @@ async function enviarImpresionTicketESC_POS(t) {
     if (configTicket.atendio) {
         cmds.push(enc(`Atendio: ${configTicket.atendio}\n`));
     }
-    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`================================\n`));
     cmds.push(enc(`${padRight('CANT', 5)}${padRight('DESCRIPCION', 17)}${padLeft('IMPORTE', 10)}\n`));
 
     if (t.items) {
@@ -2513,14 +2516,19 @@ async function enviarImpresionTicketESC_POS(t) {
         cmds.push(enc(`${t.categoria}: ${t.descripcion}\n`));
     }
 
-    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`================================\n`));
 
     // Total de piezas, en una sola línea
     if (t.items && t.items.length > 0) {
         const totalPiezas = t.items.reduce((a, i) => a + i.cant, 0);
         cmds.push(enc(`Total de piezas: ${totalPiezas}\n`));
-        cmds.push(enc(`--------------------------------\n`));
+        cmds.push(enc(`================================\n`));
     }
+
+    // Subtotal e IEPS (siempre en cero)
+    cmds.push(enc(`${padRight('Subtotal', 20)}${padLeft(money(0), 12)}\n`));
+    cmds.push(enc(`${padRight('IEPS', 20)}${padLeft(money(0), 12)}\n`));
+    cmds.push(enc(`================================\n`));
 
     // Total en letra grande y centrada
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01])); // Centrado
@@ -2536,12 +2544,41 @@ async function enviarImpresionTicketESC_POS(t) {
         cmds.push(enc(`Cambio: ${money(t.cambio != null ? t.cambio : Math.max(0, t.pagoEfectivo - t.monto))}\n`));
     }
 
-    cmds.push(enc(`\n================================\n`));
+    cmds.push(enc(`\n\n`));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`${configTicket.pie}\n`));
     cmds.push(enc(`\n\n\n`));
 
     await enviarComandosImpresora(cmds);
+}
+
+function obtenerIngresosFiltradosPreliq() {
+    const desde = $('filtro-fecha-desde').value;
+    const hasta = $('filtro-fecha-hasta').value;
+    return transacciones.filter(t => {
+        if (t.tipo !== 'Ingreso') return false;
+        const f = t.fechaStr || '';
+        if (desde && f < desde) return false;
+        if (hasta && f > hasta) return false;
+        return true;
+    });
+}
+
+function bloqueIngresosPreliq(ingresos) {
+    if (!ingresos.length) return [];
+    const encoder = new TextEncoder();
+    const enc = (x) => encoder.encode(limpiarTxt(x));
+    const out = [];
+    let total = 0;
+    out.push(enc(`INGRESOS\n`));
+    ingresos.forEach(t => {
+        total += t.monto || 0;
+        out.push(enc(`${padRight(t.descripcion || t.categoria || 'Ingreso', 20)}${padLeft(money(t.monto || 0), 12)}\n`));
+    });
+    out.push(enc(`--------------------------------\n`));
+    out.push(enc(`${padRight('TOTAL INGRESOS', 20)}${padLeft(money(total), 12)}\n`));
+    out.push(enc(`================================\n`));
+    return out;
 }
 
 function obtenerVentasFiltradasPreliq() {
@@ -2568,7 +2605,8 @@ function textoRangoPreliq() {
 
 async function imprimirPreliquidacionProductos() {
     const ventas = obtenerVentasFiltradasPreliq();
-    if (ventas.length === 0) return alert('No hay ventas en el rango de fechas seleccionado.');
+    const ingresosPreliq = obtenerIngresosFiltradosPreliq();
+    if (ventas.length === 0 && ingresosPreliq.length === 0) return alert('No hay ventas ni ingresos en el rango de fechas seleccionado.');
 
     let totalVendido = 0, totalGanancia = 0, totalContado = 0, totalCredito = 0;
     const porProducto = {};
@@ -2598,7 +2636,7 @@ async function imprimirPreliquidacionProductos() {
         new Uint8Array([0x1B, 0x61, 0x01])
     ];
 
-    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
     const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
     if (linea2) cmds.push(enc(`${linea2}\n`));
     cmds.push(enc(`================================\n`));
@@ -2624,6 +2662,7 @@ async function imprimirPreliquidacionProductos() {
     cmds.push(enc(`--------------------------------\n`));
     cmds.push(enc(`Total de piezas: ${totalPiezas}\n`));
     cmds.push(enc(`================================\n`));
+    bloqueIngresosPreliq(ingresosPreliq).forEach(c => cmds.push(c));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`Fin del reporte\n\n\n`));
 
@@ -2632,7 +2671,8 @@ async function imprimirPreliquidacionProductos() {
 
 async function imprimirPreliquidacionClientes() {
     const ventas = obtenerVentasFiltradasPreliq();
-    if (ventas.length === 0) return alert('No hay ventas en el rango de fechas seleccionado.');
+    const ingresosPreliq = obtenerIngresosFiltradosPreliq();
+    if (ventas.length === 0 && ingresosPreliq.length === 0) return alert('No hay ventas ni ingresos en el rango de fechas seleccionado.');
 
     let totalVendido = 0, totalGanancia = 0, totalContado = 0, totalCredito = 0;
     const porCliente = {};
@@ -2658,7 +2698,7 @@ async function imprimirPreliquidacionClientes() {
         new Uint8Array([0x1B, 0x61, 0x01])
     ];
 
-    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
     const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
     if (linea2) cmds.push(enc(`${linea2}\n`));
     cmds.push(enc(`================================\n`));
@@ -2687,6 +2727,7 @@ async function imprimirPreliquidacionClientes() {
     cmds.push(enc(`--------------------------------\n`));
     cmds.push(enc(`TOTAL: ${money(totalVendido)}\n`));
     cmds.push(enc(`================================\n`));
+    bloqueIngresosPreliq(ingresosPreliq).forEach(c => cmds.push(c));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`Fin del reporte\n\n\n`));
 
@@ -2706,7 +2747,7 @@ async function procesarImprimirInventario() {
         new Uint8Array([0x1B, 0x61, 0x01])
     ];
 
-    cmds.push(enc(`\n${configTicket.negocio}\n`));
+    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
     const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
     if (linea2) cmds.push(enc(`${linea2}\n`));
     cmds.push(enc(`================================\n`));
@@ -2743,6 +2784,7 @@ function abrirConfigTicket() {
     $('config-ticket-atendio').value = configTicket.atendio || '';
     $('config-ticket-show-dir-cli').checked = configTicket.showDirCliente !== false;
     $('config-ticket-show-folio').checked = configTicket.showFolio !== false;
+    $('config-ticket-show-nombre').checked = configTicket.showNombre !== false;
     $('modal-config-ticket').classList.remove('hidden');
 }
 
@@ -2755,6 +2797,7 @@ function guardarConfigTicket() {
     configTicket.atendio = $('config-ticket-atendio').value || '';
     configTicket.showDirCliente = $('config-ticket-show-dir-cli').checked;
     configTicket.showFolio = $('config-ticket-show-folio').checked;
+    configTicket.showNombre = $('config-ticket-show-nombre').checked;
     guardarTodo();
     cerrarModal('modal-config-ticket');
 }

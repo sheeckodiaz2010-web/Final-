@@ -871,7 +871,44 @@
             </div>
             <div class="pt-2 space-y-2">
                 <button onclick="imprimirTransaccionEspecifica(ventaSeleccionadaId)" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-sm"><span>🖨️</span> Imprimir Ticket</button>
+                <button id="btn-editar-ticket" onclick="abrirEditarVenta()" class="w-full bg-blue-50 text-blue-700 font-bold py-3.5 rounded-2xl border border-blue-200 text-sm">✏️ Editar ticket</button>
                 <button onclick="cancelarOrdenActual()" class="w-full bg-red-50 text-red-600 font-bold py-3.5 rounded-2xl border border-red-200 text-sm">🗑️ Cancelar / Eliminar transacción</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Ticket -->
+    <div id="modal-editar-venta" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 max-h-[92vh] overflow-y-auto space-y-3">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-bold text-base" id="edit-venta-titulo">Editar ticket</h3>
+                    <p class="text-xs text-gray-500" id="edit-venta-cliente"></p>
+                </div>
+                <button onclick="cancelarEdicionVenta()" class="text-gray-400 text-xl font-bold px-2">×</button>
+            </div>
+
+            <div id="edit-venta-items" class="space-y-2"></div>
+
+            <button onclick="toggleAgregarEditVenta()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-2xl text-sm">➕ Agregar producto</button>
+
+            <div id="edit-venta-panel-agregar" class="hidden space-y-2 border rounded-2xl p-3 bg-gray-50">
+                <input type="text" id="edit-venta-buscar" oninput="renderListaAgregarEdit()" placeholder="🔍 Buscar producto o código" class="w-full p-3 border rounded-xl text-sm bg-white">
+                <div id="edit-venta-lista-agregar" class="space-y-1.5 max-h-56 overflow-y-auto"></div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-2xl border space-y-1 text-sm">
+                <div class="flex justify-between"><span class="text-gray-500">Piezas</span><span class="font-bold" id="edit-venta-piezas">0</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Total anterior</span><span class="font-semibold text-gray-600" id="edit-venta-total-ant">$0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Total nuevo</span><span class="font-black text-lg text-blue-600" id="edit-venta-total-nuevo">$0.00</span></div>
+                <div id="edit-venta-aviso-credito" class="hidden text-[11px] text-amber-600 pt-1"></div>
+            </div>
+
+            <div id="edit-venta-cambios-inv" class="hidden text-xs bg-amber-50 border border-amber-200 rounded-2xl p-3 space-y-0.5"></div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="cancelarEdicionVenta()" class="bg-gray-100 text-gray-700 font-bold py-3.5 rounded-2xl text-sm">Cancelar</button>
+                <button onclick="guardarEdicionVenta()" class="bg-blue-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-md">Guardar</button>
             </div>
         </div>
     </div>
@@ -2342,6 +2379,8 @@ function abrirDetalleVenta(id) {
     } else {
         container.innerHTML = `<p class="text-xs text-gray-600">${t.descripcion} (Categoría: ${t.categoria})</p>`;
     }
+    const btnEd = $('btn-editar-ticket');
+    if (btnEd) btnEd.classList.toggle('hidden', !(t.tipo === 'Venta' && Array.isArray(t.items)));
     $('modal-detalle-venta').classList.remove('hidden');
 }
 
@@ -2399,6 +2438,215 @@ function cancelarOrdenActual() {
     renderTransacciones();
     renderInventario();
     renderVenta();
+}
+
+// -------------------- EDITAR TICKET --------------------
+let editVentaId = null;
+let editItems = [];
+let editOriginal = [];
+
+const escHtml = str => String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const mismoId = (a, b) => String(a) === String(b);
+
+function abrirEditarVenta() {
+    const t = transacciones.find(x => x.id === ventaSeleccionadaId);
+    if (!t || !Array.isArray(t.items)) return;
+    editVentaId = t.id;
+    editOriginal = t.items.map(i => ({ ...i }));
+    editItems = t.items.map(i => ({ ...i }));
+    $('edit-venta-titulo').innerText = `Editar ticket #${String(t.id).slice(-3)}`;
+    $('edit-venta-cliente').innerText = t.clienteNombre || 'General';
+    $('edit-venta-buscar').value = '';
+    $('edit-venta-panel-agregar').classList.add('hidden');
+    cerrarModal('modal-detalle-venta');
+    renderEditarVenta();
+    $('modal-editar-venta').classList.remove('hidden');
+}
+
+function cancelarEdicionVenta() {
+    const id = editVentaId;
+    cerrarModal('modal-editar-venta');
+    editVentaId = null; editItems = []; editOriginal = [];
+    if (id != null) abrirDetalleVenta(id);
+}
+
+// Máximo que se puede poner en el ticket = lo que ya tenía + lo que hay en inventario ahora
+function maxEditable(item) {
+    const p = productos.find(x => mismoId(x.id, item.id));
+    const orig = editOriginal.find(x => mismoId(x.id, item.id));
+    return (orig ? orig.cant : 0) + (p ? (Number(p.stock) || 0) : 0);
+}
+
+function cambiarCantEditVenta(idx, delta) {
+    const it = editItems[idx];
+    if (!it) return;
+    const nueva = it.cant + delta;
+    if (nueva <= 0) return quitarItemEditVenta(idx);
+    if (delta > 0 && nueva > maxEditable(it)) return alert(`Solo hay ${maxEditable(it)} disponibles de ${it.nombre}`);
+    it.cant = nueva;
+    renderEditarVenta();
+}
+
+function quitarItemEditVenta(idx) {
+    editItems.splice(idx, 1);
+    renderEditarVenta();
+}
+
+function calcularCambiosEdit() {
+    const ids = new Set([...editOriginal, ...editItems].map(i => String(i.id)));
+    const cambios = [];
+    ids.forEach(id => {
+        const o = editOriginal.find(i => mismoId(i.id, id));
+        const n = editItems.find(i => mismoId(i.id, id));
+        const delta = (n ? n.cant : 0) - (o ? o.cant : 0);
+        if (delta !== 0) cambios.push({ id, nombre: (n || o).nombre, delta });
+    });
+    return cambios;
+}
+
+function renderEditarVenta() {
+    const t = transacciones.find(x => x.id === editVentaId);
+    if (!t) return;
+    const cont = $('edit-venta-items');
+    if (editItems.length === 0) {
+        cont.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Sin productos. Agrega al menos uno.</p>';
+    } else {
+        cont.innerHTML = editItems.map((i, idx) => `
+            <div class="bg-gray-50 border rounded-xl p-3">
+                <div class="text-sm font-semibold text-gray-800">${escHtml(i.nombre)}</div>
+                <div class="flex items-center justify-between mt-2">
+                    <span class="text-xs text-gray-500">${money(i.precioPersonalizado)} c/u · <b>${money(i.precioPersonalizado * i.cant)}</b></span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="cambiarCantEditVenta(${idx}, -1)" class="w-8 h-8 rounded-lg bg-white border font-bold">−</button>
+                        <span class="w-6 text-center font-bold text-sm">${i.cant}</span>
+                        <button onclick="cambiarCantEditVenta(${idx}, 1)" class="w-8 h-8 rounded-lg bg-white border font-bold">+</button>
+                        <button onclick="quitarItemEditVenta(${idx})" class="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600">🗑</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    const piezas = editItems.reduce((a, i) => a + i.cant, 0);
+    const totalNuevo = editItems.reduce((a, i) => a + i.precioPersonalizado * i.cant, 0);
+    $('edit-venta-piezas').innerText = piezas;
+    $('edit-venta-total-ant').innerText = money(t.monto);
+    $('edit-venta-total-nuevo').innerText = money(totalNuevo);
+
+    const aviso = $('edit-venta-aviso-credito');
+    if (t.esCredito) {
+        const abonado = (t.abonos || []).reduce((a, b) => a + (Number(b.monto) || 0), 0);
+        const saldoNuevo = Math.max(0, totalNuevo - abonado);
+        aviso.innerText = `Crédito: el saldo pendiente pasará de ${money(t.saldoPendiente)} a ${money(saldoNuevo)}`;
+        aviso.classList.remove('hidden');
+    } else {
+        aviso.classList.add('hidden');
+    }
+
+    const cambios = calcularCambiosEdit();
+    const box = $('edit-venta-cambios-inv');
+    if (cambios.length === 0) {
+        box.classList.add('hidden');
+    } else {
+        box.innerHTML = '<div class="font-bold text-amber-700 mb-1">Cambios al inventario:</div>' +
+            cambios.map(c => c.delta < 0
+                ? `<div>${escHtml(c.nombre)} <b>+${-c.delta}</b> (regresa)</div>`
+                : `<div>${escHtml(c.nombre)} <b>-${c.delta}</b> (sale)</div>`).join('');
+        box.classList.remove('hidden');
+    }
+    renderListaAgregarEdit();
+}
+
+function toggleAgregarEditVenta() {
+    const panel = $('edit-venta-panel-agregar');
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) {
+        renderListaAgregarEdit();
+        $('edit-venta-buscar').focus();
+    }
+}
+
+function renderListaAgregarEdit() {
+    const panel = $('edit-venta-panel-agregar');
+    if (!panel || panel.classList.contains('hidden')) return;
+    const q = ($('edit-venta-buscar').value || '').trim().toLowerCase();
+    const lista = productos
+        .filter(p => !q || String(p.nombre).toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q))
+        .slice(0, 30);
+    $('edit-venta-lista-agregar').innerHTML = lista.length === 0
+        ? '<p class="text-xs text-gray-400 text-center py-3">Sin resultados</p>'
+        : lista.map(p => `
+            <button onclick="agregarProductoEditVenta('${String(p.id).replace(/'/g, "\\'")}')" class="w-full flex justify-between items-center p-2.5 bg-white rounded-xl border text-left ${p.stock <= 0 ? 'opacity-50' : ''}">
+                <span class="min-w-0">
+                    <span class="block text-sm font-semibold truncate">${escHtml(p.nombre)}</span>
+                    <span class="block text-[11px] text-gray-500">${money(p.precio)} · Stock: ${p.stock}${p.sku ? ' · ' + escHtml(p.sku) : ''}</span>
+                </span>
+                <span class="text-blue-600 font-black text-lg px-2">+</span>
+            </button>`).join('');
+}
+
+function agregarProductoEditVenta(id) {
+    const p = productos.find(x => mismoId(x.id, id));
+    if (!p) return;
+    const existente = editItems.find(x => mismoId(x.id, p.id));
+    if (existente) {
+        if (existente.cant + 1 > maxEditable(existente)) return alert(`Solo hay ${maxEditable(existente)} disponibles de ${p.nombre}`);
+        existente.cant += 1;
+    } else {
+        if ((Number(p.stock) || 0) <= 0) return alert('¡Sin stock disponible!');
+        editItems.push({ ...p, precioPersonalizado: p.precio, cant: 1 });
+    }
+    if (navigator.vibrate) navigator.vibrate(20);
+    renderEditarVenta();
+}
+
+function guardarEdicionVenta() {
+    const t = transacciones.find(x => x.id === editVentaId);
+    if (!t) return;
+    if (editItems.length === 0) {
+        return alert('El ticket no puede quedar vacío. Si quieres borrarlo usa "Cancelar / Eliminar transacción".');
+    }
+
+    const cambios = calcularCambiosEdit();
+
+    // Validar stock antes de tocar nada
+    for (const c of cambios) {
+        if (c.delta > 0) {
+            const p = productos.find(x => mismoId(x.id, c.id));
+            if (p && (Number(p.stock) || 0) < c.delta) {
+                return alert(`Solo hay ${p.stock} en stock de ${p.nombre}`);
+            }
+        }
+    }
+
+    // Ajustar inventario: delta>0 sale más, delta<0 regresa
+    cambios.forEach(c => {
+        const p = productos.find(x => mismoId(x.id, c.id));
+        if (p) p.stock = (Number(p.stock) || 0) - c.delta;
+    });
+
+    // Actualizar la venta
+    t.items = editItems.map(i => ({ ...i }));
+    t.monto = t.items.reduce((a, i) => a + i.precioPersonalizado * i.cant, 0);
+    t.ganancia = t.items.reduce((a, i) => a + ((i.precioPersonalizado - (i.costo || 0)) * i.cant), 0);
+
+    if (t.esCredito) {
+        const abonado = (t.abonos || []).reduce((a, b) => a + (Number(b.monto) || 0), 0);
+        t.saldoPendiente = Math.max(0, Math.round((t.monto - abonado) * 100) / 100);
+        t.pagado = t.saldoPendiente <= 0;
+    } else if (t.pagoEfectivo > 0) {
+        t.cambio = Math.max(0, t.pagoEfectivo - t.monto);
+    }
+    t.editada = true;
+
+    guardarTodo();
+    const id = t.id;
+    cerrarModal('modal-editar-venta');
+    editVentaId = null; editItems = []; editOriginal = [];
+    renderTransacciones();
+    renderInventario();
+    renderVenta();
+    actualizarBadgeCreditos();
+    abrirDetalleVenta(id);
 }
 
 // -------------------- IMPRESIÓN BLUETOOTH --------------------
@@ -2538,12 +2786,20 @@ async function enviarImpresionTicketESC_POS(t) {
         cmds.push(enc(`Atendio: ${configTicket.atendio}\n`));
     }
     cmds.push(enc(`================================\n`));
-    cmds.push(enc(`${padRight('CANT', 5)}${padRight('DESCRIPCION', 17)}${padLeft('IMPORTE', 10)}\n`));
+    cmds.push(enc(`Prod Descripcion\n`));
+    cmds.push(enc(`${padLeft('Cant.', 5)}${padLeft('Precio', 11)}${padLeft('SubTotal', 16)}\n`));
+    cmds.push(enc(`================================\n`));
 
     if (t.items) {
         t.items.forEach(i => {
-            const importe = money(i.precioPersonalizado * i.cant);
-            cmds.push(enc(`${padRight(i.cant, 5)}${padRight(i.nombre, 17)}${padLeft(importe, 10)}\n`));
+            // Código: SKU guardado en la línea o, si no, el del producto actual; en blanco si no tiene
+            const prodActual = productos.find(x => String(x.id) === String(i.id));
+            const sku = String(i.sku || (prodActual && prodActual.sku) || '').trim();
+            const linea1 = (sku ? `${sku} ` : '') + i.nombre;
+            cmds.push(enc(`${linea1.slice(0, 32)}\n`));
+            const precio = (Number(i.precioPersonalizado) || 0).toFixed(2);
+            const importe = ((Number(i.precioPersonalizado) || 0) * i.cant).toFixed(2);
+            cmds.push(enc(`${padLeft(i.cant, 5)}${padLeft(precio, 11)}${padLeft(importe, 16)}\n`));
         });
     } else {
         cmds.push(enc(`${t.categoria}: ${t.descripcion}\n`));

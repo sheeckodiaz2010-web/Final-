@@ -1930,6 +1930,33 @@ function inicialesProducto(nombre) {
     return (palabras[0][0] + palabras[1][0] + (palabras[0][1] || '')).slice(0, 3);
 }
 
+// Un toque simple no hace nada (evita abrir la edicion sin querer al hacer scroll).
+// Solo al mantener el dedo presionado se ejecuta la accion.
+function bindMantenerPresionado(el, accion) {
+    let timer = null;
+    const start = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            timer = null;
+            if (navigator.vibrate) navigator.vibrate(30);
+            accion();
+        }, 500);
+    };
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    const end = (e) => {
+        cancel();
+        if (e.cancelable) e.preventDefault();
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchmove', cancel, { passive: true });
+    el.addEventListener('touchcancel', cancel, { passive: true });
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', end);
+    el.addEventListener('mouseleave', cancel);
+    el.addEventListener('contextmenu', e => e.preventDefault());
+}
+
 function renderInventario(filtro = '') {
     const lista = $('lista-inventario');
     const filtrados = productos.filter(p => p.nombre.toLowerCase().includes((filtro || '').toLowerCase()));
@@ -1952,7 +1979,9 @@ function renderInventario(filtro = '') {
         const div = document.createElement('div');
         const estado = textoEstadoStock(p.stock || 0);
         div.className = `bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center text-sm cursor-pointer`;
-        div.onclick = () => editarProd(p.id);
+        div.style.userSelect = 'none';
+        div.style.webkitTouchCallout = 'none';
+        bindMantenerPresionado(div, () => editarProd(p.id));
         div.innerHTML = `
             <div class="flex items-center gap-3">
                 <span class="w-12 h-12 shrink-0 rounded-xl text-white font-black text-xs flex items-center justify-center" style="background:#0b1220">${inicialesProducto(p.nombre)}</span>
@@ -2034,7 +2063,9 @@ function guardarProductoInventario() {
 
 function eliminarProductoDesdeModal() {
     const id = $('form-prod-id').value;
-    if (!confirm('¿Eliminar producto?')) return;
+    const prod = productos.find(x => x.id == id);
+    if (!prod) return;
+    if (!confirm(`¿Eliminar "${prod.nombre}"?\n\nEsta acción no se puede deshacer.`)) return;
     productos = productos.filter(x => x.id != id);
     guardarTodo();
     cerrarModal('modal-producto');
@@ -2901,15 +2932,75 @@ function exportarDatos() {
     $('modal-confirmar-respaldo').classList.remove('hidden');
 }
 
-function procesarExportarDatos() {
-    const data = JSON.stringify({ productos, clientes, transacciones, configTicket }, null, 2);
+// Guarda el handle del archivo elegido para poder sobrescribirlo la siguiente vez
+function idbAbrirRespaldo() {
+    return new Promise((res, rej) => {
+        const r = indexedDB.open('digar_pos_fs', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+    });
+}
+async function idbGetRespaldo(k) {
+    const db = await idbAbrirRespaldo();
+    return new Promise((res, rej) => {
+        const q = db.transaction('kv').objectStore('kv').get(k);
+        q.onsuccess = () => res(q.result);
+        q.onerror = () => rej(q.error);
+    });
+}
+async function idbSetRespaldo(k, v) {
+    const db = await idbAbrirRespaldo();
+    return new Promise((res, rej) => {
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(v, k);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+    });
+}
+
+async function guardarArchivoRespaldo(data) {
+    // Navegadores de escritorio (Chrome/Edge): escribe siempre sobre el mismo archivo
+    if (window.showSaveFilePicker) {
+        try {
+            let h = null;
+            try { h = await idbGetRespaldo('respaldoHandle'); } catch (e) { h = null; }
+            if (h) {
+                let perm = await h.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') perm = await h.requestPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') h = null;
+            }
+            if (!h) {
+                h = await window.showSaveFilePicker({
+                    suggestedName: 'respaldo_digar.json',
+                    types: [{ description: 'Respaldo DIGAR', accept: { 'application/json': ['.json'] } }]
+                });
+                try { await idbSetRespaldo('respaldoHandle', h); } catch (e) {}
+            }
+            const w = await h.createWritable();
+            await w.write(data);
+            await w.close();
+            return true;
+        } catch (e) {
+            if (e && e.name === 'AbortError') return false; // canceló
+            // cualquier otro error: cae a la descarga normal
+        }
+    }
+    // Resto de navegadores (celular): descarga con nombre fijo
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `respaldo_digar.json`;
+    a.download = 'respaldo_digar.json';
     a.click();
     URL.revokeObjectURL(url);
+    return true;
+}
+
+async function procesarExportarDatos() {
+    const data = JSON.stringify({ productos, clientes, transacciones, configTicket }, null, 2);
+    const ok = await guardarArchivoRespaldo(data);
+    if (!ok) return;
     localStorage.setItem('yimi_ultimo_respaldo', new Date().toISOString());
     cerrarBannerRespaldo();
     cerrarModal('modal-confirmar-respaldo');

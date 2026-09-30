@@ -2811,23 +2811,20 @@ async function enviarImpresionTicketESC_POS(t) {
 
     cmds.push(enc(`================================\n`));
 
-    // Total de piezas, en una sola línea
-    if (t.items && t.items.length > 0) {
-        const totalPiezas = t.items.reduce((a, i) => a + i.cant, 0);
-        cmds.push(enc(`Total de piezas: ${totalPiezas}\n`));
-        cmds.push(enc(`================================\n`));
-    }
-
-    // Subtotal e IEPS (siempre en cero)
-    cmds.push(enc(`${padRight('Subtotal', 20)}${padLeft(money(0), 12)}\n`));
-    cmds.push(enc(`${padRight('IEPS', 20)}${padLeft(money(0), 12)}\n`));
+    // Bloque de totales igual al ticket del distribuidor
+    const totalPiezas = (t.items && t.items.length > 0) ? t.items.reduce((a, i) => a + i.cant, 0) : 0;
+    const totalTxt = (Number(t.monto) || 0).toFixed(2);
+    const lineaTot = (etiqueta, valor) => enc(`${padLeft(etiqueta, 20)}${padLeft(valor, 12)}\n`);
+    cmds.push(lineaTot('Piezas :', totalPiezas.toFixed(2)));
+    cmds.push(enc(`\n`));
+    cmds.push(lineaTot('SubTotal :', totalTxt));
+    cmds.push(lineaTot('IEPS :', '0.00'));
+    cmds.push(lineaTot('Importe :', totalTxt));
+    cmds.push(lineaTot('Descuentos :', '0.00'));
+    cmds.push(lineaTot('Total :', totalTxt));
     cmds.push(enc(`================================\n`));
-
-    // Total en letra grande y centrada
-    cmds.push(new Uint8Array([0x1B, 0x61, 0x01])); // Centrado
-    cmds.push(new Uint8Array([0x1D, 0x21, 0x11]));  // GS ! - doble ancho y alto
-    cmds.push(enc(`\nTOTAL\n${money(t.monto)}\n`));
-    cmds.push(new Uint8Array([0x1D, 0x21, 0x00]));  // Restaurar tamaño normal
+    cmds.push(lineaTot('Total a Pagar :', totalTxt));
+    cmds.push(enc(`================================\n`));
 
     cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
     if (t.esCredito) {

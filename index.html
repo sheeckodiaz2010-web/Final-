@@ -365,6 +365,10 @@
                     <span class="flex items-center gap-2">🖨️ Impresora Bluetooth (58/80mm)</span>
                     <span class="text-gray-400 text-xs font-bold text-blue-600" id="estado-impresora-txt">Conectar &gt;</span>
                 </button>
+                <button onclick="actualizarApp()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">🔄 Actualizar app</span>
+                    <span class="text-gray-400 text-xs font-bold">v24</span>
+                </button>
                 <button onclick="abrirConfigTicket()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
                     <span class="flex items-center gap-2">📄 Mi ticket</span>
                     <span class="text-gray-400">&gt;</span>
@@ -3673,11 +3677,33 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) --------------------
 if ('serviceWorker' in navigator) {
+    let recargando = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (recargando) return;
+        recargando = true;
+        location.reload();
+    });
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => {
+        navigator.serviceWorker.register('sw.js').then(reg => reg.update()).catch(err => {
             console.warn('No se pudo registrar el service worker:', err);
         });
     });
+}
+
+// Borra SOLO la caché de la app (no toca ventas, inventario ni clientes) y recarga
+async function actualizarApp() {
+    if (!confirm('Se descargará la versión más reciente de la app. Tus ventas e inventario NO se borran. ¿Continuar?')) return;
+    try {
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+        }
+        if (window.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        }
+    } catch (e) { console.warn(e); }
+    location.reload();
 }
 </script>
 

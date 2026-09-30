@@ -766,33 +766,6 @@
                 <span class="text-gray-400 text-xs">Monto a cobrar</span>
                 <h1 class="text-4xl font-black text-blue-600" id="pago-monto-txt">$0.00</h1>
             </div>
-
-            <!-- Suma de otros tickets -->
-            <div class="w-full space-y-2">
-                <button type="button" onclick="agregarSumaOtroTicket()" class="w-full py-2.5 rounded-xl text-xs font-bold border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 active:scale-[0.98] transition">
-                    + Agregar suma de otro ticket
-                </button>
-                <div id="pago-extra-wrap" class="hidden bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-gray-600 font-semibold">Extra agregado</span>
-                        <div class="flex items-center gap-2">
-                            <span id="pago-extra-txt" class="font-bold text-blue-600">$0.00</span>
-                            <button type="button" onclick="quitarSumaOtroTicket()" class="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg">Quitar</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white border border-gray-200 rounded-xl p-3 space-y-1.5 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Total de este ticket</span>
-                        <span id="pago-total-ticket" class="font-bold text-gray-800">$0.00</span>
-                    </div>
-                    <div class="flex justify-between border-t pt-1.5">
-                        <span class="font-bold text-gray-800">Total tickets</span>
-                        <span id="pago-total-tickets" class="font-black text-blue-600">$0.00</span>
-                    </div>
-                </div>
-            </div>
-
             <div class="w-full space-y-2" id="pago-billetes-wrap">
                 <label class="text-xs font-semibold text-gray-500">Pago con:</label>
                 <div id="pago-billetes" class="grid grid-cols-3 gap-2"></div>
@@ -1067,7 +1040,6 @@ let modoVistaGrid = true;
 let categoriaTransaccionSeleccionada = 'Compra';
 let bluetoothDevice = null;
 let bluetoothCharacteristic = null;
-let sumaOtrosTickets = 0; // monto extra de otros tickets al cobrar (solo se imprime si > 0)
 
 // -------------------- PERSISTENCIA --------------------
 function guardarTodo() {
@@ -1792,57 +1764,10 @@ function generarBotonesBilletes(total) {
     });
 }
 
-function totalCarritoActual() {
-    return carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
-}
-
-function totalACobrar() {
-    return totalCarritoActual() + (Number(sumaOtrosTickets) || 0);
-}
-
-function actualizarUISumaOtrosTickets() {
-    const ticket = totalCarritoActual();
-    const extra = Number(sumaOtrosTickets) || 0;
-    const total = ticket + extra;
-    const montoEl = $('pago-monto-txt');
-    if (montoEl) montoEl.innerText = money(total);
-    const tTicket = $('pago-total-ticket');
-    if (tTicket) tTicket.innerText = money(ticket);
-    const tTickets = $('pago-total-tickets');
-    if (tTickets) tTickets.innerText = money(total);
-    const extraWrap = $('pago-extra-wrap');
-    const extraTxt = $('pago-extra-txt');
-    if (extraWrap) extraWrap.classList.toggle('hidden', extra <= 0);
-    if (extraTxt) extraTxt.innerText = money(extra);
-}
-
-function agregarSumaOtroTicket() {
-    const raw = prompt('Monto a sumar de otro ticket:', sumaOtrosTickets > 0 ? String(sumaOtrosTickets) : '');
-    if (raw === null) return;
-    const monto = parseFloat(String(raw).replace(',', '.'));
-    if (isNaN(monto) || monto < 0) return alert('Monto inválido');
-    sumaOtrosTickets = Math.round(monto * 100) / 100;
-    actualizarUISumaOtrosTickets();
-    const total = totalACobrar();
-    $('pago-efectivo').value = total.toFixed(2);
-    generarBotonesBilletes(total);
-    calcularCambioModal();
-}
-
-function quitarSumaOtroTicket() {
-    sumaOtrosTickets = 0;
-    actualizarUISumaOtrosTickets();
-    const total = totalACobrar();
-    $('pago-efectivo').value = total.toFixed(2);
-    generarBotonesBilletes(total);
-    calcularCambioModal();
-}
-
 function abrirPantallaPago() {
     if (carrito.length === 0) return alert('Carrito vacío');
-    sumaOtrosTickets = 0;
-    const total = totalACobrar();
-    actualizarUISumaOtrosTickets();
+    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    $('pago-monto-txt').innerText = money(total);
     $('pago-cliente-btn').innerText = clienteSeleccionado.nombre;
     $('modal-carrito').classList.add('hidden');
     $('modal-pago').classList.remove('hidden');
@@ -1875,15 +1800,13 @@ function alternarModoCredito() {
 }
 
 function calcularCambioModal() {
-    const total = totalACobrar();
+    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
     const ef = parseFloat($('pago-efectivo').value) || 0;
     $('pago-cambio-txt').innerText = money(Math.max(0, ef - total));
 }
 
 async function ejecutarCobroFinal() {
-    const totalTicket = totalCarritoActual();
-    const extra = Number(sumaOtrosTickets) || 0;
-    const total = totalTicket + extra;
+    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
     const esCredito = $('pago-es-credito').checked;
     const ef = parseFloat($('pago-efectivo').value) || 0;
     if (!esCredito && ef < total) return alert('Efectivo insuficiente');
@@ -1903,8 +1826,6 @@ async function ejecutarCobroFinal() {
         fechaStr,
         fecha: fechaFormateada,
         monto: total,
-        montoTicket: totalTicket,
-        sumaOtrosTickets: extra > 0 ? extra : 0,
         ganancia: gananciaTotal,
         items: [...carrito],
         esCredito: esCredito,
@@ -1941,16 +1862,12 @@ async function ejecutarCobroFinal() {
     carrito.forEach(i => {
         containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
     });
-    // Solo si se activó la suma de otro ticket
-    if (extra > 0) {
-        containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-blue-700 border-t border-dashed pt-1 mt-1"><span>1x Otros tickets / suma extra</span><span>${money(extra)}</span></div>`;
-    }
     $('recibo-subtotal').innerText = money(total);
     $('recibo-total').innerText = money(total);
 
     // Resumen privado (no forma parte del ticket del cliente)
-    const costoTotal = totalTicket - gananciaTotal;
-    const mv = margenInfo(totalTicket, costoTotal);
+    const costoTotal = total - gananciaTotal;
+    const mv = margenInfo(total, costoTotal);
     $('exito-costo').innerText = money(costoTotal);
     $('exito-ganancia').innerText = mv.pct === null ? money(gananciaTotal) : `${mv.semaforo} ${money(gananciaTotal)} (${mv.pct.toFixed(0)}%)`;
     $('exito-ganancia').className = `font-bold ${mv.clase}`;
@@ -1959,7 +1876,6 @@ async function ejecutarCobroFinal() {
     const alertas = [];
     if (bajoCosto.length) alertas.push(`⚠️ Vendiste bajo costo: ${bajoCosto.join(', ')}`);
     if (sinCosto) alertas.push(`${sinCosto} producto(s) sin costo: la ganancia no es exacta`);
-    if (extra > 0) alertas.push(`Incluye suma de otro ticket: ${money(extra)}`);
     const alertaEl = $('exito-alerta');
     alertaEl.innerText = alertas.join('\n');
     alertaEl.style.whiteSpace = 'pre-line';
@@ -1973,7 +1889,6 @@ async function ejecutarCobroFinal() {
     }
 
     carrito = [];
-    sumaOtrosTickets = 0;
     renderVenta();
 }
 
@@ -2956,14 +2871,6 @@ async function enviarImpresionTicketESC_POS(t) {
         });
     } else {
         cmds.push(enc(`${t.categoria}: ${t.descripcion}\n`));
-    }
-
-    // Solo si se activó la suma de otro ticket al cobrar
-    const extraTicket = Number(t.sumaOtrosTickets) || 0;
-    if (extraTicket > 0) {
-        cmds.push(enc(`--------------------------------\n`));
-        cmds.push(enc(`Otros tickets / suma extra\n`));
-        cmds.push(enc(`${padLeft(1, 5)}${padLeft(extraTicket.toFixed(2), 11)}${padLeft(extraTicket.toFixed(2), 16)}\n`));
     }
 
     cmds.push(enc(`================================\n`));

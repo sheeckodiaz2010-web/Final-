@@ -821,6 +821,12 @@
             </div>
         </div>
         <div class="space-y-2.5 pt-2 border-t">
+            <div class="rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs space-y-1">
+                <p class="font-bold text-gray-500">🔒 Solo para ti (no sale en el ticket)</p>
+                <div class="flex justify-between"><span class="text-gray-500">Costo</span><span id="exito-costo" class="font-bold text-gray-800">$0.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Ganancia</span><span id="exito-ganancia" class="font-bold text-gray-800">$0.00</span></div>
+                <p id="exito-alerta" class="hidden text-red-600 font-bold"></p>
+            </div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="imprimirTicketBluetooth()" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-sm"><span>🖨️</span> Imprimir</button>
                 <button onclick="alert('Recibo copiado')" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-sm"><span>🔗</span> Compartir</button>
@@ -935,11 +941,16 @@
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-blue-600">Precio de venta al cliente ($)</label>
-                <input type="number" step="0.01" id="form-prod-precio" placeholder="0.00" class="w-full p-3 border rounded-xl text-sm">
+                <input type="number" step="0.01" id="form-prod-precio" placeholder="0.00" oninput="actualizarMargenForm()" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
-                <label class="text-xs font-semibold text-gray-500">Costo unitario de compra ($)</label>
-                <input type="number" step="0.01" id="form-prod-costo" placeholder="0.00" class="w-full p-3 border rounded-xl text-sm">
+                <label class="text-xs font-semibold text-gray-500">Costo unitario de compra, con impuestos ($)</label>
+                <input type="number" step="0.01" id="form-prod-costo" placeholder="0.00" oninput="actualizarMargenForm()" class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm space-y-1.5">
+                <div class="flex justify-between"><span class="text-gray-500">Ganancia</span><span id="form-prod-gana" class="font-bold text-gray-500">--</span></div>
+                <div class="flex justify-between items-center"><span class="text-gray-500">Sugerido (+30%)</span><span id="form-prod-sugerido" class="font-bold text-gray-700">--</span></div>
+                <button type="button" onclick="usarPrecioSugerido()" class="w-full mt-1 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold">Usar sugerido</button>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Stock actual (Cantidad)</label>
@@ -1854,6 +1865,22 @@ async function ejecutarCobroFinal() {
     $('recibo-subtotal').innerText = money(total);
     $('recibo-total').innerText = money(total);
 
+    // Resumen privado (no forma parte del ticket del cliente)
+    const costoTotal = total - gananciaTotal;
+    const mv = margenInfo(total, costoTotal);
+    $('exito-costo').innerText = money(costoTotal);
+    $('exito-ganancia').innerText = mv.pct === null ? money(gananciaTotal) : `${mv.semaforo} ${money(gananciaTotal)} (${mv.pct.toFixed(0)}%)`;
+    $('exito-ganancia').className = `font-bold ${mv.clase}`;
+    const bajoCosto = carrito.filter(i => (i.costo || 0) > 0 && i.precioPersonalizado < i.costo).map(i => i.nombre);
+    const sinCosto = carrito.filter(i => !(i.costo > 0)).length;
+    const alertas = [];
+    if (bajoCosto.length) alertas.push(`⚠️ Vendiste bajo costo: ${bajoCosto.join(', ')}`);
+    if (sinCosto) alertas.push(`${sinCosto} producto(s) sin costo: la ganancia no es exacta`);
+    const alertaEl = $('exito-alerta');
+    alertaEl.innerText = alertas.join('\n');
+    alertaEl.style.whiteSpace = 'pre-line';
+    alertaEl.classList.toggle('hidden', alertas.length === 0);
+
     cerrarModal('modal-pago');
     $('modal-exito').classList.remove('hidden');
 
@@ -2000,6 +2027,40 @@ function bindMantenerPresionado(el, accion) {
     el.addEventListener('contextmenu', e => e.preventDefault());
 }
 
+// Ganancia sobre el costo: 🟢 30% o más, 🟡 20% a 29%, 🔴 menos de 20%
+function margenInfo(precio, costo) {
+    const p = Number(precio) || 0, c = Number(costo) || 0;
+    const gana = p - c;
+    if (c <= 0) return { gana, pct: null, semaforo: '⚪', clase: 'text-gray-400' };
+    const pct = (gana / c) * 100;
+    if (pct >= 30) return { gana, pct, semaforo: '🟢', clase: 'text-emerald-600' };
+    if (pct >= 20) return { gana, pct, semaforo: '🟡', clase: 'text-amber-600' };
+    return { gana, pct, semaforo: '🔴', clase: 'text-red-600' };
+}
+
+function actualizarMargenForm() {
+    const precio = parseFloat($('form-prod-precio').value) || 0;
+    const costo = parseFloat($('form-prod-costo').value) || 0;
+    const gEl = $('form-prod-gana'), sEl = $('form-prod-sugerido');
+    if (costo <= 0) {
+        gEl.innerText = 'Captura el costo';
+        gEl.className = 'font-bold text-gray-400';
+        sEl.innerText = '--';
+        return;
+    }
+    const m = margenInfo(precio, costo);
+    gEl.innerText = `${m.semaforo} ${money(m.gana)} (${m.pct.toFixed(0)}%)`;
+    gEl.className = `font-bold ${m.clase}`;
+    sEl.innerText = money(Math.round(costo * 1.3));
+}
+
+function usarPrecioSugerido() {
+    const costo = parseFloat($('form-prod-costo').value) || 0;
+    if (costo <= 0) return alert('Captura primero el costo');
+    $('form-prod-precio').value = Math.round(costo * 1.3);
+    actualizarMargenForm();
+}
+
 function renderInventario(filtro = '') {
     const lista = $('lista-inventario');
     const filtrados = productos.filter(p => p.nombre.toLowerCase().includes((filtro || '').toLowerCase()));
@@ -2031,6 +2092,7 @@ function renderInventario(filtro = '') {
                 <div>
                     <p class="font-bold text-gray-900">${p.nombre}</p>
                     <p class="text-xs mt-1 text-gray-500">Venta: <span class="font-bold text-gray-700">${money(p.precio)}</span> | Costo: ${money(p.costo || 0)} | Stock: ${p.stock}</p>
+                    ${(() => { const m = margenInfo(p.precio, p.costo); return m.pct === null ? '<p class="text-xs mt-0.5 font-bold text-gray-400">⚪ Sin costo</p>' : `<p class="text-xs mt-0.5 font-bold ${m.clase}">${m.semaforo} Gana ${money(m.gana)} · ${m.pct.toFixed(0)}%</p>`; })()}
                 </div>
             </div>
             <span class="text-xs font-bold ${estado.clase}">${estado.texto}</span>
@@ -2062,6 +2124,7 @@ function abrirModalProducto() {
     $('form-prod-costo').value = '';
     $('form-prod-stock').value = '';
     $('prod-modal-titulo').innerText = 'Crear producto';
+    actualizarMargenForm();
     $('btn-eliminar-producto-modal').classList.add('hidden');
     $('modal-producto').classList.remove('hidden');
 }
@@ -2077,6 +2140,7 @@ function editarProd(id) {
     $('form-prod-costo').value = p.costo || 0;
     $('form-prod-stock').value = p.stock;
     $('prod-modal-titulo').innerText = 'Editar producto';
+    actualizarMargenForm();
     $('btn-eliminar-producto-modal').classList.remove('hidden');
     $('modal-producto').classList.remove('hidden');
 }

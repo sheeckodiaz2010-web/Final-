@@ -495,38 +495,143 @@
 
     <!-- Modal Factura Compra -->
     <div id="modal-compra" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
-        <div class="bg-white rounded-t-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[92vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-base text-purple-700">📦 Factura de Compra (Surtido)</h3>
+                <div>
+                    <h3 class="font-bold text-base text-purple-700">📦 Factura de Compra</h3>
+                    <p class="text-[11px] text-gray-400" id="compra-paso-txt">Paso 1 / 3 — Capturar factura</p>
+                </div>
                 <button onclick="cerrarModal('modal-compra')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
-            <div class="space-y-2">
-                <label class="text-xs font-semibold text-gray-500">Agregar producto a la factura:</label>
-                <div class="flex gap-2">
-                    <select id="select-prod-compra" class="flex-1 p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-600"></select>
-                    <button onclick="agregarItemAFacturaCompra()" class="bg-purple-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm">Añadir</button>
-                </div>
-                <button onclick="crearProductoNuevoDesdeCompra()" class="w-full text-center text-xs text-purple-600 font-bold pt-1 underline">+ Crear producto nuevo por completo</button>
+            <div class="flex gap-1">
+                <div id="compra-dot-1" class="flex-1 h-1 rounded-full bg-purple-600"></div>
+                <div id="compra-dot-2" class="flex-1 h-1 rounded-full bg-gray-200"></div>
+                <div id="compra-dot-3" class="flex-1 h-1 rounded-full bg-gray-200"></div>
             </div>
-            <div class="border-t pt-2">
-                <h4 class="text-xs font-bold text-gray-400 mb-2">ÍTEMS EN LA FACTURA</h4>
-                <div id="lista-items-factura-compra" class="space-y-2 max-h-48 overflow-y-auto">
-                    <p class="text-xs text-gray-400 text-center py-4">No hay ítems en esta factura</p>
+
+            <!-- PASO 1: factura como el papel -->
+            <div id="compra-paso-1" class="space-y-3">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-[11px] text-blue-800">
+                    Captura la factura <b>igual que el papel</b>. El total debe coincidir. Aún no se mete flete ni margen.
                 </div>
-            </div>
-            <div class="border-t pt-3 space-y-2">
-                <div class="flex justify-between font-bold text-base">
-                    <span>Total de Compra:</span>
-                    <span id="total-factura-compra" class="text-purple-600">$0.00</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-semibold text-gray-500">Fecha</label>
+                        <input type="date" id="compra-fecha-input" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-semibold text-gray-500">Folio (opcional)</label>
+                        <input type="text" id="compra-folio-input" placeholder="Ej. S99 19750" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                    </div>
                 </div>
                 <div class="space-y-1">
-                    <label class="text-xs font-semibold text-gray-500">Fecha de compra</label>
-                    <input type="date" id="compra-fecha-input" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                    <label class="text-[10px] font-semibold text-gray-500">Proveedor (opcional)</label>
+                    <input type="text" id="compra-proveedor-input" placeholder="Ej. Castillo del Dulce" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-500">Agregar producto:</label>
+                    <div class="flex gap-2">
+                        <select id="select-prod-compra" class="flex-1 p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-600"></select>
+                        <button type="button" onclick="agregarItemAFacturaCompra()" class="bg-purple-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm">Añadir</button>
+                    </div>
+                    <button type="button" onclick="crearProductoNuevoDesdeCompra()" class="w-full text-center text-xs text-purple-600 font-bold underline">+ Crear producto nuevo</button>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 mb-2">ÍTEMS (costo de factura)</h4>
+                    <div id="lista-items-factura-compra" class="space-y-2 max-h-40 overflow-y-auto">
+                        <p class="text-xs text-gray-400 text-center py-4">No hay ítems en esta factura</p>
+                    </div>
+                </div>
+                <div class="bg-gray-50 border rounded-xl p-3 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Subtotal productos</span>
+                        <span class="font-bold" id="compra-subtotal">$0.00</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-semibold text-gray-500">IEPS $</label>
+                            <input type="number" step="0.01" id="compra-ieps-input" value="0" oninput="renderFacturaCompra()" class="w-full p-2 bg-white border rounded-xl text-xs font-bold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-semibold text-gray-500">IVA $</label>
+                            <input type="number" step="0.01" id="compra-iva-input" value="0" oninput="renderFacturaCompra()" class="w-full p-2 bg-white border rounded-xl text-xs font-bold">
+                        </div>
+                    </div>
+                    <div class="flex justify-between font-bold text-base border-t pt-2">
+                        <span>TOTAL FACTURA</span>
+                        <span id="total-factura-compra" class="text-purple-600">$0.00</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 text-center">Debe coincidir con el total del papel</p>
+                </div>
+                <button type="button" onclick="compraIrPaso(2)" class="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md">
+                    Siguiente: flete y costos →
+                </button>
+            </div>
+
+            <!-- PASO 2: impuestos auto + flete -->
+            <div id="compra-paso-2" class="hidden space-y-3">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-[11px] text-blue-800">
+                    IEPS + IVA se reparte <b>en automático</b> según el valor de cada producto. No hace falta saber cuál lleva qué.
+                </div>
+                <div class="rounded-xl p-3 text-white" style="background:#0b1220">
+                    <div class="text-[10px] text-white/70">Total factura (no se modifica)</div>
+                    <div class="text-2xl font-black" id="compra-total-fijo">$0.00</div>
+                </div>
+                <div class="bg-white border rounded-xl p-3 space-y-1 text-sm">
+                    <div class="flex justify-between"><span class="text-gray-500">IEPS + IVA</span><span class="font-bold" id="compra-imp-suma">$0.00</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Subtotal productos</span><span class="font-bold" id="compra-sub-paso2">$0.00</span></div>
+                    <div class="flex justify-between border-t pt-1"><span class="text-gray-500">Factor impuestos</span><span class="font-black text-purple-600" id="compra-factor-txt">0%</span></div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-500">Flete (se suma al costo de cada producto)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="btn-flete-5" onclick="setCompraFlete(0.05)" class="py-2.5 rounded-xl text-xs font-bold border-2 border-purple-600 bg-purple-50 text-purple-700">5% flete</button>
+                        <button type="button" id="btn-flete-0" onclick="setCompraFlete(0)" class="py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600">Sin flete</button>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 mb-2">Vista previa costo real</h4>
+                    <div id="lista-compra-costos-reales" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="compraIrPaso(1)" class="py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700">← Atrás</button>
+                    <button type="button" onclick="compraIrPaso(3)" class="py-3 rounded-xl text-sm font-bold bg-purple-600 text-white">Precios →</button>
                 </div>
             </div>
-            <button onclick="guardarFacturaCompraFinal()" class="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md active:scale-95 transition">
-                Guardar Compra e Ingresar a Inventario
-            </button>
+
+            <!-- PASO 3: precio producto por producto -->
+            <div id="compra-paso-3" class="hidden space-y-3">
+                <p class="text-xs text-gray-500 font-semibold" id="compra-progreso-txt">Producto 1 de 1</p>
+                <div class="bg-white border rounded-xl p-3 space-y-2" id="compra-card-precio">
+                    <p class="font-bold text-sm text-gray-900" id="compra-p-nombre">—</p>
+                    <p class="text-[11px] text-gray-400" id="compra-p-meta">—</p>
+                    <div class="flex justify-between text-sm"><span class="text-gray-500">Costo factura</span><span id="compra-p-fact">$0</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-500">+ Impuestos auto</span><span id="compra-p-imp">$0</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-500">+ Flete</span><span id="compra-p-flete">$0</span></div>
+                    <div class="flex justify-between text-sm border-t pt-1"><span class="font-bold">Costo real</span><span class="font-black text-purple-600" id="compra-p-real">$0</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-500">Precio actual POS</span><span id="compra-p-act">$0</span></div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-500">Sugerido (+30%)</span>
+                            <span class="text-lg font-black text-blue-600" id="compra-p-sug">$0</span>
+                        </div>
+                        <span id="compra-p-tag" class="text-[10px] font-bold text-amber-600"></span>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-semibold text-gray-500">Tu precio de venta</label>
+                        <input type="number" step="0.5" id="compra-p-input" class="w-full p-3 border rounded-xl text-center text-lg font-bold">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="compraUsarSugerido()" class="py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-white">Usar sugerido</button>
+                        <button type="button" onclick="compraDejarActual()" class="py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-white">Dejar actual</button>
+                    </div>
+                </div>
+                <div id="compra-lista-decididos" class="text-xs space-y-1"></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="compraAtrasPaso3()" class="py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700">← Atrás</button>
+                    <button type="button" onclick="compraConfirmarPrecio()" class="py-3 rounded-xl text-sm font-bold bg-emerald-600 text-white">Confirmar →</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1061,6 +1166,10 @@ let clienteSeleccionado = clientes[0] || { id: 1, nombre: 'Cliente General', dir
 let clienteMenuActivoId = null; // cliente del menú contextual
 let carrito = [];
 let facturaCompraItems = [];
+let compraPaso = 1;
+let compraFletePct = 0.05;
+let compraIdxPrecio = 0;
+let compraPreciosDecididos = []; // { id, precioVenta }
 let ventaSeleccionadaId = null;
 let indexItemConfigActivo = null;
 let modoVistaGrid = true;
@@ -2265,20 +2374,103 @@ function eliminarProductoDesdeModal() {
     renderVenta();
 }
 
-// -------------------- COMPRAS --------------------
+// -------------------- COMPRAS (3 pasos) --------------------
+function compraSubtotal() {
+    return facturaCompraItems.reduce((a, b) => a + (b.cant * b.costoUnitario), 0);
+}
+function compraIeps() { return parseFloat($('compra-ieps-input')?.value) || 0; }
+function compraIva() { return parseFloat($('compra-iva-input')?.value) || 0; }
+function compraTotalFactura() { return compraSubtotal() + compraIeps() + compraIva(); }
+function compraFactorImp() {
+    const sub = compraSubtotal();
+    if (sub <= 0) return 0;
+    return (compraIeps() + compraIva()) / sub;
+}
+
+function compraCalcularItem(item) {
+    const factor = compraFactorImp();
+    const conImp = item.costoUnitario * (1 + factor);
+    const imp = conImp - item.costoUnitario;
+    const flete = conImp * compraFletePct;
+    const costoReal = conImp * (1 + compraFletePct);
+    const sugerido = Math.round(costoReal * 1.30 * 2) / 2;
+    const prod = productos.find(x => String(x.id) === String(item.id));
+    const precioAct = prod ? (Number(prod.precio) || 0) : 0;
+    return { ...item, conImp, imp, flete, costoReal, sugerido, precioAct };
+}
+
 function abrirModalCompra() {
     facturaCompraItems = [];
+    compraPaso = 1;
+    compraFletePct = 0.05;
+    compraIdxPrecio = 0;
+    compraPreciosDecididos = [];
     $('compra-fecha-input').value = hoy();
+    if ($('compra-folio-input')) $('compra-folio-input').value = '';
+    if ($('compra-proveedor-input')) $('compra-proveedor-input').value = '';
+    if ($('compra-ieps-input')) $('compra-ieps-input').value = '0';
+    if ($('compra-iva-input')) $('compra-iva-input').value = '0';
     poblarSelectProductosCompra();
     renderFacturaCompra();
+    compraMostrarPaso(1);
     $('modal-compra').classList.remove('hidden');
+}
+
+function compraMostrarPaso(n) {
+    compraPaso = n;
+    $('compra-paso-1').classList.toggle('hidden', n !== 1);
+    $('compra-paso-2').classList.toggle('hidden', n !== 2);
+    $('compra-paso-3').classList.toggle('hidden', n !== 3);
+    const labels = {
+        1: 'Paso 1 / 3 — Capturar factura',
+        2: 'Paso 2 / 3 — Impuestos y flete',
+        3: 'Paso 3 / 3 — Precios de venta'
+    };
+    $('compra-paso-txt').innerText = labels[n] || '';
+    $('compra-dot-1').className = 'flex-1 h-1 rounded-full ' + (n >= 1 ? 'bg-purple-600' : 'bg-gray-200');
+    $('compra-dot-2').className = 'flex-1 h-1 rounded-full ' + (n >= 2 ? 'bg-purple-600' : 'bg-gray-200');
+    $('compra-dot-3').className = 'flex-1 h-1 rounded-full ' + (n >= 3 ? 'bg-purple-600' : 'bg-gray-200');
+    if (n === 2) renderCompraPaso2();
+    if (n === 3) {
+        compraIdxPrecio = 0;
+        compraPreciosDecididos = [];
+        renderCompraPaso3();
+    }
+}
+
+function compraIrPaso(n) {
+    if (n === 2) {
+        if (facturaCompraItems.length === 0) return alert('Agrega al menos un producto a la factura');
+        if (compraSubtotal() <= 0) return alert('Los costos de la factura deben ser mayores a 0');
+    }
+    if (n === 3) {
+        if (facturaCompraItems.length === 0) return alert('Sin productos');
+    }
+    compraMostrarPaso(n);
+}
+
+function setCompraFlete(pct) {
+    compraFletePct = pct;
+    const b5 = $('btn-flete-5'), b0 = $('btn-flete-0');
+    if (b5) {
+        b5.className = pct > 0
+            ? 'py-2.5 rounded-xl text-xs font-bold border-2 border-purple-600 bg-purple-50 text-purple-700'
+            : 'py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600';
+    }
+    if (b0) {
+        b0.className = pct === 0
+            ? 'py-2.5 rounded-xl text-xs font-bold border-2 border-purple-600 bg-purple-50 text-purple-700'
+            : 'py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600';
+    }
+    renderCompraPaso2();
 }
 
 function poblarSelectProductosCompra() {
     const select = $('select-prod-compra');
+    if (!select) return;
     select.innerHTML = '';
     productos.forEach(p => {
-        select.innerHTML += `<option value="${p.id}">${p.nombre} (Actual: ${money(p.costo || 0)})</option>`;
+        select.innerHTML += `<option value="${p.id}">${p.nombre} (Costo: ${money(p.costo || 0)})</option>`;
     });
 }
 
@@ -2286,7 +2478,6 @@ function agregarItemAFacturaCompra() {
     const prodId = parseInt($('select-prod-compra').value);
     const p = productos.find(x => x.id === prodId);
     if (!p) return;
-
     const existente = facturaCompraItems.find(x => x.id === p.id);
     if (existente) existente.cant++;
     else {
@@ -2301,13 +2492,19 @@ function agregarItemAFacturaCompra() {
 function crearProductoNuevoDesdeCompra() {
     const nombre = prompt('Nombre del nuevo producto:');
     if (!nombre) return;
-    const precioVenta = parseFloat(prompt('Precio de venta al cliente:', '0'));
-    const costoCompra = parseFloat(prompt('Costo unitario de compra:', '0'));
+    const costoCompra = parseFloat(prompt('Costo unitario según la factura (sin impuestos):', '0'));
     const cantidad = parseInt(prompt('Cantidad comprada:', '1'));
+    const precioVenta = parseFloat(prompt('Precio de venta actual (puedes ajustarlo al final):', '0'));
+    if (isNaN(costoCompra) || isNaN(cantidad)) return alert('Valores inválidos');
 
-    if (isNaN(precioVenta) || isNaN(costoCompra) || isNaN(cantidad)) return alert('Valores inválidos');
-
-    const nuevoProd = { id: Date.now(), nombre, precio: precioVenta, costo: costoCompra, stock: 0 };
+    const nuevoProd = {
+        id: Date.now(),
+        nombre: nombre.trim(),
+        sku: typeof siguienteSkuPos === 'function' ? siguienteSkuPos() : '',
+        precio: isNaN(precioVenta) ? 0 : precioVenta,
+        costo: costoCompra,
+        stock: 0
+    };
     productos.push(nuevoProd);
     ordenarProductosAlfabetico();
     facturaCompraItems.push({
@@ -2318,58 +2515,197 @@ function crearProductoNuevoDesdeCompra() {
     renderFacturaCompra();
 }
 
+function quitarItemFacturaCompra(idx) {
+    facturaCompraItems.splice(idx, 1);
+    renderFacturaCompra();
+}
+
 function renderFacturaCompra() {
     const contenedor = $('lista-items-factura-compra');
+    if (!contenedor) return;
     if (facturaCompraItems.length === 0) {
         contenedor.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No hay ítems en esta factura</p>';
-        $('total-factura-compra').innerText = '$0.00';
+    } else {
+        const frag = document.createDocumentFragment();
+        facturaCompraItems.forEach((item, idx) => {
+            const sub = item.cant * item.costoUnitario;
+            const div = document.createElement('div');
+            div.className = 'bg-gray-50 p-2.5 rounded-xl border text-xs space-y-1';
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <span class="font-bold text-gray-800">${item.nombre}</span>
+                    <button type="button" class="text-red-500 font-bold px-1" data-rm="${idx}">✕</button>
+                </div>
+                <div class="flex items-center gap-2 text-gray-500">
+                    Cant <input type="number" value="${item.cant}" class="w-14 p-1 border rounded text-center font-bold bg-white">
+                    Costo $ <input type="number" step="0.01" value="${item.costoUnitario}" class="w-20 p-1 border rounded text-center font-bold bg-white">
+                    <span class="font-bold text-purple-700 ml-auto">${money(sub)}</span>
+                </div>
+            `;
+            div.querySelector('[data-rm]').onclick = () => quitarItemFacturaCompra(idx);
+            const inputs = div.querySelectorAll('input');
+            inputs[0].onchange = e => { facturaCompraItems[idx].cant = Math.max(1, parseInt(e.target.value) || 1); renderFacturaCompra(); };
+            inputs[1].onchange = e => { facturaCompraItems[idx].costoUnitario = parseFloat(e.target.value) || 0; renderFacturaCompra(); };
+            frag.appendChild(div);
+        });
+        contenedor.innerHTML = '';
+        contenedor.appendChild(frag);
+    }
+    const sub = compraSubtotal();
+    const total = compraTotalFactura();
+    if ($('compra-subtotal')) $('compra-subtotal').innerText = money(sub);
+    if ($('total-factura-compra')) $('total-factura-compra').innerText = money(total);
+}
+
+function renderCompraPaso2() {
+    const sub = compraSubtotal();
+    const imp = compraIeps() + compraIva();
+    const factor = compraFactorImp();
+    const total = compraTotalFactura();
+    if ($('compra-total-fijo')) $('compra-total-fijo').innerText = money(total);
+    if ($('compra-imp-suma')) $('compra-imp-suma').innerText = money(imp);
+    if ($('compra-sub-paso2')) $('compra-sub-paso2').innerText = money(sub);
+    if ($('compra-factor-txt')) $('compra-factor-txt').innerText = (factor * 100).toFixed(2) + '%';
+
+    const cont = $('lista-compra-costos-reales');
+    if (!cont) return;
+    cont.innerHTML = facturaCompraItems.map(item => {
+        const c = compraCalcularItem(item);
+        return `<div class="bg-gray-50 border rounded-xl p-2.5 text-xs">
+            <p class="font-bold text-gray-800">${c.nombre}</p>
+            <div class="flex justify-between text-gray-500 mt-1"><span>Factura</span><span>${money(c.costoUnitario)}</span></div>
+            <div class="flex justify-between text-gray-500"><span>+ Impuestos</span><span>${money(c.imp)}</span></div>
+            <div class="flex justify-between text-gray-500"><span>+ Flete ${(compraFletePct * 100).toFixed(0)}%</span><span>${money(c.flete)}</span></div>
+            <div class="flex justify-between font-bold border-t mt-1 pt-1"><span>Costo real</span><span class="text-purple-600">${money(c.costoReal)}</span></div>
+            <div class="flex justify-between text-emerald-600"><span>Sugerido +30%</span><span class="font-bold">${money(c.sugerido)}</span></div>
+        </div>`;
+    }).join('');
+}
+
+function renderCompraPaso3() {
+    const list = facturaCompraItems.map(compraCalcularItem);
+    if (compraIdxPrecio >= list.length) {
+        guardarFacturaCompraFinal();
         return;
     }
+    const c = list[compraIdxPrecio];
+    $('compra-progreso-txt').innerText = `Producto ${compraIdxPrecio + 1} de ${list.length}`;
+    $('compra-p-nombre').innerText = c.nombre;
+    $('compra-p-meta').innerText = `${c.cant} pzas · entrando a inventario`;
+    $('compra-p-fact').innerText = money(c.costoUnitario);
+    $('compra-p-imp').innerText = money(c.imp);
+    $('compra-p-flete').innerText = money(c.flete);
+    $('compra-p-real').innerText = money(c.costoReal);
+    $('compra-p-act').innerText = money(c.precioAct);
+    $('compra-p-sug').innerText = money(c.sugerido);
+    $('compra-p-input').value = c.sugerido.toFixed(2);
 
-    let totalCompra = 0;
-    const frag = document.createDocumentFragment();
-    facturaCompraItems.forEach((item, idx) => {
-        const sub = item.cant * item.costoUnitario;
-        totalCompra += sub;
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-2.5 rounded-xl border flex justify-between items-center text-xs';
-        div.innerHTML = `
-            <div>
-                <span class="font-bold block text-gray-800">${item.nombre}</span>
-                <span class="text-gray-500">Cant: <input type="number" value="${item.cant}" class="w-12 p-1 border rounded text-center font-bold"> | Costo: $<input type="number" step="0.01" value="${item.costoUnitario}" class="w-16 p-1 border rounded text-center font-bold"></span>
-            </div>
-            <span class="font-bold text-purple-700">${money(sub)}</span>
-        `;
-        const inputs = div.querySelectorAll('input');
-        inputs[0].onchange = e => { facturaCompraItems[idx].cant = parseInt(e.target.value) || 1; renderFacturaCompra(); };
-        inputs[1].onchange = e => { facturaCompraItems[idx].costoUnitario = parseFloat(e.target.value) || 0; renderFacturaCompra(); };
-        frag.appendChild(div);
-    });
-    contenedor.innerHTML = '';
-    contenedor.appendChild(frag);
-    $('total-factura-compra').innerText = money(totalCompra);
+    const dif = c.sugerido - c.precioAct;
+    const tag = $('compra-p-tag');
+    if (Math.abs(dif) < 0.01) {
+        tag.innerText = '＝ Sin cambio respecto al precio actual';
+        tag.className = 'text-[10px] font-bold text-gray-500';
+    } else if (dif > 0) {
+        tag.innerText = `▲ Subió ${money(dif)} respecto al actual`;
+        tag.className = 'text-[10px] font-bold text-amber-600';
+    } else {
+        tag.innerText = `▼ Bajó ${money(Math.abs(dif))} respecto al actual`;
+        tag.className = 'text-[10px] font-bold text-emerald-600';
+    }
+
+    const dec = $('compra-lista-decididos');
+    if (dec) {
+        dec.innerHTML = compraPreciosDecididos.length
+            ? '<p class="font-bold text-gray-500 mb-1">Ya decididos:</p>' + compraPreciosDecididos.map(d => {
+                const it = facturaCompraItems.find(x => String(x.id) === String(d.id));
+                return `<div class="flex justify-between"><span>${(it && it.nombre) || d.id}</span><span class="font-bold">${money(d.precioVenta)}</span></div>`;
+            }).join('')
+            : '';
+    }
+}
+
+function compraUsarSugerido() {
+    const c = compraCalcularItem(facturaCompraItems[compraIdxPrecio]);
+    $('compra-p-input').value = c.sugerido.toFixed(2);
+}
+function compraDejarActual() {
+    const c = compraCalcularItem(facturaCompraItems[compraIdxPrecio]);
+    $('compra-p-input').value = c.precioAct.toFixed(2);
+}
+
+function compraAtrasPaso3() {
+    if (compraIdxPrecio > 0) {
+        compraIdxPrecio--;
+        compraPreciosDecididos.pop();
+        renderCompraPaso3();
+    } else {
+        compraIrPaso(2);
+    }
+}
+
+function compraConfirmarPrecio() {
+    const item = facturaCompraItems[compraIdxPrecio];
+    if (!item) return;
+    const precio = parseFloat($('compra-p-input').value);
+    if (isNaN(precio) || precio < 0) return alert('Precio inválido');
+    compraPreciosDecididos.push({ id: item.id, precioVenta: precio });
+    compraIdxPrecio++;
+    if (compraIdxPrecio >= facturaCompraItems.length) {
+        guardarFacturaCompraFinal();
+    } else {
+        renderCompraPaso3();
+    }
 }
 
 function guardarFacturaCompraFinal() {
     if (facturaCompraItems.length === 0) return alert('La factura está vacía');
-    const totalCompra = facturaCompraItems.reduce((a, b) => a + (b.cant * b.costoUnitario), 0);
     const fechaInput = $('compra-fecha-input').value || hoy();
+    const folio = ($('compra-folio-input') && $('compra-folio-input').value.trim()) || '';
+    const proveedor = ($('compra-proveedor-input') && $('compra-proveedor-input').value.trim()) || '';
+    const ieps = compraIeps();
+    const iva = compraIva();
+    const subtotal = compraSubtotal();
+    const totalFactura = subtotal + ieps + iva;
+    const factor = compraFactorImp();
+
+    // Asegurar precios decididos (si se saltó, usar sugerido)
+    const preciosMap = {};
+    compraPreciosDecididos.forEach(d => { preciosMap[String(d.id)] = d.precioVenta; });
+    facturaCompraItems.forEach(item => {
+        const c = compraCalcularItem(item);
+        item.costoReal = c.costoReal;
+        item.costoFactura = item.costoUnitario;
+        item.impuestosUnit = c.imp;
+        item.fleteUnit = c.flete;
+        if (preciosMap[String(item.id)] == null) {
+            preciosMap[String(item.id)] = c.sugerido;
+        }
+        item.precioVentaFinal = preciosMap[String(item.id)];
+    });
 
     facturaCompraItems.forEach(item => {
-        const prod = productos.find(x => x.id === item.id);
+        const prod = productos.find(x => String(x.id) === String(item.id));
         if (!prod) return;
-        const stockAnterior = prod.stock || 0;
-        const costoAnterior = prod.costo || 0;
-        const stockNuevo = item.cant;
-        const costoNuevo = item.costoUnitario;
+        const stockAnterior = Number(prod.stock) || 0;
+        const costoAnterior = Number(prod.costo) || 0;
+        const stockNuevo = Math.max(0, Number(item.cant) || 0);
+        const costoNuevo = Number(item.costoReal) || Number(item.costoUnitario) || 0;
         const stockTotalFuturo = stockAnterior + stockNuevo;
         if (stockTotalFuturo > 0) {
             prod.costo = ((stockAnterior * costoAnterior) + (stockNuevo * costoNuevo)) / stockTotalFuturo;
         } else {
             prod.costo = costoNuevo;
         }
-        prod.stock += stockNuevo;
+        prod.stock = stockAnterior + stockNuevo;
+        if (item.precioVentaFinal != null && !isNaN(item.precioVentaFinal)) {
+            prod.precio = item.precioVentaFinal;
+        }
     });
+
+    const descParts = ['Factura de Compra'];
+    if (proveedor) descParts.push(proveedor);
+    if (folio) descParts.push('Folio ' + folio);
+    descParts.push(`(${facturaCompraItems.length} art.)`);
 
     transacciones.unshift({
         id: Date.now(),
@@ -2377,16 +2713,24 @@ function guardarFacturaCompraFinal() {
         categoria: 'Compra de mercancía',
         fechaStr: fechaInput,
         fecha: fechaCorta(fechaInput),
-        monto: totalCompra,
-        descripcion: `Factura de Compra (${facturaCompraItems.length} artículos)`,
-        itemsCompra: [...facturaCompraItems]
+        monto: totalFactura,
+        descripcion: descParts.join(' · '),
+        proveedor,
+        folio,
+        subtotal,
+        ieps,
+        iva,
+        factorImpuestos: factor,
+        fletePct: compraFletePct,
+        itemsCompra: facturaCompraItems.map(i => ({ ...i }))
     });
 
     guardarTodo();
     cerrarModal('modal-compra');
     renderTransacciones();
     renderInventario();
-    alert('¡Compra guardada! Inventario actualizado.');
+    renderVenta();
+    alert('¡Compra guardada!\nInventario y costos actualizados.\nPrecios de venta aplicados.');
 }
 
 // -------------------- TRANSACCIONES --------------------

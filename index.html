@@ -1103,7 +1103,8 @@
 // -------------------- HELPERS --------------------
 const $ = id => document.getElementById(id);
 const money = n => `$${(Number(n) || 0).toFixed(2)}`;
-const hoy = () => new Date().toISOString().split('T')[0];
+const fechaLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const hoy = () => fechaLocal();
 const fechaBonita = (d = new Date()) => d.toLocaleString('es-ES', {
     month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true
 });
@@ -1148,6 +1149,17 @@ function cargarClientes() {
 let productos = cargarProductos();
 let clientes = cargarClientes();
 let transacciones = JSON.parse(localStorage.getItem('yimi_trans')) || [];
+
+(function corregirFechasVentas() {
+    let n = 0;
+    transacciones.forEach(t => {
+        if (t.tipo === 'Venta' && Number(t.id) > 1e12) {
+            const f = fechaLocal(new Date(Number(t.id)));
+            if (t.fechaStr !== f) { t.fechaStr = f; n++; }
+        }
+    });
+    if (n) localStorage.setItem('yimi_trans', JSON.stringify(transacciones));
+})();
 let configTicket = JSON.parse(localStorage.getItem('yimi_config_ticket')) || {
     negocio: 'DIGAR',
     direccion: 'Sabinas Coahuila',
@@ -3608,9 +3620,9 @@ function setStatsPeriodo(p) {
 function getFechaLimiteStats() {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    if (statsPeriodo === 'hoy') return d.toISOString().split('T')[0];
-    if (statsPeriodo === '7') { d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0]; }
-    if (statsPeriodo === '30') { d.setDate(d.getDate() - 29); return d.toISOString().split('T')[0]; }
+    if (statsPeriodo === 'hoy') return fechaLocal(d);
+    if (statsPeriodo === '7') { d.setDate(d.getDate() - 6); return fechaLocal(d); }
+    if (statsPeriodo === '30') { d.setDate(d.getDate() - 29); return fechaLocal(d); }
     return null;
 }
 

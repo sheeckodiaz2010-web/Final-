@@ -2164,6 +2164,7 @@ function registrarPagoCredito() {
     let monto = parseFloat($('input-abono-credito').value) || 0;
     if (monto <= 0) return alert('Ingresa un monto válido');
     if (!clienteCreditoActivo) return;
+    const montoInicial = monto;
 
     const ventasPendientes = transacciones
         .filter(t => t.esCredito && t.saldoPendiente > 0 && (t.clienteNombre || 'General') === clienteCreditoActivo)
@@ -2177,6 +2178,19 @@ function registrarPagoCredito() {
         v.abonos.push({ monto: abono, fecha: fechaBonita(new Date()) });
         if (v.saldoPendiente <= 0) v.pagado = true;
         monto -= abono;
+    }
+
+    const cobrado = Math.round((montoInicial - monto) * 100) / 100;
+    if (cobrado > 0) {
+        transacciones.unshift({
+            id: Date.now(),
+            tipo: 'Ingreso',
+            categoria: 'Abono crédito',
+            fechaStr: hoy(),
+            fecha: fechaCorta(hoy()),
+            monto: cobrado,
+            descripcion: `Abono ${clienteCreditoActivo}`
+        });
     }
 
     guardarTodo();
@@ -3384,6 +3398,20 @@ function bloqueIngresosPreliq(ingresos) {
     return out;
 }
 
+function bloqueLiquidarPreliq(totalContado, ingresos) {
+    if (!ingresos.length) return [];
+    const encoder = new TextEncoder();
+    const enc = (x) => encoder.encode(limpiarTxt(x));
+    const totalIng = ingresos.reduce((a, t) => a + (t.monto || 0), 0);
+    return [
+        enc(`${padRight('Contado', 20)}${padLeft(money(totalContado), 12)}\n`),
+        enc(`${padRight('+ Abonos/Ingresos', 20)}${padLeft(money(totalIng), 12)}\n`),
+        enc(`--------------------------------\n`),
+        enc(`${padRight('A LIQUIDAR', 20)}${padLeft(money(totalContado + totalIng), 12)}\n`),
+        enc(`================================\n`)
+    ];
+}
+
 function obtenerVentasFiltradasPreliq() {
     const desde = $('filtro-fecha-desde').value;
     const hasta = $('filtro-fecha-hasta').value;
@@ -3466,6 +3494,7 @@ async function imprimirPreliquidacionProductos() {
     cmds.push(enc(`Total de piezas: ${totalPiezas}\n`));
     cmds.push(enc(`================================\n`));
     bloqueIngresosPreliq(ingresosPreliq).forEach(c => cmds.push(c));
+    bloqueLiquidarPreliq(totalContado, ingresosPreliq).forEach(c => cmds.push(c));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`Fin del reporte\n\n\n`));
 
@@ -3531,6 +3560,7 @@ async function imprimirPreliquidacionClientes() {
     cmds.push(enc(`TOTAL: ${money(totalVendido)}\n`));
     cmds.push(enc(`================================\n`));
     bloqueIngresosPreliq(ingresosPreliq).forEach(c => cmds.push(c));
+    bloqueLiquidarPreliq(totalContado, ingresosPreliq).forEach(c => cmds.push(c));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`Fin del reporte\n\n\n`));
 

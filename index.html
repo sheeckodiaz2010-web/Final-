@@ -689,6 +689,7 @@
                 <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
                 <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
                 <button onclick="alternarHuella()" id="btn-huella-config" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">👆 Activar entrada con huella</button>
+                <button onclick="alternarVibracion()" id="btn-vibracion-config" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📳 Vibración al tocar: activada</button>
                 <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
@@ -4259,6 +4260,28 @@ async function actualizarApp() {
     } catch (e) { console.warn(e); }
     location.reload();
 }
+
+// -------------------- VIBRACION (toque haptico) --------------------
+function vibracionActiva() { return localStorage.getItem('yimi_vibracion') !== 'off'; }
+function vibrar(patron) {
+    try { if (vibracionActiva() && navigator.vibrate) navigator.vibrate(patron); } catch (e) {}
+}
+function actualizarBotonVibracion() {
+    const b = $('btn-vibracion-config');
+    if (b) b.innerText = vibracionActiva() ? '📳 Vibración al tocar: activada' : '📳 Vibración al tocar: apagada';
+}
+function alternarVibracion() {
+    localStorage.setItem('yimi_vibracion', vibracionActiva() ? 'off' : 'on');
+    actualizarBotonVibracion();
+    vibrar(25);
+}
+document.addEventListener('click', (e) => {
+    const el = e.target.closest && e.target.closest('button, [onclick], a');
+    if (!el || el.disabled) return;
+    if (el.id === 'btn-cobrar-final') vibrar([30, 50, 30]);
+    else vibrar(12);
+}, true);
+actualizarBotonVibracion();
 </script>
 
 

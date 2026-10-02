@@ -1150,6 +1150,20 @@ let productos = cargarProductos();
 let clientes = cargarClientes();
 let transacciones = JSON.parse(localStorage.getItem('yimi_trans')) || [];
 
+(function separarExtraDeVentas() {
+    let n = 0;
+    transacciones.forEach(t => {
+        const ex = Number(t.sumaOtrosTickets) || 0;
+        if (t.tipo === 'Venta' && ex > 0 && t.montoTicket != null && Math.abs((Number(t.monto) || 0) - (Number(t.montoTicket) + ex)) < 0.005) {
+            const viejo = Number(t.monto);
+            t.monto = Number(t.montoTicket);
+            if (t.esCredito && (!t.abonos || !t.abonos.length) && Math.abs((Number(t.saldoPendiente) || 0) - viejo) < 0.005) t.saldoPendiente = t.monto;
+            n++;
+        }
+    });
+    if (n) localStorage.setItem('yimi_trans', JSON.stringify(transacciones));
+})();
+
 (function corregirFechasVentas() {
     let n = 0;
     transacciones.forEach(t => {
@@ -2023,14 +2037,14 @@ async function ejecutarCobroFinal() {
         clienteDir: clienteSeleccionado.direccion || 'Mostrador',
         fechaStr,
         fecha: fechaFormateada,
-        monto: total,
+        monto: totalTicket,
         montoTicket: totalTicket,
         sumaOtrosTickets: extra > 0 ? extra : 0,
         ganancia: gananciaTotal,
         items: [...carrito],
         esCredito: esCredito,
         pagado: !esCredito,
-        saldoPendiente: esCredito ? total : 0,
+        saldoPendiente: esCredito ? totalTicket : 0,
         abonos: [],
         pagoEfectivo: esCredito ? 0 : ef,
         cambio: cambioCalc
@@ -3157,7 +3171,7 @@ function guardarEdicionVenta() {
         t.saldoPendiente = Math.max(0, Math.round((t.monto - abonado) * 100) / 100);
         t.pagado = t.saldoPendiente <= 0;
     } else if (t.pagoEfectivo > 0) {
-        t.cambio = Math.max(0, t.pagoEfectivo - t.monto);
+        t.cambio = Math.max(0, t.pagoEfectivo - t.monto - (Number(t.sumaOtrosTickets) || 0));
     }
     t.editada = true;
 
@@ -3340,7 +3354,7 @@ async function enviarImpresionTicketESC_POS(t) {
 
     // Bloque de totales igual al ticket del distribuidor
     const totalPiezas = (t.items && t.items.length > 0) ? t.items.reduce((a, i) => a + i.cant, 0) : 0;
-    const totalTxt = (Number(t.monto) || 0).toFixed(2);
+    const totalTxt = ((Number(t.monto) || 0) + extraTicket).toFixed(2);
     const lineaTot = (etiqueta, valor) => enc(`${padLeft(etiqueta, 20)}${padLeft(valor, 12)}\n`);
     cmds.push(lineaTot('Piezas :', totalPiezas.toFixed(2)));
     cmds.push(enc(`\n`));
@@ -3358,7 +3372,7 @@ async function enviarImpresionTicketESC_POS(t) {
         cmds.push(enc(`\n** VENTA A CREDITO **\n** PENDIENTE DE PAGO **\n`));
     } else if (t.pagoEfectivo != null && t.pagoEfectivo > 0) {
         cmds.push(enc(`\nPago con: ${money(t.pagoEfectivo)}\n`));
-        cmds.push(enc(`Cambio: ${money(t.cambio != null ? t.cambio : Math.max(0, t.pagoEfectivo - t.monto))}\n`));
+        cmds.push(enc(`Cambio: ${money(t.cambio != null ? t.cambio : Math.max(0, t.pagoEfectivo - t.monto - extraTicket))}\n`));
     }
 
     cmds.push(enc(`\n\n`));

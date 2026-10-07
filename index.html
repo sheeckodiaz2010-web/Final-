@@ -3165,44 +3165,117 @@ function guardarEdicionVenta() {
 }
 
 // -------------------- IMPRESIÓN BLUETOOTH --------------------
+const UUIDS_IMPRESORA = [
+    '000018f0-0000-1000-8000-00805f9b34fb',
+    '0000ff00-0000-1000-8000-00805f9b34fb',
+    '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+];
+const dispositivosConListener = new WeakSet();
+let reconexionEnCurso = null;
+
+function actualizarEstadoImpresora(conectada) {
+    const el = $('estado-impresora-txt');
+    if (!el) return;
+    if (conectada && bluetoothDevice) el.innerText = `${bluetoothDevice.name || 'Conectada'} ✓`;
+    else if (bluetoothDevice) el.innerText = `${bluetoothDevice.name || 'Impresora'} (desconectada)`;
+    else el.innerText = 'Conectar >';
+}
+
+// Conecta al dispositivo y busca la caracteristica de escritura
+async function conectarCaracteristicaImpresora(device) {
+    const server = await device.gatt.connect();
+    const services = await server.getPrimaryServices();
+    let encontrada = null;
+    for (const service of services) {
+        const characteristics = await service.getCharacteristics();
+        for (const characteristic of characteristics) {
+            if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+                encontrada = characteristic;
+                break;
+            }
+        }
+        if (encontrada) break;
+    }
+    if (!encontrada) throw new Error('sin_caracteristica_escritura');
+    bluetoothCharacteristic = encontrada;
+    return encontrada;
+}
+
+// Avisa cuando la impresora se desconecta (se apaga, se duerme o se aleja)
+function registrarDesconexionImpresora(device) {
+    if (dispositivosConListener.has(device)) return;
+    dispositivosConListener.add(device);
+    device.addEventListener('gattserverdisconnected', () => {
+        bluetoothCharacteristic = null;
+        actualizarEstadoImpresora(false);
+    });
+}
+
+// Reconecta en silencio (sin abrir la lista de dispositivos)
+function reconectarImpresora(intentos = 3) {
+    if (!bluetoothDevice) return Promise.resolve(false);
+    if (reconexionEnCurso) return reconexionEnCurso;
+    reconexionEnCurso = (async () => {
+        for (let i = 0; i < intentos; i++) {
+            try {
+                await conectarCaracteristicaImpresora(bluetoothDevice);
+                actualizarEstadoImpresora(true);
+                return true;
+            } catch (e) {
+                console.warn('Reintento de conexion', i + 1, e);
+                await esperar(600 * (i + 1));
+            }
+        }
+        actualizarEstadoImpresora(false);
+        return false;
+    })().finally(() => { reconexionEnCurso = null; });
+    return reconexionEnCurso;
+}
+
+async function asegurarImpresora() {
+    if (bluetoothDevice && bluetoothDevice.gatt && bluetoothDevice.gatt.connected && bluetoothCharacteristic) return true;
+    if (bluetoothDevice) return await reconectarImpresora(3);
+    return false;
+}
+
+// Al abrir la app, recupera la impresora que ya habias vinculado (si el navegador lo permite)
+async function restaurarImpresoraGuardada() {
+    try {
+        if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+        const dispositivos = await navigator.bluetooth.getDevices();
+        if (!dispositivos.length) return;
+        const nombre = localStorage.getItem('digar_impresora_nombre');
+        const dev = dispositivos.find(d => d.name === nombre) || dispositivos[0];
+        bluetoothDevice = dev;
+        registrarDesconexionImpresora(dev);
+        actualizarEstadoImpresora(false);
+    } catch (e) { console.warn(e); }
+}
+
 async function abrirConfigurarImpresora() {
     try {
         if (!navigator.bluetooth) {
             alert('Tu navegador no soporta Web Bluetooth. Usa Chrome en Android o PC.');
             return;
         }
-        bluetoothDevice = await navigator.bluetooth.requestDevice({
+        const dispositivo = await navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
-            optionalServices: [
-                '000018f0-0000-1000-8000-00805f9b34fb',
-                '0000ff00-0000-1000-8000-00805f9b34fb',
-                '49535343-fe7d-4ae5-8fa9-9fafd205e455'
-            ]
+            optionalServices: UUIDS_IMPRESORA
         });
-        const server = await bluetoothDevice.gatt.connect();
-        const services = await server.getPrimaryServices();
-
+        bluetoothDevice = dispositivo;
         bluetoothCharacteristic = null;
-        for (const service of services) {
-            const characteristics = await service.getCharacteristics();
-            for (const characteristic of characteristics) {
-                if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
-                    bluetoothCharacteristic = characteristic;
-                    break;
-                }
-            }
-            if (bluetoothCharacteristic) break;
-        }
-
-        if (!bluetoothCharacteristic) {
-            alert('Dispositivo conectado, pero no se encontró una característica de escritura válida.');
-            return;
-        }
-        $('estado-impresora-txt').innerText = `${bluetoothDevice.name || 'Conectada'} ✓`;
+        registrarDesconexionImpresora(dispositivo);
+        await conectarCaracteristicaImpresora(dispositivo);
+        try { localStorage.setItem('digar_impresora_nombre', dispositivo.name || ''); } catch (e) {}
+        actualizarEstadoImpresora(true);
         alert('¡Impresora térmica vinculada con éxito!');
     } catch (error) {
         console.error(error);
-        alert('No se pudo conectar con la impresora o se canceló la selección.');
+        if (error && error.message === 'sin_caracteristica_escritura') {
+            alert('Dispositivo conectado, pero no se encontró una característica de escritura válida.');
+        } else {
+            alert('No se pudo conectar con la impresora o se canceló la selección.');
+        }
     }
 }
 
@@ -3250,23 +3323,37 @@ function esperar(ms) {
 }
 
 async function enviarComandosImpresora(cmds) {
-    if (!bluetoothCharacteristic) {
-        alert('Primero conecta tu impresora térmica en el menú "Más" > "Impresora Bluetooth"');
+    // Si la conexion se cayo, intenta reconectar sola antes de pedir vincular de nuevo
+    if (!(await asegurarImpresora())) {
+        alert(bluetoothDevice
+            ? 'No se pudo reconectar con la impresora. Revisa que esté encendida y cerca; si sigue igual, vincúlala de nuevo.'
+            : 'Primero conecta tu impresora térmica en el menú \"Más\" > \"Impresora Bluetooth\"');
         abrirConfigurarImpresora();
         return false;
     }
-    try {
+    let paquetesEnviados = 0;
+    const enviar = async () => {
         for (const cmd of cmds) {
             for (let i = 0; i < cmd.length; i += TAMANO_PAQUETE_IMPRESORA) {
                 const paquete = cmd.slice(i, i + TAMANO_PAQUETE_IMPRESORA);
                 await bluetoothCharacteristic.writeValue(paquete);
+                paquetesEnviados++;
                 await esperar(PAUSA_ENTRE_PAQUETES_MS);
             }
         }
+    };
+    try {
+        await enviar();
         return true;
     } catch (e) {
         console.error(e);
-        alert('Error al enviar los datos a la impresora térmica. Vuelve a vincularla.');
+        bluetoothCharacteristic = null;
+        // Si fallo antes de imprimir nada, reconecta y reintenta una vez (evita tickets duplicados a medias)
+        if (paquetesEnviados === 0 && await reconectarImpresora(2)) {
+            try { await enviar(); return true; } catch (e2) { console.error(e2); }
+        }
+        actualizarEstadoImpresora(false);
+        alert('Se perdió la conexión con la impresora. Revisa que esté encendida y vuelve a intentar.');
         return false;
     }
 }
@@ -4327,6 +4414,12 @@ document.addEventListener('click', (e) => {
     else vibrar(12);
 }, true);
 actualizarBotonVibracion();
+restaurarImpresoraGuardada();
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && bluetoothDevice) {
+        actualizarEstadoImpresora(!!(bluetoothDevice.gatt && bluetoothDevice.gatt.connected && bluetoothCharacteristic));
+    }
+});
 </script>
 
 

@@ -890,32 +890,6 @@
                 <h1 class="text-4xl font-black text-blue-600" id="pago-monto-txt">$0.00</h1>
             </div>
 
-            <!-- Suma de otros tickets -->
-            <div class="w-full space-y-2">
-                <button type="button" onclick="agregarSumaOtroTicket()" class="w-full py-2.5 rounded-xl text-xs font-bold border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 active:scale-[0.98] transition">
-                    + Agregar suma de otro ticket
-                </button>
-                <div id="pago-extra-wrap" class="hidden bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-gray-600 font-semibold">Extra agregado</span>
-                        <div class="flex items-center gap-2">
-                            <span id="pago-extra-txt" class="font-bold text-blue-600">$0.00</span>
-                            <button type="button" onclick="quitarSumaOtroTicket()" class="text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg">Quitar</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white border border-gray-200 rounded-xl p-3 space-y-1.5 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Total de este ticket</span>
-                        <span id="pago-total-ticket" class="font-bold text-gray-800">$0.00</span>
-                    </div>
-                    <div class="flex justify-between border-t pt-1.5">
-                        <span class="font-bold text-gray-800">Total tickets</span>
-                        <span id="pago-total-tickets" class="font-black text-blue-600">$0.00</span>
-                    </div>
-                </div>
-            </div>
-
             <div class="w-full space-y-2" id="pago-billetes-wrap">
                 <label class="text-xs font-semibold text-gray-500">Pago con:</label>
                 <div id="pago-billetes" class="grid grid-cols-3 gap-2"></div>
@@ -1221,7 +1195,6 @@ let modoVistaGrid = true;
 let categoriaTransaccionSeleccionada = 'Compra';
 let bluetoothDevice = null;
 let bluetoothCharacteristic = null;
-let sumaOtrosTickets = 0; // monto extra de otros tickets al cobrar (solo se imprime si > 0)
 
 // -------------------- PERSISTENCIA --------------------
 function guardarTodo() {
@@ -1951,52 +1924,18 @@ function totalCarritoActual() {
 }
 
 function totalACobrar() {
-    return totalCarritoActual() + (Number(sumaOtrosTickets) || 0);
+    return totalCarritoActual();
 }
 
-function actualizarUISumaOtrosTickets() {
-    const ticket = totalCarritoActual();
-    const extra = Number(sumaOtrosTickets) || 0;
-    const total = ticket + extra;
+function actualizarMontoPago() {
     const montoEl = $('pago-monto-txt');
-    if (montoEl) montoEl.innerText = money(total);
-    const tTicket = $('pago-total-ticket');
-    if (tTicket) tTicket.innerText = money(ticket);
-    const tTickets = $('pago-total-tickets');
-    if (tTickets) tTickets.innerText = money(total);
-    const extraWrap = $('pago-extra-wrap');
-    const extraTxt = $('pago-extra-txt');
-    if (extraWrap) extraWrap.classList.toggle('hidden', extra <= 0);
-    if (extraTxt) extraTxt.innerText = money(extra);
-}
-
-function agregarSumaOtroTicket() {
-    const raw = prompt('Monto a sumar de otro ticket:', sumaOtrosTickets > 0 ? String(sumaOtrosTickets) : '');
-    if (raw === null) return;
-    const monto = parseFloat(String(raw).replace(',', '.'));
-    if (isNaN(monto) || monto < 0) return alert('Monto inválido');
-    sumaOtrosTickets = Math.round(monto * 100) / 100;
-    actualizarUISumaOtrosTickets();
-    const total = totalACobrar();
-    $('pago-efectivo').value = total.toFixed(2);
-    generarBotonesBilletes(total);
-    calcularCambioModal();
-}
-
-function quitarSumaOtroTicket() {
-    sumaOtrosTickets = 0;
-    actualizarUISumaOtrosTickets();
-    const total = totalACobrar();
-    $('pago-efectivo').value = total.toFixed(2);
-    generarBotonesBilletes(total);
-    calcularCambioModal();
+    if (montoEl) montoEl.innerText = money(totalACobrar());
 }
 
 function abrirPantallaPago() {
     if (carrito.length === 0) return alert('Carrito vacío');
-    sumaOtrosTickets = 0;
     const total = totalACobrar();
-    actualizarUISumaOtrosTickets();
+    actualizarMontoPago();
     $('pago-cliente-btn').innerText = clienteSeleccionado.nombre;
     $('modal-carrito').classList.add('hidden');
     $('modal-pago').classList.remove('hidden');
@@ -2036,8 +1975,7 @@ function calcularCambioModal() {
 
 async function ejecutarCobroFinal() {
     const totalTicket = totalCarritoActual();
-    const extra = Number(sumaOtrosTickets) || 0;
-    const total = totalTicket + extra;
+    const total = totalTicket;
     const esCredito = $('pago-es-credito').checked;
     const ef = parseFloat($('pago-efectivo').value) || 0;
     if (!esCredito && ef < total) return alert('Efectivo insuficiente');
@@ -2058,7 +1996,6 @@ async function ejecutarCobroFinal() {
         fecha: fechaFormateada,
         monto: totalTicket,
         montoTicket: totalTicket,
-        sumaOtrosTickets: extra > 0 ? extra : 0,
         ganancia: gananciaTotal,
         items: [...carrito],
         esCredito: esCredito,
@@ -2095,10 +2032,6 @@ async function ejecutarCobroFinal() {
     carrito.forEach(i => {
         containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
     });
-    // Solo si se activó la suma de otro ticket
-    if (extra > 0) {
-        containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-blue-700 border-t border-dashed pt-1 mt-1"><span>1x Otros tickets / suma extra</span><span>${money(extra)}</span></div>`;
-    }
     $('recibo-subtotal').innerText = money(total);
     $('recibo-total').innerText = money(total);
 
@@ -2113,7 +2046,6 @@ async function ejecutarCobroFinal() {
     const alertas = [];
     if (bajoCosto.length) alertas.push(`⚠️ Vendiste bajo costo: ${bajoCosto.join(', ')}`);
     if (sinCosto) alertas.push(`${sinCosto} producto(s) sin costo: la ganancia no es exacta`);
-    if (extra > 0) alertas.push(`Incluye suma de otro ticket: ${money(extra)}`);
     const alertaEl = $('exito-alerta');
     alertaEl.innerText = alertas.join('\n');
     alertaEl.style.whiteSpace = 'pre-line';
@@ -2127,7 +2059,6 @@ async function ejecutarCobroFinal() {
     }
 
     carrito = [];
-    sumaOtrosTickets = 0;
     renderVenta();
 }
 
@@ -3352,9 +3283,26 @@ async function enviarImpresionTicketESC_POS(t) {
         new Uint8Array([0x1B, 0x61, 0x01])  // Centrado
     ];
 
-    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
-    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
-    if (linea2) cmds.push(enc(`${linea2}\n`));
+    if (configTicket.showNombre !== false) {
+        // Encabezado grande: nombre en letra doble (ancho y alto) entre lineas de asteriscos
+        const nombreLimpio = limpiarTxt(configTicket.negocio || '').trim();
+        const nombreSep = nombreLimpio.replace(/\s+/g, ' ').split('').join(' ');
+        const nombreGrande = nombreSep.length <= 16 ? nombreSep : (nombreLimpio.length <= 16 ? nombreLimpio : null);
+        cmds.push(enc(`\n********************************\n`));
+        if (nombreGrande) {
+            cmds.push(new Uint8Array([0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11])); // Negrita + doble ancho y alto
+            cmds.push(enc(`${nombreGrande}\n`));
+            cmds.push(new Uint8Array([0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00])); // Tamano normal
+        } else {
+            cmds.push(enc(`${nombreLimpio}\n`)); // Nombre muy largo: tamano normal
+        }
+        cmds.push(enc(`********************************\n`));
+    } else {
+        cmds.push(enc(`\n`));
+    }
+    // Direccion y telefono en lineas separadas (juntos pasaban de 32 columnas)
+    if (configTicket.direccion) cmds.push(enc(`${configTicket.direccion}\n`));
+    if (configTicket.telefono) cmds.push(enc(`Tel: ${configTicket.telefono}\n`));
     if (configTicket.rfc) cmds.push(enc(`RFC: ${configTicket.rfc}\n`));
     cmds.push(enc(`================================\n`));
 
@@ -3528,9 +3476,26 @@ async function imprimirPreliquidacionProductos() {
         new Uint8Array([0x1B, 0x61, 0x01])
     ];
 
-    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
-    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
-    if (linea2) cmds.push(enc(`${linea2}\n`));
+    if (configTicket.showNombre !== false) {
+        // Encabezado grande: nombre en letra doble (ancho y alto) entre lineas de asteriscos
+        const nombreLimpio = limpiarTxt(configTicket.negocio || '').trim();
+        const nombreSep = nombreLimpio.replace(/\s+/g, ' ').split('').join(' ');
+        const nombreGrande = nombreSep.length <= 16 ? nombreSep : (nombreLimpio.length <= 16 ? nombreLimpio : null);
+        cmds.push(enc(`\n********************************\n`));
+        if (nombreGrande) {
+            cmds.push(new Uint8Array([0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11])); // Negrita + doble ancho y alto
+            cmds.push(enc(`${nombreGrande}\n`));
+            cmds.push(new Uint8Array([0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00])); // Tamano normal
+        } else {
+            cmds.push(enc(`${nombreLimpio}\n`)); // Nombre muy largo: tamano normal
+        }
+        cmds.push(enc(`********************************\n`));
+    } else {
+        cmds.push(enc(`\n`));
+    }
+    // Direccion y telefono en lineas separadas (juntos pasaban de 32 columnas)
+    if (configTicket.direccion) cmds.push(enc(`${configTicket.direccion}\n`));
+    if (configTicket.telefono) cmds.push(enc(`Tel: ${configTicket.telefono}\n`));
     cmds.push(enc(`================================\n`));
     cmds.push(enc(`PRELIQUIDACION PRODUCTOS\n`));
     cmds.push(enc(`${textoRangoPreliq()}\n`));
@@ -3591,9 +3556,26 @@ async function imprimirPreliquidacionClientes() {
         new Uint8Array([0x1B, 0x61, 0x01])
     ];
 
-    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
-    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
-    if (linea2) cmds.push(enc(`${linea2}\n`));
+    if (configTicket.showNombre !== false) {
+        // Encabezado grande: nombre en letra doble (ancho y alto) entre lineas de asteriscos
+        const nombreLimpio = limpiarTxt(configTicket.negocio || '').trim();
+        const nombreSep = nombreLimpio.replace(/\s+/g, ' ').split('').join(' ');
+        const nombreGrande = nombreSep.length <= 16 ? nombreSep : (nombreLimpio.length <= 16 ? nombreLimpio : null);
+        cmds.push(enc(`\n********************************\n`));
+        if (nombreGrande) {
+            cmds.push(new Uint8Array([0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11])); // Negrita + doble ancho y alto
+            cmds.push(enc(`${nombreGrande}\n`));
+            cmds.push(new Uint8Array([0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00])); // Tamano normal
+        } else {
+            cmds.push(enc(`${nombreLimpio}\n`)); // Nombre muy largo: tamano normal
+        }
+        cmds.push(enc(`********************************\n`));
+    } else {
+        cmds.push(enc(`\n`));
+    }
+    // Direccion y telefono en lineas separadas (juntos pasaban de 32 columnas)
+    if (configTicket.direccion) cmds.push(enc(`${configTicket.direccion}\n`));
+    if (configTicket.telefono) cmds.push(enc(`Tel: ${configTicket.telefono}\n`));
     cmds.push(enc(`================================\n`));
     cmds.push(enc(`PRELIQUIDACION CLIENTES\n`));
     cmds.push(enc(`${textoRangoPreliq()}\n`));
@@ -3641,9 +3623,26 @@ async function procesarImprimirInventario() {
         new Uint8Array([0x1B, 0x61, 0x01])
     ];
 
-    cmds.push(enc(configTicket.showNombre !== false ? `\n${configTicket.negocio}\n` : `\n`));
-    const linea2 = [configTicket.direccion, configTicket.telefono ? `Tel: ${configTicket.telefono}` : null].filter(Boolean).join(' - ');
-    if (linea2) cmds.push(enc(`${linea2}\n`));
+    if (configTicket.showNombre !== false) {
+        // Encabezado grande: nombre en letra doble (ancho y alto) entre lineas de asteriscos
+        const nombreLimpio = limpiarTxt(configTicket.negocio || '').trim();
+        const nombreSep = nombreLimpio.replace(/\s+/g, ' ').split('').join(' ');
+        const nombreGrande = nombreSep.length <= 16 ? nombreSep : (nombreLimpio.length <= 16 ? nombreLimpio : null);
+        cmds.push(enc(`\n********************************\n`));
+        if (nombreGrande) {
+            cmds.push(new Uint8Array([0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11])); // Negrita + doble ancho y alto
+            cmds.push(enc(`${nombreGrande}\n`));
+            cmds.push(new Uint8Array([0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00])); // Tamano normal
+        } else {
+            cmds.push(enc(`${nombreLimpio}\n`)); // Nombre muy largo: tamano normal
+        }
+        cmds.push(enc(`********************************\n`));
+    } else {
+        cmds.push(enc(`\n`));
+    }
+    // Direccion y telefono en lineas separadas (juntos pasaban de 32 columnas)
+    if (configTicket.direccion) cmds.push(enc(`${configTicket.direccion}\n`));
+    if (configTicket.telefono) cmds.push(enc(`Tel: ${configTicket.telefono}\n`));
     cmds.push(enc(`================================\n`));
     cmds.push(enc(`REPORTE DE INVENTARIO\n`));
     cmds.push(enc(`${fechaCompactaImpresion(Date.now())}\n`));

@@ -3191,7 +3191,7 @@ function guardarEdicionVenta() {
 // y, con tu confirmación, se corrige SOLO el campo de precio de los productos que ya existen allí.
 // Nunca crea ni borra productos del catálogo.
 const CATALOGO_PROJECT_ID = 'digar-catalago';
-const CATALOGO_API_KEY = ''; // opcional: apiKey pública del catálogo (si se deja vacía, la pide una vez y la recuerda)
+const CATALOGO_API_KEY = 'AIzaSyBW2CuE6HcgqMoIccoUo8UBrYfPkW4scD8'; // apiKey pública del catálogo (no es contraseña)
 let cambiosPreciosCatalogo = [];
 
 function valorFirestore(v) {
@@ -3206,7 +3206,7 @@ function valorFirestore(v) {
 async function descargarCatalogo() {
     const base = `https://firestore.googleapis.com/v1/projects/${CATALOGO_PROJECT_ID}/databases/(default)/documents/productos`;
     // Pedimos solo campos livianos para no bajar las fotos (ahorra datos)
-    const campos = ['nombre', 'codigo', 'sku', 'code', 'precio', 'price', '`código`'];
+    const campos = ['name', 'code', 'price', 'nombre', 'codigo', 'sku', 'precio'];
     const mask = campos.map(c => `mask.fieldPaths=${encodeURIComponent(c)}`).join('&');
     const keyGuardada = CATALOGO_API_KEY || localStorage.getItem('digar_cat_apikey') || '';
     const key = keyGuardada ? `&key=${encodeURIComponent(keyGuardada)}` : '';

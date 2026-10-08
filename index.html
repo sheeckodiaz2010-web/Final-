@@ -366,6 +366,10 @@
                     <span class="flex items-center gap-2">🖨️ Impresora Bluetooth (58/80mm)</span>
                     <span class="text-gray-400 text-xs font-bold text-blue-600" id="estado-impresora-txt">Conectar &gt;</span>
                 </button>
+                <button onclick="abrirActualizadorPrecios()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">🏷️ Actualizar precios del catálogo</span>
+                    <span class="text-gray-400">&gt;</span>
+                </button>
                 <button onclick="actualizarApp()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
                     <span class="flex items-center gap-2">🔄 Actualizar app</span>
                     <span class="text-gray-400 text-xs font-bold">v24</span>
@@ -710,6 +714,19 @@
                 <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal actualizar precios desde el catálogo -->
+    <div id="modal-precios-catalogo" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">🏷️ Precios del catálogo</h3>
+                <button onclick="cerrarModal('modal-precios-catalogo')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <p id="precios-cat-resumen" class="text-xs text-gray-500">Consultando catálogo…</p>
+            <div id="precios-cat-lista" class="overflow-y-auto flex-1 min-h-0"></div>
+            <button id="btn-aplicar-precios-cat" onclick="aplicarPreciosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Actualizar precios seleccionados</button>
         </div>
     </div>
 
@@ -3162,6 +3179,133 @@ function guardarEdicionVenta() {
     renderVenta();
     actualizarBadgeCreditos();
     abrirDetalleVenta(id);
+}
+
+// -------------------- PRECIOS DESDE EL CATÁLOGO (solo lectura) --------------------
+// Lee el catálogo público (Firestore, por REST) y compara por código con el SKU del POS.
+// No inicia sesión ni escribe nada en la nube: solo propone cambios de precio para que tú confirmes.
+const CATALOGO_PROJECT_ID = 'digar-catalago';
+const CATALOGO_API_KEY = ''; // opcional: si Google la pide, pega aquí la apiKey pública del catálogo
+let cambiosPreciosCatalogo = [];
+
+function valorFirestore(v) {
+    if (!v || typeof v !== 'object') return null;
+    if ('stringValue' in v) return v.stringValue;
+    if ('integerValue' in v) return Number(v.integerValue);
+    if ('doubleValue' in v) return v.doubleValue;
+    if ('booleanValue' in v) return v.booleanValue;
+    return null;
+}
+
+async function descargarCatalogo() {
+    const base = `https://firestore.googleapis.com/v1/projects/${CATALOGO_PROJECT_ID}/databases/(default)/documents/productos`;
+    // Pedimos solo campos livianos para no bajar las fotos (ahorra datos)
+    const campos = ['nombre', 'codigo', 'sku', 'code', 'precio', 'price', '`código`'];
+    const mask = campos.map(c => `mask.fieldPaths=${encodeURIComponent(c)}`).join('&');
+    const key = CATALOGO_API_KEY ? `&key=${encodeURIComponent(CATALOGO_API_KEY)}` : '';
+
+    async function pedir(conMask) {
+        const docs = [];
+        let token = '';
+        do {
+            const url = `${base}?pageSize=300${conMask ? '&' + mask : ''}${key}${token ? '&pageToken=' + encodeURIComponent(token) : ''}`;
+            const r = await fetch(url);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const j = await r.json();
+            (j.documents || []).forEach(d => {
+                const obj = {};
+                Object.keys(d.fields || {}).forEach(k => { obj[k] = valorFirestore(d.fields[k]); });
+                docs.push(obj);
+            });
+            token = j.nextPageToken || '';
+        } while (token);
+        return docs;
+    }
+    try { return await pedir(true); }
+    catch (e) { return await pedir(false); } // si el filtro de campos no se acepta, baja todo
+}
+
+function numeroDePrecio(x) {
+    const n = parseFloat(String(x == null ? '' : x).replace(/[^0-9.\-]/g, ''));
+    return isNaN(n) ? null : n;
+}
+
+// Compara catálogo contra el POS por código (SKU). Función pura: no toca nada.
+function calcularCambiosPrecios(itemsCatalogo, productosPos) {
+    const porSku = new Map();
+    productosPos.forEach(p => {
+        const k = String(p.sku || '').trim().toUpperCase();
+        if (k && !porSku.has(k)) porSku.set(k, p);
+    });
+    const cambios = [];
+    const vistos = new Set(); // si el catálogo repite un código, solo cuenta el primero
+    let iguales = 0, sinCoincidencia = 0, sinPrecio = 0;
+    itemsCatalogo.forEach(c => {
+        const codigo = String(c.codigo || c['código'] || c.sku || c.code || '').trim().toUpperCase();
+        if (!codigo) return; // documentos sin código (ej. configuración de categorías)
+        if (vistos.has(codigo)) return;
+        vistos.add(codigo);
+        const precio = numeroDePrecio(c.precio != null ? c.precio : c.price);
+        if (precio == null || precio < 0) { sinPrecio++; return; }
+        const p = porSku.get(codigo);
+        if (!p) { sinCoincidencia++; return; }
+        if (Math.abs((Number(p.precio) || 0) - precio) < 0.005) { iguales++; return; }
+        cambios.push({ id: p.id, sku: codigo, nombre: p.nombre, anterior: Number(p.precio) || 0, nuevo: precio, costo: Number(p.costo) || 0 });
+    });
+    return { cambios, iguales, sinCoincidencia, sinPrecio };
+}
+
+async function abrirActualizadorPrecios() {
+    $('modal-precios-catalogo').classList.remove('hidden');
+    $('precios-cat-resumen').innerText = 'Consultando catálogo…';
+    $('precios-cat-lista').innerHTML = '';
+    $('btn-aplicar-precios-cat').classList.add('hidden');
+    cambiosPreciosCatalogo = [];
+    try {
+        const items = await descargarCatalogo();
+        const r = calcularCambiosPrecios(items, productos);
+        cambiosPreciosCatalogo = r.cambios;
+        const extra = [];
+        if (r.iguales) extra.push(`${r.iguales} ya tienen el mismo precio`);
+        if (r.sinCoincidencia) extra.push(`${r.sinCoincidencia} del catálogo no están en tu POS`);
+        if (r.sinPrecio) extra.push(`${r.sinPrecio} sin precio válido`);
+        if (!r.cambios.length) {
+            $('precios-cat-resumen').innerText = items.length
+                ? `Todo al día. ${extra.join(' · ')}`
+                : 'El catálogo respondió vacío. Revisa que tenga productos publicados.';
+            return;
+        }
+        $('precios-cat-resumen').innerText = `${r.cambios.length} precio(s) distinto(s). ${extra.join(' · ')}`;
+        $('precios-cat-lista').innerHTML = r.cambios.map((c, i) => {
+            const bajo = c.costo > 0 && c.nuevo <= c.costo;
+            return `<label class="flex items-center gap-3 py-2 border-b text-xs">
+                <input type="checkbox" data-i="${i}" checked class="w-5 h-5">
+                <span class="flex-1 min-w-0">
+                    <span class="block font-bold truncate">${escHtml(c.nombre)}</span>
+                    <span class="block text-gray-500">${escHtml(c.sku)}${bajo ? ' · <span class="text-red-600 font-bold">⚠ queda bajo tu costo (' + money(c.costo) + ')</span>' : ''}</span>
+                </span>
+                <span class="text-right whitespace-nowrap"><span class="text-gray-400 line-through">${money(c.anterior)}</span><br><span class="font-bold text-blue-600">${money(c.nuevo)}</span></span>
+            </label>`;
+        }).join('');
+        $('btn-aplicar-precios-cat').classList.remove('hidden');
+    } catch (e) {
+        console.error(e);
+        $('precios-cat-resumen').innerText = `No se pudo leer el catálogo (${e.message}). Revisa tu internet e intenta de nuevo.`;
+    }
+}
+
+function aplicarPreciosCatalogo() {
+    const marcados = Array.from(document.querySelectorAll('#precios-cat-lista input[type=checkbox]:checked'))
+        .map(el => cambiosPreciosCatalogo[Number(el.dataset.i)]).filter(Boolean);
+    if (!marcados.length) { alert('No marcaste ningún producto.'); return; }
+    marcados.forEach(c => {
+        const p = productos.find(x => x.id === c.id);
+        if (p) p.precio = c.nuevo;
+    });
+    guardarTodo();
+    renderInventario();
+    cerrarModal('modal-precios-catalogo');
+    alert(`Listo: se actualizaron ${marcados.length} precio(s).`);
 }
 
 // -------------------- IMPRESIÓN BLUETOOTH --------------------

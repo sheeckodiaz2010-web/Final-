@@ -366,8 +366,8 @@
                     <span class="flex items-center gap-2">🖨️ Impresora Bluetooth (58/80mm)</span>
                     <span class="text-gray-400 text-xs font-bold text-blue-600" id="estado-impresora-txt">Conectar &gt;</span>
                 </button>
-                <button onclick="abrirActualizadorPrecios()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
-                    <span class="flex items-center gap-2">🏷️ Actualizar precios del catálogo</span>
+                <button onclick="abrirEnvioPreciosCatalogo()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">🏷️ Enviar precios al catálogo</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
                 <button onclick="actualizarApp()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
@@ -717,16 +717,21 @@
         </div>
     </div>
 
-    <!-- Modal actualizar precios desde el catálogo -->
+    <!-- Modal enviar precios del POS al catálogo -->
     <div id="modal-precios-catalogo" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-base">🏷️ Precios del catálogo</h3>
+                <h3 class="font-bold text-base">🏷️ Precios del POS al catálogo</h3>
                 <button onclick="cerrarModal('modal-precios-catalogo')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <p id="precios-cat-resumen" class="text-xs text-gray-500">Consultando catálogo…</p>
             <div id="precios-cat-lista" class="overflow-y-auto flex-1 min-h-0"></div>
-            <button id="btn-aplicar-precios-cat" onclick="aplicarPreciosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Actualizar precios seleccionados</button>
+            <div id="precios-cat-login" class="hidden space-y-2 border-t pt-3">
+                <p class="text-[11px] text-gray-400">Para cambiar el catálogo entra con tu cuenta de administrador. La contraseña no se guarda.</p>
+                <input type="email" id="precios-cat-email" placeholder="Correo del administrador" autocomplete="username" class="w-full p-3 border rounded-xl text-sm">
+                <input type="password" id="precios-cat-pass" placeholder="Contraseña" autocomplete="current-password" class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <button id="btn-aplicar-precios-cat" onclick="enviarPreciosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Actualizar catálogo con estos precios</button>
         </div>
     </div>
 
@@ -3181,11 +3186,12 @@ function guardarEdicionVenta() {
     abrirDetalleVenta(id);
 }
 
-// -------------------- PRECIOS DESDE EL CATÁLOGO (solo lectura) --------------------
-// Lee el catálogo público (Firestore, por REST) y compara por código con el SKU del POS.
-// No inicia sesión ni escribe nada en la nube: solo propone cambios de precio para que tú confirmes.
+// -------------------- PRECIOS DEL POS AL CATÁLOGO --------------------
+// El POS manda: sus precios son los buenos. Se compara por código (SKU) con el catálogo público
+// y, con tu confirmación, se corrige SOLO el campo de precio de los productos que ya existen allí.
+// Nunca crea ni borra productos del catálogo.
 const CATALOGO_PROJECT_ID = 'digar-catalago';
-const CATALOGO_API_KEY = ''; // opcional: si Google la pide, pega aquí la apiKey pública del catálogo
+const CATALOGO_API_KEY = ''; // opcional: apiKey pública del catálogo (si se deja vacía, la pide una vez y la recuerda)
 let cambiosPreciosCatalogo = [];
 
 function valorFirestore(v) {
@@ -3202,7 +3208,8 @@ async function descargarCatalogo() {
     // Pedimos solo campos livianos para no bajar las fotos (ahorra datos)
     const campos = ['nombre', 'codigo', 'sku', 'code', 'precio', 'price', '`código`'];
     const mask = campos.map(c => `mask.fieldPaths=${encodeURIComponent(c)}`).join('&');
-    const key = CATALOGO_API_KEY ? `&key=${encodeURIComponent(CATALOGO_API_KEY)}` : '';
+    const keyGuardada = CATALOGO_API_KEY || localStorage.getItem('digar_cat_apikey') || '';
+    const key = keyGuardada ? `&key=${encodeURIComponent(keyGuardada)}` : '';
 
     async function pedir(conMask) {
         const docs = [];
@@ -3213,7 +3220,7 @@ async function descargarCatalogo() {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const j = await r.json();
             (j.documents || []).forEach(d => {
-                const obj = {};
+                const obj = { __name: d.name, __raw: d.fields || {} };
                 Object.keys(d.fields || {}).forEach(k => { obj[k] = valorFirestore(d.fields[k]); });
                 docs.push(obj);
             });
@@ -3230,7 +3237,7 @@ function numeroDePrecio(x) {
     return isNaN(n) ? null : n;
 }
 
-// Compara catálogo contra el POS por código (SKU). Función pura: no toca nada.
+// Compara POS (manda) contra catálogo por código (SKU). Función pura: no toca nada.
 function calcularCambiosPrecios(itemsCatalogo, productosPos) {
     const porSku = new Map();
     productosPos.forEach(p => {
@@ -3239,54 +3246,61 @@ function calcularCambiosPrecios(itemsCatalogo, productosPos) {
     });
     const cambios = [];
     const vistos = new Set(); // si el catálogo repite un código, solo cuenta el primero
-    let iguales = 0, sinCoincidencia = 0, sinPrecio = 0;
+    let iguales = 0, sinPrecioPos = 0;
     itemsCatalogo.forEach(c => {
         const codigo = String(c.codigo || c['código'] || c.sku || c.code || '').trim().toUpperCase();
-        if (!codigo) return; // documentos sin código (ej. configuración de categorías)
-        if (vistos.has(codigo)) return;
-        vistos.add(codigo);
-        const precio = numeroDePrecio(c.precio != null ? c.precio : c.price);
-        if (precio == null || precio < 0) { sinPrecio++; return; }
+        if (!codigo || vistos.has(codigo)) return; // sin código (ej. configuración de categorías) o repetido
         const p = porSku.get(codigo);
-        if (!p) { sinCoincidencia++; return; }
-        if (Math.abs((Number(p.precio) || 0) - precio) < 0.005) { iguales++; return; }
-        cambios.push({ id: p.id, sku: codigo, nombre: p.nombre, anterior: Number(p.precio) || 0, nuevo: precio, costo: Number(p.costo) || 0 });
+        if (!p) return;
+        vistos.add(codigo);
+        const precioPos = Math.round((Number(p.precio) || 0) * 100) / 100;
+        if (precioPos <= 0) { sinPrecioPos++; return; } // nunca mandar precio 0 al catálogo
+        const campo = ['precio', 'price'].find(k => k in c);
+        if (!campo) return;
+        const precioCat = numeroDePrecio(c[campo]);
+        if (precioCat != null && Math.abs(precioCat - precioPos) < 0.005) { iguales++; return; }
+        cambios.push({ doc: c.__name, campo, raw: c.__raw[campo], sku: codigo, nombre: p.nombre, anterior: precioCat, nuevo: precioPos, costo: Number(p.costo) || 0 });
     });
-    return { cambios, iguales, sinCoincidencia, sinPrecio };
+    const sinCatalogo = [...porSku.keys()].filter(k => !vistos.has(k)).length;
+    return { cambios, iguales, sinCatalogo, sinPrecioPos };
 }
 
-async function abrirActualizadorPrecios() {
+async function abrirEnvioPreciosCatalogo() {
     $('modal-precios-catalogo').classList.remove('hidden');
     $('precios-cat-resumen').innerText = 'Consultando catálogo…';
     $('precios-cat-lista').innerHTML = '';
+    $('precios-cat-login').classList.add('hidden');
     $('btn-aplicar-precios-cat').classList.add('hidden');
+    $('precios-cat-email').value = localStorage.getItem('digar_cat_email') || '';
+    $('precios-cat-pass').value = '';
     cambiosPreciosCatalogo = [];
     try {
         const items = await descargarCatalogo();
         const r = calcularCambiosPrecios(items, productos);
         cambiosPreciosCatalogo = r.cambios;
         const extra = [];
-        if (r.iguales) extra.push(`${r.iguales} ya tienen el mismo precio`);
-        if (r.sinCoincidencia) extra.push(`${r.sinCoincidencia} del catálogo no están en tu POS`);
-        if (r.sinPrecio) extra.push(`${r.sinPrecio} sin precio válido`);
+        if (r.iguales) extra.push(`${r.iguales} ya coinciden`);
+        if (r.sinCatalogo) extra.push(`${r.sinCatalogo} de tu POS no están en el catálogo`);
+        if (r.sinPrecioPos) extra.push(`${r.sinPrecioPos} con precio $0 en el POS (se omiten)`);
         if (!r.cambios.length) {
             $('precios-cat-resumen').innerText = items.length
-                ? `Todo al día. ${extra.join(' · ')}`
+                ? `El catálogo ya tiene tus precios. ${extra.join(' · ')}`
                 : 'El catálogo respondió vacío. Revisa que tenga productos publicados.';
             return;
         }
-        $('precios-cat-resumen').innerText = `${r.cambios.length} precio(s) distinto(s). ${extra.join(' · ')}`;
+        $('precios-cat-resumen').innerText = `${r.cambios.length} producto(s) del catálogo con precio distinto al de tu POS. ${extra.join(' · ')}`;
         $('precios-cat-lista').innerHTML = r.cambios.map((c, i) => {
             const bajo = c.costo > 0 && c.nuevo <= c.costo;
             return `<label class="flex items-center gap-3 py-2 border-b text-xs">
                 <input type="checkbox" data-i="${i}" checked class="w-5 h-5">
                 <span class="flex-1 min-w-0">
                     <span class="block font-bold truncate">${escHtml(c.nombre)}</span>
-                    <span class="block text-gray-500">${escHtml(c.sku)}${bajo ? ' · <span class="text-red-600 font-bold">⚠ queda bajo tu costo (' + money(c.costo) + ')</span>' : ''}</span>
+                    <span class="block text-gray-500">${escHtml(c.sku)}${bajo ? ' · <span class="text-red-600 font-bold">⚠ precio POS bajo tu costo</span>' : ''}</span>
                 </span>
-                <span class="text-right whitespace-nowrap"><span class="text-gray-400 line-through">${money(c.anterior)}</span><br><span class="font-bold text-blue-600">${money(c.nuevo)}</span></span>
+                <span class="text-right whitespace-nowrap"><span class="text-gray-400 line-through">${c.anterior == null ? 'sin precio' : money(c.anterior)}</span><br><span class="font-bold text-blue-600">${money(c.nuevo)}</span></span>
             </label>`;
         }).join('');
+        $('precios-cat-login').classList.remove('hidden');
         $('btn-aplicar-precios-cat').classList.remove('hidden');
     } catch (e) {
         console.error(e);
@@ -3294,18 +3308,73 @@ async function abrirActualizadorPrecios() {
     }
 }
 
-function aplicarPreciosCatalogo() {
+function valorPrecioFirestore(rawActual, precio) {
+    if (rawActual && 'stringValue' in rawActual) return { stringValue: Number.isInteger(precio) ? String(precio) : precio.toFixed(2) };
+    if (rawActual && 'integerValue' in rawActual && Number.isInteger(precio)) return { integerValue: String(precio) };
+    return { doubleValue: precio };
+}
+
+function obtenerApiKeyCatalogo() {
+    let k = CATALOGO_API_KEY || localStorage.getItem('digar_cat_apikey') || '';
+    if (!k) {
+        k = (prompt('Pega la apiKey del catálogo (está en el firebaseConfig del index.html del catálogo; es un dato público, no una contraseña):') || '').trim();
+        if (k) localStorage.setItem('digar_cat_apikey', k);
+    }
+    return k;
+}
+
+async function enviarPreciosCatalogo() {
     const marcados = Array.from(document.querySelectorAll('#precios-cat-lista input[type=checkbox]:checked'))
         .map(el => cambiosPreciosCatalogo[Number(el.dataset.i)]).filter(Boolean);
     if (!marcados.length) { alert('No marcaste ningún producto.'); return; }
-    marcados.forEach(c => {
-        const p = productos.find(x => x.id === c.id);
-        if (p) p.precio = c.nuevo;
-    });
-    guardarTodo();
-    renderInventario();
-    cerrarModal('modal-precios-catalogo');
-    alert(`Listo: se actualizaron ${marcados.length} precio(s).`);
+    const email = $('precios-cat-email').value.trim();
+    const pass = $('precios-cat-pass').value;
+    if (!email || !pass) { alert('Escribe el correo y la contraseña del administrador del catálogo.'); return; }
+    const apiKey = obtenerApiKeyCatalogo();
+    if (!apiKey) { alert('Hace falta la apiKey del catálogo para continuar.'); return; }
+
+    const btn = $('btn-aplicar-precios-cat');
+    btn.disabled = true;
+    const resumen = $('precios-cat-resumen');
+    try {
+        resumen.innerText = 'Iniciando sesión…';
+        const rl = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: pass, returnSecureToken: true })
+        });
+        const jl = await rl.json();
+        if (!rl.ok || !jl.idToken) {
+            const msg = (jl.error && jl.error.message) || ('HTTP ' + rl.status);
+            if (/API_KEY/i.test(msg)) localStorage.removeItem('digar_cat_apikey');
+            throw new Error(/INVALID|EMAIL_NOT_FOUND|PASSWORD/i.test(msg) ? 'Correo o contraseña incorrectos' : msg);
+        }
+        try { localStorage.setItem('digar_cat_email', email); } catch (e) {}
+        $('precios-cat-pass').value = '';
+
+        let ok = 0; const fallos = [];
+        for (let i = 0; i < marcados.length; i++) {
+            const c = marcados[i];
+            resumen.innerText = `Actualizando ${i + 1} de ${marcados.length}…`;
+            try {
+                const url = `https://firestore.googleapis.com/v1/${c.doc}?updateMask.fieldPaths=${encodeURIComponent(c.campo)}&currentDocument.exists=true`;
+                const rp = await fetch(url, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jl.idToken },
+                    body: JSON.stringify({ fields: { [c.campo]: valorPrecioFirestore(c.raw, c.nuevo) } })
+                });
+                if (!rp.ok) throw new Error('HTTP ' + rp.status);
+                ok++;
+            } catch (e) { fallos.push(`${c.sku} (${e.message})`); }
+        }
+        cerrarModal('modal-precios-catalogo');
+        alert(`Catálogo actualizado: ${ok} precio(s).` + (fallos.length ? `\nNo se pudieron cambiar: ${fallos.join(', ')}` : ''));
+    } catch (e) {
+        console.error(e);
+        resumen.innerText = `No se pudo actualizar: ${e.message}`;
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 // -------------------- IMPRESIÓN BLUETOOTH --------------------

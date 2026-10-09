@@ -368,12 +368,12 @@
                     <span class="flex items-center gap-2">🖨️ Impresora Bluetooth (58/80mm)</span>
                     <span class="text-gray-400 text-xs font-bold text-blue-600" id="estado-impresora-txt">Conectar &gt;</span>
                 </button>
-                <button onclick="sincronizarFotosCatalogo(true)" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
-                    <span class="flex items-center gap-2">🖼️ Actualizar fotos del catálogo</span>
+                <button onclick="abrirDiagnostico()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">🩺 Diagnóstico (si se traba)</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
-                <button onclick="abrirEnvioPreciosCatalogo()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
-                    <span class="flex items-center gap-2">🏷️ Enviar precios al catálogo</span>
+                <button onclick="abrirMenuCatalogo()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
+                    <span class="flex items-center gap-2">🗂️ Catálogo</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
                 <button onclick="actualizarApp()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
@@ -720,6 +720,40 @@
                 <button onclick="alternarVibracion()" id="btn-vibracion-config" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📳 Vibración al tocar: activada</button>
                 <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal menú Catálogo -->
+    <div id="modal-catalogo-menu" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">🗂️ Catálogo</h3>
+                <button onclick="cerrarModal('modal-catalogo-menu')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <button onclick="irACatalogo('precios')" class="w-full text-left p-4 rounded-2xl border border-gray-200 bg-gray-50 active:scale-95 transition">
+                <div class="font-bold text-sm">🏷️ Enviar precios al catálogo</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">Corrige en el catálogo los precios que difieren de los del POS.</div>
+            </button>
+            <button onclick="irACatalogo('fotos')" class="w-full text-left p-4 rounded-2xl border border-gray-200 bg-gray-50 active:scale-95 transition">
+                <div class="font-bold text-sm">🖼️ Actualizar fotos del catálogo</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">Descarga las fotos nuevas para la vista Catálogo de la venta.</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal diagnóstico -->
+    <div id="modal-diagnostico" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">🩺 Diagnóstico</h3>
+                <button onclick="cerrarModal('modal-diagnostico')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <p class="text-[11px] text-gray-500">Si la app se traba: bloquea y desbloquea el teléfono, entra aquí y mándame una captura de esta pantalla.</p>
+            <pre id="diag-texto" style="flex:1;overflow:auto;font-size:10px;line-height:1.35;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:8px;white-space:pre-wrap;word-break:break-all;margin:0;"></pre>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="copiarDiagnostico()" class="py-3 rounded-xl text-sm font-bold bg-blue-600 text-white">Copiar</button>
+                <button onclick="borrarDiagnostico()" class="py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700">Borrar</button>
             </div>
         </div>
     </div>
@@ -1250,6 +1284,64 @@ let compraIdxPrecio = 0;
 let compraPreciosDecididos = []; // { id, precioVenta }
 let ventaSeleccionadaId = null;
 let indexItemConfigActivo = null;
+// -------------------- DIAGNÓSTICO (bitácora para encontrar por qué se traba) --------------------
+var bitacoraDiag = [];
+var diagGuardadoPendiente = false;
+function diag(tipo, detalle) {
+    try {
+        const d = new Date();
+        const hms = d.toLocaleTimeString('es-MX', { hour12: false });
+        bitacoraDiag.push(`${hms}.${String(d.getMilliseconds()).padStart(3, '0')} ${tipo}${detalle ? ' · ' + detalle : ''}`);
+        if (bitacoraDiag.length > 120) bitacoraDiag.shift();
+        if (tipo !== 'toque' && tipo !== 'click' && !diagGuardadoPendiente) {
+            diagGuardadoPendiente = true;
+            setTimeout(() => { diagGuardadoPendiente = false; try { localStorage.setItem('digar_diag', JSON.stringify(bitacoraDiag)); } catch (e) {} }, 800);
+        }
+    } catch (e) {}
+}
+function descripcionElemento(el) {
+    if (!el || !el.tagName) return 'nada';
+    const cls = (typeof el.className === 'string' && el.className.trim()) ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
+    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + cls;
+}
+try { bitacoraDiag = JSON.parse(localStorage.getItem('digar_diag')) || []; bitacoraDiag.push('--- app abierta ---'); } catch (e) { bitacoraDiag = []; }
+window.addEventListener('error', e => diag('ERROR', `${e.message} (línea ${e.lineno})`));
+window.addEventListener('unhandledrejection', e => diag('PROMESA', String((e.reason && e.reason.message) || e.reason).slice(0, 120)));
+document.addEventListener('visibilitychange', () => diag('visibilidad', document.visibilityState));
+document.addEventListener('touchstart', e => {
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    diag('toque', `${t.clientX | 0},${t.clientY | 0} → ${descripcionElemento(document.elementFromPoint(t.clientX, t.clientY))}`);
+}, { capture: true, passive: true });
+document.addEventListener('click', e => diag('click', descripcionElemento(e.target)), true);
+(function () {
+    let marcas = [];
+    window.addEventListener('resize', () => {
+        const ahora = Date.now();
+        marcas = marcas.filter(t => ahora - t < 2000);
+        marcas.push(ahora);
+        if (marcas.length === 6) diag('RESIZE-TORMENTA', `${window.innerWidth}x${window.innerHeight}`);
+        else if (marcas.length === 1) diag('resize', `${window.innerWidth}x${window.innerHeight}`);
+    });
+    ['alert', 'confirm', 'prompt'].forEach(nombre => {
+        const original = window[nombre].bind(window);
+        window[nombre] = function (msg, def) {
+            diag('DIÁLOGO ' + nombre, String(msg).replace(/\s+/g, ' ').slice(0, 70));
+            const r = original(msg, def);
+            diag('diálogo cerrado', nombre);
+            return r;
+        };
+    });
+    // Latido: si la app deja de responder más de 2.5 s estando abierta, lo anota
+    let ultimo = Date.now();
+    setInterval(() => {
+        const ahora = Date.now();
+        const hueco = ahora - ultimo;
+        ultimo = ahora;
+        if (hueco > 2500 && document.visibilityState === 'visible') diag('PAUSA', `la app se quedó ${(hueco / 1000).toFixed(1)} s sin responder`);
+    }, 500);
+})();
+
 let modoVistaGrid = true;
 let modoVistaCatalogo = false; // vista con fotos (2 por fila)
 let categoriasProd = cargarCategoriasProd();
@@ -3458,6 +3550,30 @@ async function sincronizarFotosCatalogo(manual) {
     }
 }
 
+function abrirMenuCatalogo() { $('modal-catalogo-menu').classList.remove('hidden'); }
+function irACatalogo(op) {
+    cerrarModal('modal-catalogo-menu');
+    if (op === 'precios') abrirEnvioPreciosCatalogo();
+    else sincronizarFotosCatalogo(true);
+}
+
+function abrirDiagnostico() {
+    const pre = $('diag-texto');
+    // Lo más reciente primero, para verlo sin desplazarte
+    pre.textContent = bitacoraDiag.length ? bitacoraDiag.slice().reverse().join('\n') : 'Sin eventos todavía.';
+    $('modal-diagnostico').classList.remove('hidden');
+}
+function copiarDiagnostico() {
+    const t = bitacoraDiag.slice().reverse().join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => alert('Copiado.')).catch(() => alert('No se pudo copiar. Mándame una captura.'));
+    else alert('No se pudo copiar. Mándame una captura.');
+}
+function borrarDiagnostico() {
+    bitacoraDiag = [];
+    try { localStorage.removeItem('digar_diag'); } catch (e) {}
+    abrirDiagnostico();
+}
+
 // -------------------- CATEGORÍAS DE PRODUCTOS --------------------
 function cargarCategoriasProd() {
     try {
@@ -3874,6 +3990,7 @@ function registrarDesconexionImpresora(device) {
     dispositivosConListener.add(device);
     device.addEventListener('gattserverdisconnected', () => {
         bluetoothCharacteristic = null;
+        diag('BT impresora desconectada');
         actualizarEstadoImpresora(false);
     });
 }
@@ -3883,6 +4000,7 @@ function reconectarImpresora(intentos = 3) {
     if (!bluetoothDevice) return Promise.resolve(false);
     if (reconexionEnCurso) return reconexionEnCurso;
     reconexionEnCurso = (async () => {
+        diag('BT reconectando');
         for (let i = 0; i < intentos; i++) {
             try {
                 await conTiempoLimite(conectarCaracteristicaImpresora(bluetoothDevice), 8000, 'tiempo_conexion');
@@ -4899,7 +5017,6 @@ function forzarOrientacionVertical() {
 }
 forzarOrientacionVertical();
 window.addEventListener('orientationchange', forzarOrientacionVertical);
-window.addEventListener('resize', forzarOrientacionVertical);
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) forzarOrientacionVertical();
 });

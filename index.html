@@ -221,6 +221,7 @@
                     <span id="icono-vista-modo">🔲</span> <span id="texto-vista-modo" class="text-xs">Grid</span>
                 </button>
             </div>
+            <div id="chips-categorias-venta" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch;"></div>
 
             <div id="banner-fotos" style="display:none;font-size:12px;color:#2563eb;background:#eff6ff;border-radius:10px;padding:8px 12px;margin-bottom:8px;"></div>
             <div id="grid-venta" class="grid grid-cols-3 gap-2.5"><div class="bg-white border-2 border-dashed border-blue-200 p-3 rounded-2xl flex flex-col items-center justify-center text-center h-28 cursor-pointer"><span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold text-lg flex items-center justify-center mb-1">+</span><span class="text-xs font-bold text-blue-600">Producto</span></div><div class="bg-blue-900 text-white p-3 rounded-2xl flex flex-col justify-between h-28 cursor-pointer shadow-sm select-none">
@@ -369,10 +370,6 @@
                 </button>
                 <button onclick="sincronizarFotosCatalogo(true)" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
                     <span class="flex items-center gap-2">🖼️ Actualizar fotos del catálogo</span>
-                    <span class="text-gray-400">&gt;</span>
-                </button>
-                <button onclick="abrirCatalogoClientes()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
-                    <span class="flex items-center gap-2">📖 Catálogo para clientes</span>
                     <span class="text-gray-400">&gt;</span>
                 </button>
                 <button onclick="abrirEnvioPreciosCatalogo()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
@@ -597,11 +594,12 @@
                     <div class="flex justify-between border-t pt-1"><span class="text-gray-500">Factor impuestos</span><span class="font-black text-purple-600" id="compra-factor-txt">0%</span></div>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-xs font-semibold text-gray-500">Flete (se suma al costo de cada producto)</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn-flete-5" onclick="setCompraFlete(0.05)" class="py-2.5 rounded-xl text-xs font-bold border-2 border-purple-600 bg-purple-50 text-purple-700">5% flete</button>
-                        <button type="button" id="btn-flete-0" onclick="setCompraFlete(0)" class="py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600">Sin flete</button>
+                    <label class="text-xs font-semibold text-gray-500">Costo del flete (se reparte en el costo de cada producto)</label>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-gray-500">$</span>
+                        <input type="number" inputmode="decimal" step="0.01" min="0" id="compra-flete-input" placeholder="0.00" oninput="renderCompraPaso2()" class="flex-1 p-3 border rounded-xl text-base font-bold">
                     </div>
+                    <p class="text-[11px] text-gray-500" id="compra-flete-pct-txt">Sin flete. Escribe el costo del flete si la factura lo trae.</p>
                 </div>
                 <div>
                     <h4 class="text-xs font-bold text-gray-400 mb-2">Vista previa costo real</h4>
@@ -726,25 +724,31 @@
         </div>
     </div>
 
-    <!-- Catálogo para mostrar a clientes -->
-    <div id="catalogo-clientes" style="display:none;position:fixed;inset:0;z-index:50;flex-direction:column;background:#f9fafb;max-width:28rem;margin:0 auto;">
-        <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:max(12px, env(safe-area-inset-top)) 14px 10px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                <button onclick="cerrarCatalogoClientes()" style="font-size:26px;font-weight:700;line-height:1;padding:0 6px 4px 0;color:#111827;">←</button>
-                <div style="flex:1;font-weight:800;font-size:18px;color:#111827;">Catálogo</div>
-                <button onclick="cargarCatalogoClientes()" style="font-size:12px;font-weight:700;color:#2563eb;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px;padding:6px 10px;">↻ Actualizar</button>
+    <!-- Modal categorías -->
+    <div id="modal-categorias" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">🏷️ Categorías</h3>
+                <button onclick="cerrarModal('modal-categorias')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
-            <input id="catalogo-busqueda" type="search" placeholder="Buscar producto o código" oninput="renderCatalogoClientes()" style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;background:#f9fafb;">
-            <div id="catalogo-chips" style="display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;"></div>
+            <div class="flex gap-2">
+                <input id="cat-nueva-input" type="text" placeholder="Nueva categoría (ej. Dulces)" class="flex-1 p-3 border rounded-xl text-sm">
+                <button onclick="agregarCategoriaDesdeGestor()" class="bg-blue-600 text-white font-bold px-4 rounded-xl text-sm">Agregar</button>
+            </div>
+            <div id="cats-lista" class="overflow-y-auto flex-1"></div>
+            <p class="text-[11px] text-gray-400">Toca "Productos" para elegir cuáles van en cada categoría.</p>
         </div>
-        <div id="catalogo-estado" style="font-size:12px;color:#6b7280;padding:8px 14px 0;"></div>
-        <div id="catalogo-grid" style="flex:1;overflow-y:auto;padding:10px 14px 24px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start;"></div>
     </div>
-    <div id="catalogo-detalle" style="display:none;position:fixed;inset:0;z-index:60;flex-direction:column;background:#fff;max-width:28rem;margin:0 auto;">
-        <div style="padding:max(12px, env(safe-area-inset-top)) 14px 8px;">
-            <button onclick="cerrarProductoCatalogo()" style="font-size:28px;font-weight:700;line-height:1;color:#111827;">←</button>
+    <div id="modal-asignar-cat" class="fixed inset-0 bg-black/50 hidden flex flex-col justify-end max-w-md mx-auto" style="z-index:60;">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base" id="asignar-cat-titulo">Productos</h3>
+                <button onclick="cerrarModal('modal-asignar-cat')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <input id="asignar-cat-buscar" type="text" placeholder="Buscar producto..." oninput="renderAsignarCategoria()" class="w-full p-3 border rounded-xl text-sm">
+            <div id="asignar-cat-lista" class="overflow-y-auto flex-1"></div>
+            <button onclick="guardarAsignacionCategoria()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Guardar</button>
         </div>
-        <div id="catalogo-detalle-cuerpo" style="flex:1;overflow-y:auto;padding:0 18px 28px;"></div>
     </div>
 
     <!-- Modal enviar precios del POS al catálogo -->
@@ -1132,6 +1136,10 @@
                 <label class="text-xs font-semibold text-gray-500">Stock actual (Cantidad)</label>
                 <input type="number" id="form-prod-stock" placeholder="0" class="w-full p-3 border rounded-xl text-sm">
             </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Categoría</label>
+                <select id="form-prod-categoria" onchange="alCambiarCategoriaProducto()" class="w-full p-3 border rounded-xl text-sm bg-white"></select>
+            </div>
             <button onclick="guardarProductoInventario()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md mt-2">Guardar</button>
             <button id="btn-eliminar-producto-modal" onclick="eliminarProductoDesdeModal()" class="w-full hidden py-3.5 text-red-600 font-bold border border-red-200 bg-red-50/50 rounded-xl text-sm">Eliminar producto</button>
         </div>
@@ -1238,13 +1246,17 @@ let carrito = [];
 let facturaCompraItems = [];
 let compraMargenPct = 0.30;
 let compraPaso = 1;
-let compraFletePct = 0.05;
 let compraIdxPrecio = 0;
 let compraPreciosDecididos = []; // { id, precioVenta }
 let ventaSeleccionadaId = null;
 let indexItemConfigActivo = null;
 let modoVistaGrid = true;
 let modoVistaCatalogo = false; // vista con fotos (2 por fila)
+let categoriasProd = cargarCategoriasProd();
+let categoriaVentaActiva = 'General';
+let chipsFirma = '';
+let chipsActuales = [];
+let catAsignando = '';
 let categoriaTransaccionSeleccionada = 'Compra';
 let bluetoothDevice = null;
 let bluetoothCharacteristic = null;
@@ -1730,8 +1742,10 @@ function bindProductoToque(el, prodId) {
 
 function renderVenta(filtro = '') {
     const grid = $('grid-venta');
+    renderChipsCategoriasVenta();
     const filtrados = productos
         .filter(p => p.nombre.toLowerCase().includes((filtro || '').toLowerCase()))
+        .filter(filtroCategoriaVenta)
         .map((p, i) => ({ p, i }))
         .sort((a, b) => {
             const aAgotado = a.p.stock <= 0 ? 1 : 0;
@@ -2454,6 +2468,7 @@ function abrirModalProducto() {
     $('form-prod-precio').value = '';
     $('form-prod-costo').value = '';
     $('form-prod-stock').value = '';
+    poblarSelectCategoriaProducto(categoriaVentaActiva !== 'General' && categoriaVentaActiva !== '__sin__' ? categoriaVentaActiva : '');
     $('prod-modal-titulo').innerText = 'Crear producto';
     actualizarMargenForm();
     $('btn-eliminar-producto-modal').classList.add('hidden');
@@ -2470,6 +2485,7 @@ function editarProd(id) {
     $('form-prod-precio').value = p.precio;
     $('form-prod-costo').value = p.costo || 0;
     $('form-prod-stock').value = p.stock;
+    poblarSelectCategoriaProducto(p.categoria || '');
     $('prod-modal-titulo').innerText = 'Editar producto';
     actualizarMargenForm();
     $('btn-eliminar-producto-modal').classList.remove('hidden');
@@ -2485,12 +2501,14 @@ function guardarProductoInventario() {
     const stock = parseInt($('form-prod-stock').value) || 0;
     if (!nombre || isNaN(precio)) return alert('Llena nombre y precio');
     if (!sku) sku = siguienteSkuPos();
+    const selCat = $('form-prod-categoria');
+    const categoria = (selCat && selCat.value && selCat.value !== '__nueva__') ? selCat.value : '';
 
     if (id) {
         const p = productos.find(x => x.id == id);
-        if (p) { p.nombre = nombre; p.sku = sku; p.precio = precio; p.costo = costo; p.stock = stock; }
+        if (p) { p.nombre = nombre; p.sku = sku; p.precio = precio; p.costo = costo; p.stock = stock; p.categoria = categoria; }
     } else {
-        productos.push({ id: Date.now(), nombre, sku, precio, costo, stock });
+        productos.push({ id: Date.now(), nombre, sku, precio, costo, stock, categoria });
     }
     ordenarProductosAlfabetico();
     guardarTodo();
@@ -2524,12 +2542,20 @@ function compraFactorImp() {
     return (compraIeps() + compraIva()) / sub;
 }
 
+// El flete se captura en pesos; el porcentaje sale de dividirlo entre el total de la factura
+function compraFleteMonto() { return Math.max(0, parseFloat($('compra-flete-input')?.value) || 0); }
+function compraFletePctActual() {
+    const t = compraTotalFactura();
+    return t > 0 ? compraFleteMonto() / t : 0;
+}
+
 function compraCalcularItem(item) {
     const factor = compraFactorImp();
     const conImp = item.costoUnitario * (1 + factor);
     const imp = conImp - item.costoUnitario;
-    const flete = conImp * compraFletePct;
-    const costoReal = conImp * (1 + compraFletePct);
+    const pctFlete = compraFletePctActual();
+    const flete = conImp * pctFlete;
+    const costoReal = conImp * (1 + pctFlete);
     const sugerido = Math.round(costoReal * (1 + compraMargenPct) * 2) / 2;
     const prod = productos.find(x => String(x.id) === String(item.id));
     const precioAct = prod ? (Number(prod.precio) || 0) : 0;
@@ -2539,7 +2565,7 @@ function compraCalcularItem(item) {
 function abrirModalCompra() {
     facturaCompraItems = [];
     compraPaso = 1;
-    compraFletePct = 0.05;
+    if ($('compra-flete-input')) $('compra-flete-input').value = '';
     compraMargenPct = 0.30;
     compraIdxPrecio = 0;
     compraPreciosDecididos = [];
@@ -2585,22 +2611,6 @@ function compraIrPaso(n) {
         if (facturaCompraItems.length === 0) return alert('Sin productos');
     }
     compraMostrarPaso(n);
-}
-
-function setCompraFlete(pct) {
-    compraFletePct = pct;
-    const b5 = $('btn-flete-5'), b0 = $('btn-flete-0');
-    if (b5) {
-        b5.className = pct > 0
-            ? 'py-2.5 rounded-xl text-xs font-bold border-2 border-purple-600 bg-purple-50 text-purple-700'
-            : 'py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600';
-    }
-    if (b0) {
-        b0.className = pct === 0
-            ? 'py-2.5 rounded-xl text-xs font-bold border-2 border-purple-600 bg-purple-50 text-purple-700'
-            : 'py-2.5 rounded-xl text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600';
-    }
-    renderCompraPaso2();
 }
 
 function poblarSelectProductosCompra() {
@@ -2704,6 +2714,10 @@ function renderCompraPaso2() {
     if ($('compra-imp-suma')) $('compra-imp-suma').innerText = money(imp);
     if ($('compra-sub-paso2')) $('compra-sub-paso2').innerText = money(sub);
     if ($('compra-factor-txt')) $('compra-factor-txt').innerText = (factor * 100).toFixed(2) + '%';
+    const fl = compraFleteMonto();
+    if ($('compra-flete-pct-txt')) $('compra-flete-pct-txt').innerText = (fl > 0 && total > 0)
+        ? `Equivale a ${(fl / total * 100).toFixed(2)}% del total de la factura (${money(total)}). Se reparte entre los productos según su valor.`
+        : 'Sin flete. Escribe el costo del flete si la factura lo trae.';
 
     const cont = $('lista-compra-costos-reales');
     if (!cont) return;
@@ -2713,7 +2727,7 @@ function renderCompraPaso2() {
             <p class="font-bold text-gray-800">${c.nombre}</p>
             <div class="flex justify-between text-gray-500 mt-1"><span>Factura</span><span>${money(c.costoUnitario)}</span></div>
             <div class="flex justify-between text-gray-500"><span>+ Impuestos</span><span>${money(c.imp)}</span></div>
-            <div class="flex justify-between text-gray-500"><span>+ Flete ${(compraFletePct * 100).toFixed(0)}%</span><span>${money(c.flete)}</span></div>
+            <div class="flex justify-between text-gray-500"><span>+ Flete ${(compraFletePctActual() * 100).toFixed(1)}%</span><span>${money(c.flete)}</span></div>
             <div class="flex justify-between font-bold border-t mt-1 pt-1"><span>Costo real</span><span class="text-purple-600">${money(c.costoReal)}</span></div>
             <div class="flex justify-between text-emerald-600"><span>Sugerido +${Math.round(compraMargenPct * 100)}%</span><span class="font-bold">${money(c.sugerido)}</span></div>
         </div>`;
@@ -2852,15 +2866,10 @@ function guardarFacturaCompraFinal() {
         const prod = productos.find(x => String(x.id) === String(item.id));
         if (!prod) return;
         const stockAnterior = Number(prod.stock) || 0;
-        const costoAnterior = Number(prod.costo) || 0;
         const stockNuevo = Math.max(0, Number(item.cant) || 0);
         const costoNuevo = Number(item.costoReal) || Number(item.costoUnitario) || 0;
-        const stockTotalFuturo = stockAnterior + stockNuevo;
-        if (stockTotalFuturo > 0) {
-            prod.costo = ((stockAnterior * costoAnterior) + (stockNuevo * costoNuevo)) / stockTotalFuturo;
-        } else {
-            prod.costo = costoNuevo;
-        }
+        // El costo siempre es el de la factura más reciente (ya no se promedia con el anterior)
+        if (costoNuevo > 0) prod.costo = costoNuevo;
         prod.stock = stockAnterior + stockNuevo;
         if (item.precioVentaFinal != null && !isNaN(item.precioVentaFinal)) {
             prod.precio = item.precioVentaFinal;
@@ -2886,7 +2895,8 @@ function guardarFacturaCompraFinal() {
         ieps,
         iva,
         factorImpuestos: factor,
-        fletePct: compraFletePct,
+        fletePct: compraFletePctActual(),
+        fleteMonto: compraFleteMonto(),
         itemsCompra: facturaCompraItems.map(i => ({ ...i }))
     });
 
@@ -3448,119 +3458,186 @@ async function sincronizarFotosCatalogo(manual) {
     }
 }
 
-// -------------------- CATÁLOGO PARA CLIENTES (solo lectura, sin costos ni stock) --------------------
-let catalogoClientes = [];
-let catalogoCats = ['Todas'];
-let catalogoFiltroCat = 0;
-let catalogoCargando = false;
-
-function srcImagenSegura(v) {
-    const t = String(v || '');
-    if (!/^(data:image\/|https?:\/\/)/i.test(t)) return '';
-    return t.replace(/"/g, '%22').replace(/'/g, '%27').replace(/\s/g, '');
-}
-
-async function abrirCatalogoClientes() {
-    $('catalogo-clientes').style.display = 'flex';
-    $('catalogo-busqueda').value = '';
-    catalogoFiltroCat = 0;
-    if (catalogoClientes.length) renderCatalogoClientes();
-    else await cargarCatalogoClientes();
-}
-
-function cerrarCatalogoClientes() {
-    cerrarProductoCatalogo();
-    $('catalogo-clientes').style.display = 'none';
-}
-
-async function cargarCatalogoClientes() {
-    if (catalogoCargando) return;
-    catalogoCargando = true;
-    catalogoClientes = [];
-    renderCatalogoClientes();
-    $('catalogo-estado').innerText = 'Cargando catálogo…';
-    const base = `https://firestore.googleapis.com/v1/projects/${CATALOGO_PROJECT_ID}/databases/(default)/documents/productos`;
-    const key = CATALOGO_API_KEY ? `&key=${encodeURIComponent(CATALOGO_API_KEY)}` : '';
+// -------------------- CATEGORÍAS DE PRODUCTOS --------------------
+function cargarCategoriasProd() {
     try {
-        let token = '';
-        do {
-            const r = await fetch(`${base}?pageSize=40${key}${token ? '&pageToken=' + encodeURIComponent(token) : ''}`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const j = await r.json();
-            (j.documents || []).forEach(d => {
-                const o = {};
-                Object.keys(d.fields || {}).forEach(k => { o[k] = valorFirestore(d.fields[k]); });
-                if (o.name) catalogoClientes.push(o); // salta el documento de configuración
-            });
-            catalogoClientes.sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
-            renderCatalogoClientes();
-            $('catalogo-estado').innerText = `Cargando… ${catalogoClientes.length} productos`;
-            token = j.nextPageToken || '';
-        } while (token);
-        $('catalogo-estado').innerText = catalogoClientes.length ? '' : 'El catálogo está vacío.';
-    } catch (e) {
-        console.error(e);
-        $('catalogo-estado').innerText = `No se pudo cargar el catálogo (${e.message}). Revisa tu internet y toca Actualizar.`;
-    } finally {
-        catalogoCargando = false;
+        const l = JSON.parse(localStorage.getItem('digar_categorias'));
+        return Array.isArray(l) ? l.filter(x => typeof x === 'string' && x.trim()) : [];
+    } catch (e) { return []; }
+}
+function guardarCategoriasProd() {
+    try { localStorage.setItem('digar_categorias', JSON.stringify(categoriasProd)); } catch (e) {}
+}
+// Lista del usuario + cualquier categoría que ya traigan los productos (por ejemplo al restaurar un respaldo)
+function todasLasCategorias() {
+    const extra = [...new Set(productos.map(p => p.categoria).filter(Boolean))]
+        .filter(c => !categoriasProd.some(x => x.trim().toLowerCase() === String(c).trim().toLowerCase()))
+        .sort((a, b) => a.localeCompare(b, 'es'));
+    return [...categoriasProd, ...extra];
+}
+function crearCategoria(nombre) {
+    const n = String(nombre || '').trim().replace(/\s+/g, ' ');
+    if (!n) return '';
+    const existente = todasLasCategorias().find(c => c.toLowerCase() === n.toLowerCase());
+    if (existente) {
+        if (!categoriasProd.includes(existente)) { categoriasProd.push(existente); guardarCategoriasProd(); }
+        return existente;
     }
+    categoriasProd.push(n);
+    guardarCategoriasProd();
+    return n;
 }
 
-function filtrarCatalogoCat(i) {
-    catalogoFiltroCat = i;
-    renderCatalogoClientes();
+function filtroCategoriaVenta(p) {
+    if (categoriaVentaActiva === 'General') return true;
+    if (categoriaVentaActiva === '__sin__') return !p.categoria;
+    return p.categoria === categoriaVentaActiva;
 }
 
-function renderCatalogoClientes() {
-    const q = ($('catalogo-busqueda').value || '').trim().toLowerCase();
-    catalogoCats = ['Todas', ...new Set(catalogoClientes.map(p => p.category).filter(Boolean))];
-    if (catalogoFiltroCat >= catalogoCats.length) catalogoFiltroCat = 0;
-    $('catalogo-chips').innerHTML = catalogoCats.map((c, i) => {
-        const act = i === catalogoFiltroCat;
-        return `<button onclick="filtrarCatalogoCat(${i})" style="flex:none;white-space:nowrap;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid ${act ? '#2563eb' : '#e5e7eb'};background:${act ? '#2563eb' : '#fff'};color:${act ? '#fff' : '#4b5563'};">${escHtml(c)}</button>`;
-    }).join('');
-    const cat = catalogoCats[catalogoFiltroCat];
-    let html = '';
-    catalogoClientes.forEach((p, i) => {
-        if (cat !== 'Todas' && p.category !== cat) return;
-        if (q && !(String(p.name).toLowerCase().includes(q) || String(p.code || '').toLowerCase().includes(q))) return;
-        const img = srcImagenSegura(p.image);
-        const precio = numeroDePrecio(p.price);
-        html += `<button onclick="verProductoCatalogo(${i})" style="position:relative;text-align:left;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;padding:0;display:block;">
-            <div style="position:relative;width:100%;height:0;padding-bottom:100%;background:#f3f4f6;overflow:hidden;">
-                ${img ? `<img src="${img}" loading="lazy" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;">` : '<span style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px;">🍬</span>'}
-            </div>
-            <div style="padding:8px 10px 10px;">
-                <div style="font-size:12px;font-weight:700;color:#111827;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:30px;">${escHtml(p.name)}</div>
-                <div style="font-size:15px;font-weight:800;color:#2563eb;margin-top:2px;">${precio == null ? '' : money(precio)}</div>
-            </div>
-            ${p.outOfStock ? '<div style="position:absolute;top:8px;left:8px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;">Agotado</div>' : ''}
-        </button>`;
+function renderChipsCategoriasVenta() {
+    const cont = $('chips-categorias-venta');
+    if (!cont) return;
+    const cats = todasLasCategorias();
+    if (categoriaVentaActiva !== 'General' && categoriaVentaActiva !== '__sin__' && !cats.includes(categoriaVentaActiva)) categoriaVentaActiva = 'General';
+    const haySin = cats.length > 0 && productos.some(p => !p.categoria);
+    chipsActuales = ['General', ...cats, ...(haySin ? ['__sin__'] : [])];
+    const firma = chipsActuales.join('|') + '#' + categoriaVentaActiva;
+    if (firma === chipsFirma) return; // nada cambió: no se redibuja (así no se pierde el desplazamiento)
+    chipsFirma = firma;
+    cont.innerHTML = chipsActuales.map((c, i) => {
+        const act = c === categoriaVentaActiva;
+        const txt = c === '__sin__' ? 'Sin categoría' : c;
+        return `<button type="button" onclick="seleccionarCategoriaVenta(${i})" style="flex:none;white-space:nowrap;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;border:1px solid ${act ? '#2563eb' : '#e5e7eb'};background:${act ? '#2563eb' : '#fff'};color:${act ? '#fff' : '#4b5563'};">${escHtml(txt)}</button>`;
+    }).join('') + `<button type="button" onclick="abrirGestorCategorias()" style="flex:none;white-space:nowrap;font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;border:1px dashed #93c5fd;background:#eff6ff;color:#2563eb;">⚙️ Categorías</button>`;
+}
+
+function seleccionarCategoriaVenta(i) {
+    categoriaVentaActiva = chipsActuales[i] || 'General';
+    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+}
+
+function refrescarCategoriasUI() {
+    chipsFirma = '';
+    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+    if (!$('modal-categorias').classList.contains('hidden')) renderGestorCategorias();
+}
+
+function abrirGestorCategorias() {
+    $('cat-nueva-input').value = '';
+    renderGestorCategorias();
+    $('modal-categorias').classList.remove('hidden');
+}
+
+function renderGestorCategorias() {
+    const cats = todasLasCategorias();
+    $('cats-lista').innerHTML = cats.length ? cats.map((c, i) => {
+        const n = productos.filter(p => p.categoria === c).length;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f3f4f6;">
+            <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">${escHtml(c)}</div><div style="font-size:11px;color:#9ca3af;">${n} producto${n === 1 ? '' : 's'}</div></div>
+            <button type="button" onclick="abrirAsignarCategoria(${i})" style="font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:7px 10px;">Productos</button>
+            <button type="button" onclick="renombrarCategoria(${i})" style="font-size:14px;padding:6px 8px;">✎</button>
+            <button type="button" onclick="eliminarCategoria(${i})" style="font-size:14px;padding:6px 8px;">🗑</button>
+        </div>`;
+    }).join('') : '<p style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 0;">Aún no tienes categorías. Crea la primera arriba.</p>';
+}
+
+function agregarCategoriaDesdeGestor() {
+    const nombre = crearCategoria($('cat-nueva-input').value);
+    if (!nombre) return;
+    $('cat-nueva-input').value = '';
+    refrescarCategoriasUI();
+}
+
+function renombrarCategoria(i) {
+    const cats = todasLasCategorias();
+    const viejo = cats[i];
+    if (viejo == null) return;
+    const nuevo = (prompt('Nuevo nombre de la categoría:', viejo) || '').trim().replace(/\s+/g, ' ');
+    if (!nuevo || nuevo === viejo) return;
+    if (cats.some(c => c !== viejo && c.toLowerCase() === nuevo.toLowerCase())) return alert('Ya existe una categoría con ese nombre.');
+    categoriasProd = cats.map(c => c === viejo ? nuevo : c);
+    productos.forEach(p => { if (p.categoria === viejo) p.categoria = nuevo; });
+    if (categoriaVentaActiva === viejo) categoriaVentaActiva = nuevo;
+    guardarCategoriasProd();
+    guardarTodo();
+    refrescarCategoriasUI();
+}
+
+function eliminarCategoria(i) {
+    const cats = todasLasCategorias();
+    const c = cats[i];
+    if (c == null) return;
+    const n = productos.filter(p => p.categoria === c).length;
+    if (!confirm(`¿Eliminar la categoría "${c}"?\n${n} producto(s) quedarán sin categoría (no se borran).`)) return;
+    categoriasProd = cats.filter(x => x !== c);
+    productos.forEach(p => { if (p.categoria === c) p.categoria = ''; });
+    if (categoriaVentaActiva === c) categoriaVentaActiva = 'General';
+    guardarCategoriasProd();
+    guardarTodo();
+    refrescarCategoriasUI();
+}
+
+function abrirAsignarCategoria(i) {
+    const c = todasLasCategorias()[i];
+    if (c == null) return;
+    catAsignando = c;
+    asignarSeleccion = new Set(productos.filter(p => p.categoria === c).map(p => String(p.id)));
+    $('asignar-cat-lista').innerHTML = '';
+    $('asignar-cat-titulo').innerText = `Productos en "${c}"`;
+    $('asignar-cat-buscar').value = '';
+    renderAsignarCategoria();
+    $('modal-asignar-cat').classList.remove('hidden');
+}
+
+// Guarda lo marcado en pantalla dentro de la selección (así no se pierde al buscar)
+function sincronizarSeleccionAsignar() {
+    document.querySelectorAll('#asignar-cat-lista input[type=checkbox]').forEach(el => {
+        if (el.checked) asignarSeleccion.add(String(el.dataset.id)); else asignarSeleccion.delete(String(el.dataset.id));
     });
-    if (!html && !catalogoCargando && catalogoClientes.length) html = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:30px 0;">Sin resultados</div>';
-    $('catalogo-grid').innerHTML = html;
 }
 
-function verProductoCatalogo(i) {
-    const p = catalogoClientes[i];
-    if (!p) return;
-    const img = srcImagenSegura(p.image);
-    const precio = numeroDePrecio(p.price);
-    const fila = (t, v) => v ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;"><span style="color:#6b7280;">${t}</span><span style="font-weight:700;color:#111827;text-align:right;">${escHtml(String(v))}</span></div>` : '';
-    $('catalogo-detalle-cuerpo').innerHTML = `
-        <div style="width:100%;background:#f3f4f6;border-radius:18px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:200px;">
-            ${img ? `<img src="${img}" alt="" style="width:100%;max-height:58vh;object-fit:contain;">` : '<span style="font-size:80px;padding:50px 0;">🍬</span>'}
-        </div>
-        <div style="font-size:21px;font-weight:800;color:#111827;margin-top:14px;line-height:1.2;">${escHtml(p.name)}</div>
-        <div style="font-size:26px;font-weight:900;color:#2563eb;margin:4px 0 6px;">${precio == null ? '' : money(precio)}${p.outOfStock ? ' <span style="font-size:12px;background:#dc2626;color:#fff;padding:3px 10px;border-radius:999px;vertical-align:middle;">Agotado</span>' : ''}</div>
-        ${fila('Código', p.code)}
-        ${fila('Piezas', p.pieces)}
-        ${fila('Categoría', p.category)}`;
-    $('catalogo-detalle').style.display = 'flex';
+function renderAsignarCategoria() {
+    sincronizarSeleccionAsignar();
+    const q = ($('asignar-cat-buscar').value || '').trim().toLowerCase();
+    const lista = productos.filter(p => !q || p.nombre.toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q));
+    $('asignar-cat-lista').innerHTML = lista.map(p => {
+        const otra = p.categoria && p.categoria !== catAsignando ? `<span style="font-size:10px;color:#9ca3af;"> · ${escHtml(p.categoria)}</span>` : '';
+        return `<label style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">
+            <input type="checkbox" data-id="${p.id}" ${asignarSeleccion.has(String(p.id)) ? 'checked' : ''} style="width:20px;height:20px;flex:none;">
+            <span style="flex:1;min-width:0;"><b>${escHtml(p.nombre)}</b>${otra}</span>
+        </label>`;
+    }).join('') || '<p style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 0;">Sin resultados</p>';
+}
+let asignarSeleccion = new Set();
+
+function guardarAsignacionCategoria() {
+    sincronizarSeleccionAsignar();
+    productos.forEach(p => {
+        if (asignarSeleccion.has(String(p.id))) p.categoria = catAsignando;
+        else if (p.categoria === catAsignando) p.categoria = '';
+    });
+    asignarSeleccion = new Set();
+    guardarTodo();
+    cerrarModal('modal-asignar-cat');
+    refrescarCategoriasUI();
+    renderInventario();
 }
 
-function cerrarProductoCatalogo() {
-    $('catalogo-detalle').style.display = 'none';
+// Selector de categoría dentro del formulario de producto
+function poblarSelectCategoriaProducto(valor) {
+    const sel = $('form-prod-categoria');
+    if (!sel) return;
+    const cats = todasLasCategorias();
+    sel.innerHTML = `<option value="">Sin categoría</option>` +
+        cats.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('') +
+        `<option value="__nueva__">+ Nueva categoría…</option>`;
+    sel.value = cats.includes(valor) ? valor : '';
+}
+function alCambiarCategoriaProducto() {
+    const sel = $('form-prod-categoria');
+    if (!sel || sel.value !== '__nueva__') return;
+    const n = crearCategoria(prompt('Nombre de la nueva categoría:') || '');
+    poblarSelectCategoriaProducto(n);
 }
 
 // -------------------- PRECIOS DEL POS AL CATÁLOGO --------------------
@@ -4566,7 +4643,7 @@ async function guardarArchivoRespaldo(data) {
 }
 
 async function procesarExportarDatos() {
-    const data = JSON.stringify({ productos, clientes, transacciones, configTicket }, null, 2);
+    const data = JSON.stringify({ productos, clientes, transacciones, configTicket, categorias: todasLasCategorias() }, null, 2);
     const ok = await guardarArchivoRespaldo(data);
     if (!ok) return;
     localStorage.setItem('yimi_ultimo_respaldo', new Date().toISOString());
@@ -4603,6 +4680,7 @@ function aplicarRespaldo(json) {
         if (data.clientes) clientes = data.clientes;
         if (data.transacciones) transacciones = data.transacciones;
         if (data.configTicket) configTicket = data.configTicket;
+        if (Array.isArray(data.categorias)) { categoriasProd = data.categorias; guardarCategoriasProd(); chipsFirma = ''; }
         ordenarProductosAlfabetico();
         clienteSeleccionado = clientes[0] || clienteSeleccionado;
         guardarTodo();

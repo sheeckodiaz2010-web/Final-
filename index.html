@@ -366,10 +366,6 @@
                     <span class="flex items-center gap-2">🖨️ Impresora Bluetooth (58/80mm)</span>
                     <span class="text-gray-400 text-xs font-bold text-blue-600" id="estado-impresora-txt">Conectar &gt;</span>
                 </button>
-                <button onclick="abrirCatalogoClientes()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
-                    <span class="flex items-center gap-2">📖 Catálogo para clientes</span>
-                    <span class="text-gray-400">&gt;</span>
-                </button>
                 <button onclick="abrirEnvioPreciosCatalogo()" class="w-full text-left p-4 flex justify-between items-center hover:bg-gray-50">
                     <span class="flex items-center gap-2">🏷️ Enviar precios al catálogo</span>
                     <span class="text-gray-400">&gt;</span>
@@ -719,27 +715,6 @@
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
         </div>
-    </div>
-
-    <!-- Catálogo para mostrar a clientes -->
-    <div id="catalogo-clientes" style="display:none;position:fixed;inset:0;z-index:50;flex-direction:column;background:#f9fafb;max-width:28rem;margin:0 auto;">
-        <div style="background:#fff;border-bottom:1px solid #e5e7eb;padding:max(12px, env(safe-area-inset-top)) 14px 10px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                <button onclick="cerrarCatalogoClientes()" style="font-size:26px;font-weight:700;line-height:1;padding:0 6px 4px 0;color:#111827;">←</button>
-                <div style="flex:1;font-weight:800;font-size:18px;color:#111827;">Catálogo</div>
-                <button onclick="cargarCatalogoClientes()" style="font-size:12px;font-weight:700;color:#2563eb;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px;padding:6px 10px;">↻ Actualizar</button>
-            </div>
-            <input id="catalogo-busqueda" type="search" placeholder="Buscar producto o código" oninput="renderCatalogoClientes()" style="width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;background:#f9fafb;">
-            <div id="catalogo-chips" style="display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;"></div>
-        </div>
-        <div id="catalogo-estado" style="font-size:12px;color:#6b7280;padding:8px 14px 0;"></div>
-        <div id="catalogo-grid" style="flex:1;overflow-y:auto;padding:10px 14px 24px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start;"></div>
-    </div>
-    <div id="catalogo-detalle" style="display:none;position:fixed;inset:0;z-index:60;flex-direction:column;background:#fff;max-width:28rem;margin:0 auto;">
-        <div style="padding:max(12px, env(safe-area-inset-top)) 14px 8px;">
-            <button onclick="cerrarProductoCatalogo()" style="font-size:28px;font-weight:700;line-height:1;color:#111827;">←</button>
-        </div>
-        <div id="catalogo-detalle-cuerpo" style="flex:1;overflow-y:auto;padding:0 18px 28px;"></div>
     </div>
 
     <!-- Modal enviar precios del POS al catálogo -->
@@ -1660,43 +1635,23 @@ function alternarModoVista() {
 }
 
 function bindProductoToque(el, prodId) {
-    // Toque rapido = agrega 1. Mantener presionado (0.45 s) = elegir cantidad.
-    // Solo se cancela si el dedo se mueve mas de 10 px (eso si es scroll); un temblor pequeno no cancela.
-    let timer = null, x0 = 0, y0 = 0, activo = false, largo = false;
-    const punto = (e) => {
-        const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
-        return { x: t.clientX, y: t.clientY };
-    };
-    const parar = () => { clearTimeout(timer); timer = null; };
-    const start = (e) => {
-        const p = punto(e);
-        x0 = p.x; y0 = p.y; activo = true; largo = false;
-        parar();
+    let timer = null;
+    const start = () => {
         timer = setTimeout(() => {
-            timer = null;
-            largo = true;
             abrirModalCantidad(prodId);
         }, 450);
     };
-    const move = (e) => {
-        if (!activo) return;
-        const p = punto(e);
-        if (Math.abs(p.x - x0) > 10 || Math.abs(p.y - y0) > 10) { activo = false; parar(); }
-    };
     const end = (e) => {
-        parar();
+        clearTimeout(timer);
+        // Un toque simple ya no hace nada: solo sostener el dedo abre la cantidad.
         if (e.cancelable) e.preventDefault();
-        if (activo && !largo) agregarAlCarrito(prodId, 1);
-        activo = false;
     };
-    const cancel = () => { activo = false; parar(); };
+    const cancel = () => { clearTimeout(timer); };
     el.addEventListener('touchstart', start, { passive: true });
     el.addEventListener('touchend', end);
-    el.addEventListener('touchmove', move, { passive: true });
-    el.addEventListener('touchcancel', cancel, { passive: true });
+    el.addEventListener('touchmove', cancel, { passive: true });
     el.addEventListener('mousedown', start);
     el.addEventListener('mouseup', end);
-    el.addEventListener('mousemove', move);
     el.addEventListener('mouseleave', cancel);
     el.addEventListener('contextmenu', e => e.preventDefault());
 }
@@ -2121,12 +2076,12 @@ async function ejecutarCobroFinal() {
     cerrarModal('modal-pago');
     $('modal-exito').classList.remove('hidden');
 
-    // La venta se cierra primero; el ticket se imprime despues y, si falla, solo avisa (nunca congela la pantalla)
+    if (bluetoothCharacteristic) {
+        await enviarImpresionTicketESC_POS(nuevaVenta);
+    }
+
     carrito = [];
     renderVenta();
-    if (bluetoothDevice) {
-        enviarImpresionTicketESC_POS(nuevaVenta, { silencioso: true }).catch(e => console.error(e));
-    }
 }
 
 function cerrarExitoNuevaVenta() {
@@ -3231,121 +3186,6 @@ function guardarEdicionVenta() {
     abrirDetalleVenta(id);
 }
 
-// -------------------- CATÁLOGO PARA CLIENTES (solo lectura, sin costos ni stock) --------------------
-let catalogoClientes = [];
-let catalogoCats = ['Todas'];
-let catalogoFiltroCat = 0;
-let catalogoCargando = false;
-
-function srcImagenSegura(v) {
-    const t = String(v || '');
-    if (!/^(data:image\/|https?:\/\/)/i.test(t)) return '';
-    return t.replace(/"/g, '%22').replace(/'/g, '%27').replace(/\s/g, '');
-}
-
-async function abrirCatalogoClientes() {
-    $('catalogo-clientes').style.display = 'flex';
-    $('catalogo-busqueda').value = '';
-    catalogoFiltroCat = 0;
-    if (catalogoClientes.length) renderCatalogoClientes();
-    else await cargarCatalogoClientes();
-}
-
-function cerrarCatalogoClientes() {
-    cerrarProductoCatalogo();
-    $('catalogo-clientes').style.display = 'none';
-}
-
-async function cargarCatalogoClientes() {
-    if (catalogoCargando) return;
-    catalogoCargando = true;
-    catalogoClientes = [];
-    renderCatalogoClientes();
-    $('catalogo-estado').innerText = 'Cargando catálogo…';
-    const base = `https://firestore.googleapis.com/v1/projects/${CATALOGO_PROJECT_ID}/databases/(default)/documents/productos`;
-    const key = CATALOGO_API_KEY ? `&key=${encodeURIComponent(CATALOGO_API_KEY)}` : '';
-    try {
-        let token = '';
-        do {
-            const r = await fetch(`${base}?pageSize=40${key}${token ? '&pageToken=' + encodeURIComponent(token) : ''}`);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const j = await r.json();
-            (j.documents || []).forEach(d => {
-                const o = {};
-                Object.keys(d.fields || {}).forEach(k => { o[k] = valorFirestore(d.fields[k]); });
-                if (o.name) catalogoClientes.push(o); // salta el documento de configuración
-            });
-            catalogoClientes.sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
-            renderCatalogoClientes();
-            $('catalogo-estado').innerText = `Cargando… ${catalogoClientes.length} productos`;
-            token = j.nextPageToken || '';
-        } while (token);
-        $('catalogo-estado').innerText = catalogoClientes.length ? '' : 'El catálogo está vacío.';
-    } catch (e) {
-        console.error(e);
-        $('catalogo-estado').innerText = `No se pudo cargar el catálogo (${e.message}). Revisa tu internet y toca Actualizar.`;
-    } finally {
-        catalogoCargando = false;
-    }
-}
-
-function filtrarCatalogoCat(i) {
-    catalogoFiltroCat = i;
-    renderCatalogoClientes();
-}
-
-function renderCatalogoClientes() {
-    const q = ($('catalogo-busqueda').value || '').trim().toLowerCase();
-    catalogoCats = ['Todas', ...new Set(catalogoClientes.map(p => p.category).filter(Boolean))];
-    if (catalogoFiltroCat >= catalogoCats.length) catalogoFiltroCat = 0;
-    $('catalogo-chips').innerHTML = catalogoCats.map((c, i) => {
-        const act = i === catalogoFiltroCat;
-        return `<button onclick="filtrarCatalogoCat(${i})" style="flex:none;white-space:nowrap;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid ${act ? '#2563eb' : '#e5e7eb'};background:${act ? '#2563eb' : '#fff'};color:${act ? '#fff' : '#4b5563'};">${escHtml(c)}</button>`;
-    }).join('');
-    const cat = catalogoCats[catalogoFiltroCat];
-    let html = '';
-    catalogoClientes.forEach((p, i) => {
-        if (cat !== 'Todas' && p.category !== cat) return;
-        if (q && !(String(p.name).toLowerCase().includes(q) || String(p.code || '').toLowerCase().includes(q))) return;
-        const img = srcImagenSegura(p.image);
-        const precio = numeroDePrecio(p.price);
-        html += `<button onclick="verProductoCatalogo(${i})" style="position:relative;text-align:left;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;padding:0;display:block;">
-            <div style="width:100%;aspect-ratio:1/1;background:#f3f4f6;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                ${img ? `<img src="${img}" loading="lazy" alt="" style="width:100%;height:100%;object-fit:cover;">` : '<span style="font-size:34px;">🍬</span>'}
-            </div>
-            <div style="padding:8px 10px 10px;">
-                <div style="font-size:12px;font-weight:700;color:#111827;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:30px;">${escHtml(p.name)}</div>
-                <div style="font-size:15px;font-weight:800;color:#2563eb;margin-top:2px;">${precio == null ? '' : money(precio)}</div>
-            </div>
-            ${p.outOfStock ? '<div style="position:absolute;top:8px;left:8px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;">Agotado</div>' : ''}
-        </button>`;
-    });
-    if (!html && !catalogoCargando && catalogoClientes.length) html = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:30px 0;">Sin resultados</div>';
-    $('catalogo-grid').innerHTML = html;
-}
-
-function verProductoCatalogo(i) {
-    const p = catalogoClientes[i];
-    if (!p) return;
-    const img = srcImagenSegura(p.image);
-    const precio = numeroDePrecio(p.price);
-    const fila = (t, v) => v ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:14px;"><span style="color:#6b7280;">${t}</span><span style="font-weight:700;color:#111827;text-align:right;">${escHtml(String(v))}</span></div>` : '';
-    $('catalogo-detalle-cuerpo').innerHTML = `
-        <div style="width:100%;background:#f3f4f6;border-radius:18px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:200px;">
-            ${img ? `<img src="${img}" alt="" style="width:100%;max-height:58vh;object-fit:contain;">` : '<span style="font-size:80px;padding:50px 0;">🍬</span>'}
-        </div>
-        <div style="font-size:21px;font-weight:800;color:#111827;margin-top:14px;line-height:1.2;">${escHtml(p.name)}</div>
-        <div style="font-size:26px;font-weight:900;color:#2563eb;margin:4px 0 6px;">${precio == null ? '' : money(precio)}${p.outOfStock ? ' <span style="font-size:12px;background:#dc2626;color:#fff;padding:3px 10px;border-radius:999px;vertical-align:middle;">Agotado</span>' : ''}</div>
-        ${fila('Código', p.code)}
-        ${fila('Piezas', p.pieces)}
-        ${fila('Categoría', p.category)}`;
-    $('catalogo-detalle').style.display = 'flex';
-}
-
-function cerrarProductoCatalogo() {
-    $('catalogo-detalle').style.display = 'none';
-}
-
 // -------------------- PRECIOS DEL POS AL CATÁLOGO --------------------
 // El POS manda: sus precios son los buenos. Se compara por código (SKU) con el catálogo público
 // y, con tu confirmación, se corrige SOLO el campo de precio de los productos que ya existen allí.
@@ -3452,9 +3292,9 @@ async function abrirEnvioPreciosCatalogo() {
         $('precios-cat-lista').innerHTML = r.cambios.map((c, i) => {
             const bajo = c.costo > 0 && c.nuevo <= c.costo;
             return `<label class="flex items-center gap-3 py-2 border-b text-xs">
-                <input type="checkbox" data-i="${i}" checked style="width:20px;height:20px;flex:none;">
-                <span class="flex-1" style="min-width:0;">
-                    <span class="block font-bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(c.nombre)}</span>
+                <input type="checkbox" data-i="${i}" checked class="w-5 h-5">
+                <span class="flex-1 min-w-0">
+                    <span class="block font-bold truncate">${escHtml(c.nombre)}</span>
                     <span class="block text-gray-500">${escHtml(c.sku)}${bajo ? ' · <span class="text-red-600 font-bold">⚠ precio POS bajo tu costo</span>' : ''}</span>
                 </span>
                 <span class="text-right whitespace-nowrap"><span class="text-gray-400 line-through">${c.anterior == null ? 'sin precio' : money(c.anterior)}</span><br><span class="font-bold text-blue-600">${money(c.nuevo)}</span></span>
@@ -3591,12 +3431,11 @@ function reconectarImpresora(intentos = 3) {
     reconexionEnCurso = (async () => {
         for (let i = 0; i < intentos; i++) {
             try {
-                await conTiempoLimite(conectarCaracteristicaImpresora(bluetoothDevice), 8000, 'tiempo_conexion');
+                await conectarCaracteristicaImpresora(bluetoothDevice);
                 actualizarEstadoImpresora(true);
                 return true;
             } catch (e) {
                 console.warn('Reintento de conexion', i + 1, e);
-                try { bluetoothDevice.gatt.disconnect(); } catch (x) {}
                 await esperar(600 * (i + 1));
             }
         }
@@ -3608,7 +3447,7 @@ function reconectarImpresora(intentos = 3) {
 
 async function asegurarImpresora() {
     if (bluetoothDevice && bluetoothDevice.gatt && bluetoothDevice.gatt.connected && bluetoothCharacteristic) return true;
-    if (bluetoothDevice) return await reconectarImpresora(2);
+    if (bluetoothDevice) return await reconectarImpresora(3);
     return false;
 }
 
@@ -3692,44 +3531,17 @@ function fechaCompactaImpresion(timestampMs) {
 const TAMANO_PAQUETE_IMPRESORA = 20; // bytes por paquete
 const PAUSA_ENTRE_PAQUETES_MS = 20;
 
-// Si un paso del Bluetooth se queda colgado, se corta a los N ms en vez de congelar la pantalla
-function conTiempoLimite(promesa, ms, mensaje) {
-    let t;
-    const limite = new Promise((_, rej) => { t = setTimeout(() => rej(new Error(mensaje || 'tiempo_agotado')), ms); });
-    return Promise.race([promesa, limite]).finally(() => clearTimeout(t));
-}
-
 function esperar(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-let colaImpresion = Promise.resolve();
-
-function avisoImpresion(msg, silencioso) {
-    if (!silencioso) { alert(msg); return; }
-    // Modo silencioso (al cobrar): avisa en la pantalla de venta exitosa sin bloquear nada
-    const el = $('exito-alerta');
-    if (!el) return;
-    el.innerText = (el.innerText ? el.innerText + '\n' : '') + msg;
-    el.style.whiteSpace = 'pre-line';
-    el.classList.remove('hidden');
-}
-
-// Las impresiones se hacen una por una para que no se mezclen los datos de dos tickets
-function enviarComandosImpresora(cmds, opciones) {
-    const p = colaImpresion.then(() => enviarComandosImpresoraDirecto(cmds, opciones || {}));
-    colaImpresion = p.catch(() => {});
-    return p;
-}
-
-async function enviarComandosImpresoraDirecto(cmds, opciones) {
-    const silencioso = !!opciones.silencioso;
+async function enviarComandosImpresora(cmds) {
     // Si la conexion se cayo, intenta reconectar sola antes de pedir vincular de nuevo
     if (!(await asegurarImpresora())) {
-        avisoImpresion(bluetoothDevice
-            ? 'No se pudo imprimir: revisa que la impresora esté encendida y cerca. Puedes reimprimir el ticket después.'
-            : 'Primero conecta tu impresora térmica en Más > Impresora Bluetooth', silencioso);
-        if (!silencioso) abrirConfigurarImpresora();
+        alert(bluetoothDevice
+            ? 'No se pudo reconectar con la impresora. Revisa que esté encendida y cerca; si sigue igual, vincúlala de nuevo.'
+            : 'Primero conecta tu impresora térmica en el menú \"Más\" > \"Impresora Bluetooth\"');
+        abrirConfigurarImpresora();
         return false;
     }
     let paquetesEnviados = 0;
@@ -3737,7 +3549,7 @@ async function enviarComandosImpresoraDirecto(cmds, opciones) {
         for (const cmd of cmds) {
             for (let i = 0; i < cmd.length; i += TAMANO_PAQUETE_IMPRESORA) {
                 const paquete = cmd.slice(i, i + TAMANO_PAQUETE_IMPRESORA);
-                await conTiempoLimite(bluetoothCharacteristic.writeValue(paquete), 5000, 'tiempo_escritura');
+                await bluetoothCharacteristic.writeValue(paquete);
                 paquetesEnviados++;
                 await esperar(PAUSA_ENTRE_PAQUETES_MS);
             }
@@ -3749,13 +3561,12 @@ async function enviarComandosImpresoraDirecto(cmds, opciones) {
     } catch (e) {
         console.error(e);
         bluetoothCharacteristic = null;
-        try { bluetoothDevice.gatt.disconnect(); } catch (x) {}
         // Si fallo antes de imprimir nada, reconecta y reintenta una vez (evita tickets duplicados a medias)
         if (paquetesEnviados === 0 && await reconectarImpresora(2)) {
             try { await enviar(); return true; } catch (e2) { console.error(e2); }
         }
         actualizarEstadoImpresora(false);
-        avisoImpresion('Se perdió la conexión con la impresora. Revisa que esté encendida y vuelve a intentar.', silencioso);
+        alert('Se perdió la conexión con la impresora. Revisa que esté encendida y vuelve a intentar.');
         return false;
     }
 }
@@ -3764,7 +3575,7 @@ async function enviarComandosImpresoraDirecto(cmds, opciones) {
 const padRight = (s, len) => { s = String(s); return s.length >= len ? s.slice(0, len) : s + ' '.repeat(len - s.length); };
 const padLeft = (s, len) => { s = String(s); return s.length >= len ? s.slice(-len) : ' '.repeat(len - s.length) + s; };
 
-async function enviarImpresionTicketESC_POS(t, opciones) {
+async function enviarImpresionTicketESC_POS(t) {
     const encoder = new TextEncoder();
     const enc = (s) => encoder.encode(limpiarTxt(s));
     const cmds = [
@@ -3864,7 +3675,7 @@ async function enviarImpresionTicketESC_POS(t, opciones) {
     cmds.push(enc(`${configTicket.pie}\n`));
     cmds.push(enc(`\n\n\n`));
 
-    await enviarComandosImpresora(cmds, opciones);
+    await enviarComandosImpresora(cmds);
 }
 
 function obtenerIngresosFiltradosPreliq() {

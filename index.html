@@ -1822,6 +1822,7 @@ function aplicarModoVistaGuardado() {
     if (modoVistaCatalogo) sincronizarFotosCatalogo(false);
 }
 
+let ultimoToqueTs = 0; // cuándo fue el último toque de dedo (para ignorar el "mouse fantasma" que el navegador inventa después)
 function bindProductoToque(el, prodId) {
     // Toque rapido = agrega 1. Mantener presionado (0.45 s) = elegir cantidad.
     // Solo se cancela si el dedo se mueve mas de 10 px (eso si es scroll); un temblor pequeno no cancela.
@@ -1849,17 +1850,22 @@ function bindProductoToque(el, prodId) {
     const end = (e) => {
         parar();
         if (e.cancelable) e.preventDefault();
-        if (activo && !largo) agregarAlCarrito(prodId, 1);
+        if (activo && !largo) {
+            diag('agrega', `producto ${prodId} (${e.type})`);
+            agregarAlCarrito(prodId, 1);
+        }
         activo = false;
     };
     const cancel = () => { activo = false; parar(); };
-    el.addEventListener('touchstart', start, { passive: true });
-    el.addEventListener('touchend', end);
+    // Después de un toque de dedo, Android a veces inventa también eventos de mouse: se ignoran para no agregar 2 veces
+    const mouseValido = () => Date.now() - ultimoToqueTs > 1000;
+    el.addEventListener('touchstart', e => { ultimoToqueTs = Date.now(); start(e); }, { passive: true });
+    el.addEventListener('touchend', e => { ultimoToqueTs = Date.now(); end(e); });
     el.addEventListener('touchmove', move, { passive: true });
     el.addEventListener('touchcancel', cancel, { passive: true });
-    el.addEventListener('mousedown', start);
-    el.addEventListener('mouseup', end);
-    el.addEventListener('mousemove', move);
+    el.addEventListener('mousedown', e => { if (mouseValido()) start(e); });
+    el.addEventListener('mouseup', e => { if (mouseValido()) end(e); });
+    el.addEventListener('mousemove', e => { if (mouseValido()) move(e); });
     el.addEventListener('mouseleave', cancel);
     el.addEventListener('contextmenu', e => e.preventDefault());
 }

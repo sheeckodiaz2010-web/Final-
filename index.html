@@ -1307,13 +1307,43 @@ function descripcionElemento(el) {
 try { bitacoraDiag = JSON.parse(localStorage.getItem('digar_diag')) || []; bitacoraDiag.push('--- app abierta ---'); } catch (e) { bitacoraDiag = []; }
 window.addEventListener('error', e => diag('ERROR', `${e.message} (línea ${e.lineno})`));
 window.addEventListener('unhandledrejection', e => diag('PROMESA', String((e.reason && e.reason.message) || e.reason).slice(0, 120)));
-document.addEventListener('visibilitychange', () => diag('visibilidad', document.visibilityState));
+document.addEventListener('visibilitychange', () => { diag('visibilidad', document.visibilityState); if (document.visibilityState === 'visible') desenfocarCampos(); });
+// Quita el foco de cualquier campo de texto (evita que el teclado/campo quede "pegado" y se coma los toques)
+function desenfocarCampos() {
+    try {
+        const a = document.activeElement;
+        if (a && a !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur();
+    } catch (e) {}
+}
+var toqueActual = null;
 document.addEventListener('touchstart', e => {
     const t = e.touches && e.touches[0];
     if (!t) return;
-    diag('toque', `${t.clientX | 0},${t.clientY | 0} → ${descripcionElemento(document.elementFromPoint(t.clientX, t.clientY))}`);
+    const objetivo = document.elementFromPoint(t.clientX, t.clientY);
+    const foco = document.activeElement;
+    const campoEnfocado = foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName);
+    diag('toque', `${t.clientX | 0},${t.clientY | 0} → ${descripcionElemento(objetivo)}${campoEnfocado ? ' [foco en ' + descripcionElemento(foco) + ']' : ''}`);
+    // Tocar fuera de un campo de texto lo suelta
+    if (campoEnfocado && objetivo && !objetivo.closest('input,textarea,select,label')) desenfocarCampos();
+    // Vigila que un toque sobre algo "tocable" termine en click; si no, lo anota
+    const tocable = objetivo && objetivo.closest('button,a,[onclick],input,select,label');
+    if (tocable && !objetivo.closest('#grid-venta')) {
+        const mio = { x: t.clientX, y: t.clientY, movido: false, terminado: false, cancelado: false, desc: descripcionElemento(objetivo) };
+        toqueActual = mio;
+        setTimeout(() => {
+            if (toqueActual === mio && !mio.movido) {
+                diag('SIN-CLICK', `${mio.desc} (${mio.cancelado ? 'toque cancelado' : mio.terminado ? 'terminó sin click' : 'sigue presionado'}) foco: ${descripcionElemento(document.activeElement)} · documento con foco: ${document.hasFocus()}`);
+            }
+        }, 700);
+    }
 }, { capture: true, passive: true });
-document.addEventListener('click', e => diag('click', descripcionElemento(e.target)), true);
+document.addEventListener('touchmove', e => {
+    const t = e.touches && e.touches[0];
+    if (toqueActual && t && (Math.abs(t.clientX - toqueActual.x) > 10 || Math.abs(t.clientY - toqueActual.y) > 10)) toqueActual.movido = true;
+}, { capture: true, passive: true });
+document.addEventListener('touchend', () => { if (toqueActual) toqueActual.terminado = true; }, { capture: true, passive: true });
+document.addEventListener('touchcancel', () => { diag('TOUCHCANCEL'); if (toqueActual) toqueActual.cancelado = true; }, { capture: true, passive: true });
+document.addEventListener('click', e => { toqueActual = null; diag('click', descripcionElemento(e.target)); }, true);
 (function () {
     let marcas = [];
     window.addEventListener('resize', () => {
@@ -1441,6 +1471,7 @@ const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
 
 // -------------------- UI GENÉRICA --------------------
 function cerrarModal(id) {
+    desenfocarCampos();
     const el = $(id);
     if (el) el.classList.add('hidden');
 }
@@ -1728,6 +1759,7 @@ function seleccionarClienteVenta(id) {
 
 // -------------------- NAVEGACIÓN --------------------
 function cambiarVista(v) {
+    desenfocarCampos();
     if (v === 'inicio') v = 'clientes';
     const vistas = ['clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas'];
     vistas.forEach(vista => {

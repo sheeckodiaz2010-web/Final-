@@ -1307,7 +1307,7 @@ function descripcionElemento(el) {
 try { bitacoraDiag = JSON.parse(localStorage.getItem('digar_diag')) || []; bitacoraDiag.push('--- app abierta ---'); } catch (e) { bitacoraDiag = []; }
 window.addEventListener('error', e => diag('ERROR', `${e.message} (línea ${e.lineno})`));
 window.addEventListener('unhandledrejection', e => diag('PROMESA', String((e.reason && e.reason.message) || e.reason).slice(0, 120)));
-document.addEventListener('visibilitychange', () => { diag('visibilidad', document.visibilityState); if (document.visibilityState === 'visible') desenfocarCampos(); });
+document.addEventListener('visibilitychange', () => { diag('visibilidad', document.visibilityState); if (document.visibilityState === 'visible') { desenfocarCampos(); if (typeof actualizarAvisoPendiente === 'function') actualizarAvisoPendiente(); } });
 // Quita el foco de cualquier campo de texto (evita que el teclado/campo quede "pegado" y se coma los toques)
 function desenfocarCampos() {
     try {
@@ -1381,6 +1381,7 @@ let chipsActuales = [];
 let catAsignando = '';
 let categoriaTransaccionSeleccionada = 'Compra';
 let bluetoothDevice = null;
+let bluetoothCharSinRespuesta = false;
 let bluetoothCharacteristic = null;
 
 // -------------------- PERSISTENCIA --------------------
@@ -1822,6 +1823,44 @@ function aplicarModoVistaGuardado() {
     if (modoVistaCatalogo) sincronizarFotosCatalogo(false);
 }
 
+let productoSeleccionadoId = null; // producto marcado en la venta; solo se agrega al tocar su botón "Agregar"
+
+function seleccionarProducto(id) {
+    productoSeleccionadoId = (productoSeleccionadoId === id) ? null : id; // tocar de nuevo el mismo lo suelta
+    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+}
+
+// Botón verde "Agregar" que aparece solo en el producto seleccionado
+function crearBotonAgregar(p, enCarrito, forma) {
+    const agotado = p.stock <= 0;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = agotado ? 'Agotado' : `＋ Agregar${enCarrito ? ' (' + enCarrito.cant + ')' : ''}`;
+    b.disabled = agotado;
+    const base = `background:${agotado ? '#9ca3af' : '#16a34a'};color:#fff;font-weight:900;font-size:13px;border:0;`;
+    b.style.cssText = base + (forma === 'barra' ? 'display:block;width:100%;padding:10px 6px;'
+        : forma === 'pildora' ? 'padding:9px 14px;border-radius:999px;white-space:nowrap;'
+        : 'display:block;width:100%;padding:9px 6px;border-radius:10px;margin-top:6px;');
+    // Los toques sobre el botón no deben llegar al cuadrito (si no, lo soltaría o lo contaría dos veces)
+    ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove'].forEach(t => b.addEventListener(t, e => e.stopPropagation(), { passive: true }));
+    b.addEventListener('click', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (agotado) return;
+        diag('agrega', `producto ${p.id} (botón)`);
+        agregarAlCarrito(p.id, 1);
+    });
+    return b;
+}
+
+// Tocar fuera de la lista de productos suelta la selección
+document.addEventListener('touchstart', e => {
+    if (productoSeleccionadoId != null && e.target && e.target.closest && !e.target.closest('#grid-venta')) {
+        productoSeleccionadoId = null;
+        renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+    }
+}, { capture: true, passive: true });
+
 let ultimoToqueTs = 0; // cuándo fue el último toque de dedo (para ignorar el "mouse fantasma" que el navegador inventa después)
 function bindProductoToque(el, prodId) {
     // Toque rapido = agrega 1. Mantener presionado (0.45 s) = elegir cantidad.
@@ -1851,8 +1890,8 @@ function bindProductoToque(el, prodId) {
         parar();
         if (e.cancelable) e.preventDefault();
         if (activo && !largo) {
-            diag('agrega', `producto ${prodId} (${e.type})`);
-            agregarAlCarrito(prodId, 1);
+            diag('selecciona', `producto ${prodId} (${e.type})`);
+            seleccionarProducto(prodId);
         }
         activo = false;
     };
@@ -1909,6 +1948,10 @@ function renderVenta(filtro = '') {
                 </div>
                 <div class="text-center text-sm font-black py-1.5 text-white" style="background:rgba(0,0,0,.25)">${money(p.precio)}</div>
             `;
+            if (productoSeleccionadoId === p.id) {
+                div.style.boxShadow = '0 0 0 3px #16a34a';
+                div.replaceChild(crearBotonAgregar(p, carrito.find(x => x.id === p.id), 'barra'), div.lastElementChild);
+            }
             bindProductoToque(div, p.id);
             frag.appendChild(div);
         });
@@ -1957,6 +2000,10 @@ function renderVenta(filtro = '') {
             info.innerHTML = `<div style="font-size:12px;font-weight:700;color:#111827;line-height:1.25;min-height:30px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${escHtml(p.nombre)}</div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2px;"><span style="font-size:15px;font-weight:800;color:#2563eb;">${money(p.precio)}</span><span style="font-size:10px;color:#6b7280;">Stock ${p.stock}</span></div>`;
             div.appendChild(info);
+            if (productoSeleccionadoId === p.id) {
+                div.style.boxShadow = '0 0 0 3px #16a34a';
+                info.appendChild(crearBotonAgregar(p, enCarrito, 'caja'));
+            }
             if (enCarrito) {
                 const b = document.createElement('div');
                 b.style.cssText = 'position:absolute;top:8px;right:8px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:#2563eb;color:#fff;font-weight:800;font-size:12px;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.3);';
@@ -1986,6 +2033,10 @@ function renderVenta(filtro = '') {
                 </div>
                 <span class="text-xs font-bold text-gray-700">Stock (${p.stock})</span>
             `;
+            if (productoSeleccionadoId === p.id) {
+                div.style.boxShadow = '0 0 0 3px #16a34a';
+                div.replaceChild(crearBotonAgregar(p, carrito.find(x => x.id === p.id), 'pildora'), div.lastElementChild);
+            }
             bindProductoToque(div, p.id);
             frag.appendChild(div);
         });
@@ -4018,6 +4069,7 @@ async function conectarCaracteristicaImpresora(device) {
         if (encontrada) break;
     }
     if (!encontrada) throw new Error('sin_caracteristica_escritura');
+    bluetoothCharSinRespuesta = !encontrada.properties.write; // sin confirmación: sí hace falta pausar entre paquetes
     bluetoothCharacteristic = encontrada;
     return encontrada;
 }
@@ -4154,8 +4206,11 @@ function esperar(ms) {
 }
 
 let colaImpresion = Promise.resolve();
+let impresionPendiente = null; // { paquetes, desde }: lo que faltó por imprimir si se cortó a la mitad
 
 function avisoImpresion(msg, silencioso) {
+    // Con la pantalla bloqueada un alert se queda esperando: mejor solo dejar el aviso en la bitácora
+    if (document.visibilityState !== 'visible') { diag('aviso sin mostrar (pantalla bloqueada)', msg); return; }
     if (!silencioso) { alert(msg); return; }
     // Modo silencioso (al cobrar): avisa en la pantalla de venta exitosa sin bloquear nada
     const el = $('exito-alerta');
@@ -4165,48 +4220,102 @@ function avisoImpresion(msg, silencioso) {
     el.classList.remove('hidden');
 }
 
+// Evita que la pantalla se apague sola mientras se imprime
+async function tomarPantallaActiva() {
+    try {
+        if (navigator.wakeLock && navigator.wakeLock.request) {
+            const lock = await navigator.wakeLock.request('screen');
+            return () => { try { lock.release(); } catch (e) {} };
+        }
+    } catch (e) { diag('pantalla activa no disponible', e.message); }
+    return () => {};
+}
+
+function aPaquetes(cmds) {
+    const out = [];
+    for (const cmd of cmds) {
+        for (let i = 0; i < cmd.length; i += TAMANO_PAQUETE_IMPRESORA) out.push(cmd.slice(i, i + TAMANO_PAQUETE_IMPRESORA));
+    }
+    return out;
+}
+
+function actualizarAvisoPendiente() {
+    let el = document.getElementById('aviso-impresion-pendiente');
+    if (!impresionPendiente) { if (el) el.style.display = 'none'; return; }
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'aviso-impresion-pendiente';
+        el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:90;max-width:28rem;margin:0 auto;background:#b45309;color:#fff;padding:max(10px, env(safe-area-inset-top)) 12px 10px;align-items:center;gap:8px;font-size:12px;font-weight:700;';
+        el.innerHTML = '<span style="flex:1;">⚠️ Impresión interrumpida</span>' +
+            '<button type="button" id="btn-continuar-impresion" style="background:#fff;color:#b45309;font-weight:900;font-size:12px;padding:7px 12px;border-radius:10px;border:0;">Continuar</button>' +
+            '<button type="button" id="btn-descartar-impresion" style="background:transparent;color:#fff;font-weight:700;font-size:12px;padding:7px 8px;border:1px solid #fff9;border-radius:10px;">Descartar</button>';
+        document.body.appendChild(el);
+        el.querySelector('#btn-continuar-impresion').onclick = continuarImpresionPendiente;
+        el.querySelector('#btn-descartar-impresion').onclick = () => { impresionPendiente = null; actualizarAvisoPendiente(); };
+    }
+    el.style.display = 'flex';
+}
+
+function continuarImpresionPendiente() {
+    const p = impresionPendiente;
+    if (!p) return;
+    impresionPendiente = null;
+    actualizarAvisoPendiente();
+    return encolarImpresion(() => enviarPaquetesImpresora(p.paquetes, p.desde, {}));
+}
+
 // Las impresiones se hacen una por una para que no se mezclen los datos de dos tickets
-function enviarComandosImpresora(cmds, opciones) {
-    const p = colaImpresion.then(() => enviarComandosImpresoraDirecto(cmds, opciones || {}));
+function encolarImpresion(fn) {
+    const p = colaImpresion.then(fn);
     colaImpresion = p.catch(() => {});
     return p;
 }
 
-async function enviarComandosImpresoraDirecto(cmds, opciones) {
+function enviarComandosImpresora(cmds, opciones) {
+    return encolarImpresion(() => enviarPaquetesImpresora(aPaquetes(cmds), 0, opciones || {}));
+}
+
+async function enviarPaquetesImpresora(paquetes, desde, opciones) {
     const silencioso = !!opciones.silencioso;
     // Si la conexion se cayo, intenta reconectar sola antes de pedir vincular de nuevo
     if (!(await asegurarImpresora())) {
         avisoImpresion(bluetoothDevice
             ? 'No se pudo imprimir: revisa que la impresora esté encendida y cerca. Puedes reimprimir el ticket después.'
             : 'Primero conecta tu impresora térmica en Más > Impresora Bluetooth', silencioso);
-        if (!silencioso) abrirConfigurarImpresora();
+        if (!silencioso && document.visibilityState === 'visible') abrirConfigurarImpresora();
         return false;
     }
-    let paquetesEnviados = 0;
+    let enviados = desde;
+    const liberarPantalla = await tomarPantallaActiva();
+    diag('impresión inicia', `${paquetes.length - desde} paquetes`);
     const enviar = async () => {
-        for (const cmd of cmds) {
-            for (let i = 0; i < cmd.length; i += TAMANO_PAQUETE_IMPRESORA) {
-                const paquete = cmd.slice(i, i + TAMANO_PAQUETE_IMPRESORA);
-                await conTiempoLimite(bluetoothCharacteristic.writeValue(paquete), 5000, 'tiempo_escritura');
-                paquetesEnviados++;
-                await esperar(PAUSA_ENTRE_PAQUETES_MS);
-            }
+        for (let i = enviados; i < paquetes.length; i++) {
+            await conTiempoLimite(bluetoothCharacteristic.writeValue(paquetes[i]), 5000, 'tiempo_escritura');
+            enviados = i + 1;
+            // Con la pantalla bloqueada los temporizadores se frenan a 1 por segundo y la impresión se arrastra:
+            // si el envío trae confirmación de la impresora, no hace falta la pausa
+            if (document.visibilityState === 'visible' || bluetoothCharSinRespuesta) await esperar(PAUSA_ENTRE_PAQUETES_MS);
         }
     };
     try {
         await enviar();
+        diag('impresión termina');
         return true;
     } catch (e) {
         console.error(e);
+        diag('impresión interrumpida', `${enviados} de ${paquetes.length} paquetes · ${e.message}`);
         bluetoothCharacteristic = null;
         try { bluetoothDevice.gatt.disconnect(); } catch (x) {}
-        // Si fallo antes de imprimir nada, reconecta y reintenta una vez (evita tickets duplicados a medias)
-        if (paquetesEnviados === 0 && await reconectarImpresora(2)) {
-            try { await enviar(); return true; } catch (e2) { console.error(e2); }
+        // Reconecta y sigue justo donde se quedó (sin repetir lo que ya se imprimió)
+        if (await reconectarImpresora(2)) {
+            try { await enviar(); diag('impresión termina tras reconectar'); return true; } catch (e2) { console.error(e2); }
         }
+        if (enviados > desde) { impresionPendiente = { paquetes, desde: enviados }; actualizarAvisoPendiente(); }
         actualizarEstadoImpresora(false);
-        avisoImpresion('Se perdió la conexión con la impresora. Revisa que esté encendida y vuelve a intentar.', silencioso);
+        avisoImpresion('Se perdió la conexión con la impresora. Revisa que esté encendida; si el ticket quedó a medias, toca "Continuar".', silencioso);
         return false;
+    } finally {
+        liberarPantalla();
     }
 }
 

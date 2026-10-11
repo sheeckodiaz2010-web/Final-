@@ -257,10 +257,13 @@
             </div></div>
 
             <div class="fixed bottom-16 left-0 right-0 max-w-md mx-auto px-4 z-10">
-                <button onclick="abrirCarrito()" class="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-full shadow-lg text-sm transition active:scale-95 flex justify-between items-center px-6">
-                    <span>Ver carrito</span>
-                    <span id="badge-carrito" class="bg-blue-600 text-xs px-2.5 py-1 rounded-full font-bold">0 pzs · $0.00</span>
-                </button>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button type="button" onclick="abrirCalculadora()" aria-label="Calculadora" style="flex:none;width:50px;height:50px;border-radius:999px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 4px 10px rgba(0,0,0,.18);font-size:24px;line-height:1;">🧮</button>
+                    <button onclick="abrirCarrito()" style="flex:1;min-width:0;" class="bg-gray-900 text-white font-semibold py-3.5 rounded-full shadow-lg text-sm transition active:scale-95 flex justify-between items-center px-6">
+                        <span>Ver carrito</span>
+                        <span id="badge-carrito" class="bg-blue-600 text-xs px-2.5 py-1 rounded-full font-bold">0 pzs · $0.00</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -721,6 +724,21 @@
                 <button onclick="cerrarSesion()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🚪 Cerrar Sesión</button>
                 <button onclick="borrarTodo()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl text-xs border border-red-200">🗑️ Borrar Todo el Sistema</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Calculadora -->
+    <div id="modal-calculadora" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto" onclick="if (event.target === this) cerrarModal('modal-calculadora')">
+        <div class="bg-white rounded-t-3xl p-4" style="padding-bottom:max(16px, env(safe-area-inset-bottom));">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <h3 class="font-bold text-base">🧮 Calculadora</h3>
+                <button onclick="cerrarModal('modal-calculadora')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <div style="background:#f3f4f6;border-radius:16px;padding:10px 14px;text-align:right;min-height:84px;">
+                <div id="calc-expr" style="font-size:15px;color:#6b7280;min-height:20px;word-break:break-all;"></div>
+                <div id="calc-res" style="font-size:34px;font-weight:800;color:#111827;line-height:1.2;word-break:break-all;">0</div>
+            </div>
+            <div id="calc-teclas" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;"></div>
         </div>
     </div>
 
@@ -3663,6 +3681,119 @@ function borrarDiagnostico() {
     abrirDiagnostico();
 }
 
+// -------------------- CALCULADORA --------------------
+let calcExpr = '';
+let calcRecienIgual = false;
+const CALC_OPS = /[+\-×÷]/;
+
+// Evalúa la cuenta respetando × ÷ antes que + − (sin usar eval)
+function calcEvaluar(expr) {
+    const m = String(expr).match(/(\d+\.?\d*|\.\d+)|[+\-×÷]/g);
+    if (!m) return null;
+    const tokens = [];
+    for (let i = 0; i < m.length; i++) {
+        const t = m[i];
+        if (t === '-' && (i === 0 || CALC_OPS.test(m[i - 1]))) { // signo negativo al inicio o después de un operador
+            const sig = m[i + 1];
+            if (sig === undefined || CALC_OPS.test(sig)) return null;
+            tokens.push(String(-parseFloat(sig)));
+            i++;
+        } else tokens.push(t);
+    }
+    while (tokens.length && /^[+\-×÷]$/.test(tokens[tokens.length - 1])) tokens.pop(); // operador sobrante al final
+    if (!tokens.length) return null;
+    const paso = [tokens[0]];
+    for (let i = 1; i < tokens.length; i += 2) {
+        const op = tokens[i], n = tokens[i + 1];
+        if (n === undefined) return null;
+        if (op === '×' || op === '÷') {
+            const a = parseFloat(paso.pop()), b = parseFloat(n);
+            if (op === '÷' && b === 0) return 'div0';
+            paso.push(String(op === '×' ? a * b : a / b));
+        } else paso.push(op, n);
+    }
+    let r = parseFloat(paso[0]);
+    for (let i = 1; i < paso.length; i += 2) {
+        const b = parseFloat(paso[i + 1]);
+        r = paso[i] === '+' ? r + b : r - b;
+    }
+    return Math.round(r * 1e8) / 1e8;
+}
+
+function calcFormato(n) {
+    return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 4 });
+}
+
+function calcRender() {
+    $('calc-expr').textContent = calcExpr;
+    const r = calcEvaluar(calcExpr);
+    let txt = '0';
+    if (r === 'div0') txt = 'No se puede dividir entre 0';
+    else if (r !== null) txt = calcFormato(r);
+    else if (calcExpr) txt = calcExpr;
+    const res = $('calc-res');
+    res.textContent = txt;
+    res.style.fontSize = txt.length > 14 ? '22px' : '34px';
+}
+
+function calcTecla(t) {
+    if (calcRecienIgual && !CALC_OPS.test(t)) calcExpr = ''; // después de "=", un número nuevo empieza otra cuenta
+    calcRecienIgual = false;
+    const ult = calcExpr.slice(-1);
+    if (CALC_OPS.test(t)) {
+        if (calcExpr === '') { if (t === '-') calcExpr = '-'; }
+        else if (calcExpr === '-') { /* solo hay un signo: no hacer nada */ }
+        else if (CALC_OPS.test(ult)) calcExpr = calcExpr.slice(0, -1) + t; // cambia de operador
+        else calcExpr += t;
+    } else if (t === '.') {
+        const num = calcExpr.split(CALC_OPS).pop();
+        if (!num.includes('.')) calcExpr += num === '' ? '0.' : '.';
+    } else {
+        const num = calcExpr.split(CALC_OPS).pop();
+        if (num === '0') calcExpr = calcExpr.slice(0, -1) + t; // evita ceros a la izquierda
+        else calcExpr += t;
+    }
+    calcRender();
+}
+
+function calcBorrar() { calcExpr = calcExpr.slice(0, -1); calcRecienIgual = false; calcRender(); }
+function calcLimpiar() { calcExpr = ''; calcRecienIgual = false; calcRender(); }
+
+function calcIgual() {
+    const r = calcEvaluar(calcExpr);
+    if (r === null || r === 'div0') return calcRender();
+    calcExpr = String(r);
+    calcRecienIgual = true;
+    calcRender();
+}
+
+// Mete el total del carrito a la cuenta (útil para calcular el cambio)
+function calcTotalCarrito() {
+    const t = (typeof totalCarritoActual === 'function' ? totalCarritoActual() : 0).toFixed(2);
+    calcExpr = (calcExpr && CALC_OPS.test(calcExpr.slice(-1))) ? calcExpr + t : t;
+    calcRecienIgual = false;
+    calcRender();
+}
+
+function abrirCalculadora() {
+    if (!$('calc-teclas').children.length) {
+        const teclas = [
+            ['C', 'calcLimpiar()', '#fee2e2', '#b91c1c'], ['⌫', 'calcBorrar()', '#f3f4f6', '#374151'], ['🛒', 'calcTotalCarrito()', '#eff6ff', '#2563eb'], ['÷', "calcTecla('÷')", '#dbeafe', '#1d4ed8'],
+            ['7', "calcTecla('7')"], ['8', "calcTecla('8')"], ['9', "calcTecla('9')"], ['×', "calcTecla('×')", '#dbeafe', '#1d4ed8'],
+            ['4', "calcTecla('4')"], ['5', "calcTecla('5')"], ['6', "calcTecla('6')"], ['−', "calcTecla('-')", '#dbeafe', '#1d4ed8'],
+            ['1', "calcTecla('1')"], ['2', "calcTecla('2')"], ['3', "calcTecla('3')"], ['+', "calcTecla('+')", '#dbeafe', '#1d4ed8'],
+            ['0', "calcTecla('0')", null, null, 2], ['.', "calcTecla('.')"], ['=', 'calcIgual()', '#16a34a', '#fff']
+        ];
+        $('calc-teclas').innerHTML = teclas.map(([t, fn, fondo, color, ancho]) =>
+            `<button type="button" onclick="${fn}" style="${ancho ? 'grid-column:span ' + ancho + ';' : ''}height:56px;border-radius:14px;border:0;font-size:22px;font-weight:700;background:${fondo || '#f9fafb'};color:${color || '#111827'};box-shadow:inset 0 0 0 1px #e5e7eb;">${t}</button>`
+        ).join('');
+    }
+    calcExpr = '';
+    calcRecienIgual = false;
+    calcRender();
+    $('modal-calculadora').classList.remove('hidden');
+}
+
 // -------------------- CATEGORÍAS DE PRODUCTOS --------------------
 function cargarCategoriasProd() {
     try {
@@ -4697,13 +4828,13 @@ async function procesarImprimirInventario() {
 
     cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
     cmds.push(enc(`--------------------------------\n`));
-    cmds.push(enc(`${padRight('PRODUCTO', 17)}${padLeft('STOCK', 6)}${padLeft('PRECIO', 9)}\n`));
+    cmds.push(enc(`${padRight('PRODUCTO', 17)}${padLeft('STOCK', 6)}${padLeft('COSTO', 9)}\n`));
 
     let totalItems = 0, valorInventario = 0;
     productos.forEach(p => {
         totalItems += (p.stock || 0);
-        valorInventario += (p.stock || 0) * (p.precio || 0);
-        cmds.push(enc(`${padRight(p.nombre, 17)}${padLeft(p.stock || 0, 6)}${padLeft(money(p.precio), 9)}\n`));
+        valorInventario += (p.stock || 0) * (p.costo || 0);
+        cmds.push(enc(`${padRight(p.nombre, 17)}${padLeft(p.stock || 0, 6)}${padLeft(money(p.costo || 0), 9)}\n`));
     });
 
     cmds.push(enc(`--------------------------------\n`));

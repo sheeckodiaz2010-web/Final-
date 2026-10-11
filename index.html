@@ -258,7 +258,7 @@
 
             <div class="fixed bottom-16 left-0 right-0 max-w-md mx-auto px-4 z-10">
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <button type="button" onclick="abrirCalculadora()" aria-label="Calculadora" style="flex:none;width:50px;height:50px;border-radius:999px;background:#fff;border:1px solid #e5e7eb;box-shadow:0 4px 10px rgba(0,0,0,.18);font-size:24px;line-height:1;">🧮</button>
+                    <button type="button" onclick="abrirCalculadora()" aria-label="Calculadora" class="transition active:scale-95" style="flex:none;width:54px;height:54px;border-radius:18px;border:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#60a5fa 0%,#2563eb 55%,#1e3a8a 100%);box-shadow:0 6px 14px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.35);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4.5" y="2" width="15" height="20" rx="3.2" stroke="#fff" stroke-width="1.8"/><rect x="7.5" y="5" width="9" height="4" rx="1.2" fill="#fff"/><circle cx="8.8" cy="12.6" r="1.15" fill="#fff"/><circle cx="12" cy="12.6" r="1.15" fill="#fff"/><circle cx="15.2" cy="12.6" r="1.15" fill="#fff"/><circle cx="8.8" cy="16.1" r="1.15" fill="#fff"/><circle cx="12" cy="16.1" r="1.15" fill="#fff"/><circle cx="15.2" cy="16.1" r="1.15" fill="#fff"/><circle cx="8.8" cy="19.4" r="1.15" fill="#fff"/><circle cx="12" cy="19.4" r="1.15" fill="#fff"/><circle cx="15.2" cy="19.4" r="1.15" fill="#fbbf24"/></svg></button>
                     <button onclick="abrirCarrito()" style="flex:1;min-width:0;" class="bg-gray-900 text-white font-semibold py-3.5 rounded-full shadow-lg text-sm transition active:scale-95 flex justify-between items-center px-6">
                         <span>Ver carrito</span>
                         <span id="badge-carrito" class="bg-blue-600 text-xs px-2.5 py-1 rounded-full font-bold">0 pzs · $0.00</span>
@@ -331,6 +331,10 @@
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500">Gastos / Compras</span>
                     <span class="text-red-600 font-bold" id="fin-gastos">$0.00</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">💳 Compras con tarjeta</span>
+                    <span class="font-bold" style="color:#7c3aed" id="fin-tarjeta">$0.00</span>
                 </div>
                 <div class="border-t pt-2 flex justify-between font-bold">
                     <span>Balance</span>
@@ -542,6 +546,14 @@
                     <label class="text-[10px] font-semibold text-gray-500">Proveedor (opcional)</label>
                     <input type="text" id="compra-proveedor-input" placeholder="Ej. Castillo del Dulce" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
                 </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500">Pagado con</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="compra-pago-efectivo" onclick="setCompraMetodoPago('Efectivo')" class="py-2.5 rounded-xl text-xs font-bold border">💵 Efectivo</button>
+                        <button type="button" id="compra-pago-tarjeta" onclick="setCompraMetodoPago('Tarjeta')" class="py-2.5 rounded-xl text-xs font-bold border">💳 Tarjeta de crédito</button>
+                    </div>
+                    <p id="compra-pago-nota" class="text-[10px] text-gray-400"></p>
+                </div>
                 <div class="space-y-2">
                     <label class="text-xs font-semibold text-gray-500">Agregar producto:</label>
                     <div class="flex gap-2">
@@ -731,7 +743,7 @@
     <div id="modal-calculadora" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto" onclick="if (event.target === this) cerrarModal('modal-calculadora')">
         <div class="bg-white rounded-t-3xl p-4" style="padding-bottom:max(16px, env(safe-area-inset-bottom));">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <h3 class="font-bold text-base">🧮 Calculadora</h3>
+                <h3 class="font-bold text-base" style="display:flex;align-items:center;gap:8px;"><span style="display:inline-flex;width:30px;height:30px;border-radius:10px;align-items:center;justify-content:center;background:linear-gradient(135deg,#60a5fa,#1e3a8a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4.5" y="2" width="15" height="20" rx="3.2" stroke="#fff" stroke-width="1.8"/><rect x="7.5" y="5" width="9" height="4" rx="1.2" fill="#fff"/><circle cx="8.8" cy="12.6" r="1.15" fill="#fff"/><circle cx="12" cy="12.6" r="1.15" fill="#fff"/><circle cx="15.2" cy="12.6" r="1.15" fill="#fff"/><circle cx="8.8" cy="16.1" r="1.15" fill="#fff"/><circle cx="12" cy="16.1" r="1.15" fill="#fff"/><circle cx="15.2" cy="16.1" r="1.15" fill="#fff"/><circle cx="8.8" cy="19.4" r="1.15" fill="#fff"/><circle cx="12" cy="19.4" r="1.15" fill="#fff"/><circle cx="15.2" cy="19.4" r="1.15" fill="#fbbf24"/></svg></span>Calculadora</h3>
                 <button onclick="cerrarModal('modal-calculadora')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <div style="background:#f3f4f6;border-radius:16px;padding:10px 14px;text-align:right;min-height:84px;">
@@ -2741,6 +2753,23 @@ function compraFactorImp() {
     return (compraIeps() + compraIva()) / sub;
 }
 
+// Con qué se pagó la factura: con tarjeta de crédito NO se descuenta del efectivo en caja
+let compraMetodoPago = 'Efectivo';
+function setCompraMetodoPago(m) {
+    compraMetodoPago = (m === 'Tarjeta') ? 'Tarjeta' : 'Efectivo';
+    const marcar = (el, activo) => {
+        if (!el) return;
+        el.style.background = activo ? '#7c3aed' : '#f9fafb';
+        el.style.color = activo ? '#fff' : '#4b5563';
+        el.style.borderColor = activo ? '#7c3aed' : '#e5e7eb';
+    };
+    marcar($('compra-pago-efectivo'), compraMetodoPago === 'Efectivo');
+    marcar($('compra-pago-tarjeta'), compraMetodoPago === 'Tarjeta');
+    if ($('compra-pago-nota')) $('compra-pago-nota').innerText = compraMetodoPago === 'Tarjeta'
+        ? 'Con tarjeta de crédito NO se descuenta de "En caja". El pago de la tarjeta lo registras aparte si sale de tu caja.'
+        : 'Se descuenta de "En caja".';
+}
+
 // El flete se captura en pesos; el porcentaje sale de dividirlo entre el total de la factura
 function compraFleteMonto() { return Math.max(0, parseFloat($('compra-flete-input')?.value) || 0); }
 function compraFletePctActual() {
@@ -2766,6 +2795,7 @@ function abrirModalCompra() {
     compraPaso = 1;
     if ($('compra-flete-input')) $('compra-flete-input').value = '';
     compraMargenPct = 0.30;
+    setCompraMetodoPago('Efectivo');
     compraIdxPrecio = 0;
     compraPreciosDecididos = [];
     $('compra-fecha-input').value = hoy();
@@ -3096,6 +3126,7 @@ function guardarFacturaCompraFinal() {
         factorImpuestos: factor,
         fletePct: compraFletePctActual(),
         fleteMonto: compraFleteMonto(),
+        metodoPago: compraMetodoPago,
         itemsCompra: facturaCompraItems.map(i => ({ ...i }))
     });
 
@@ -3104,7 +3135,7 @@ function guardarFacturaCompraFinal() {
     renderTransacciones();
     renderInventario();
     renderVenta();
-    alert('¡Compra guardada!\nInventario y costos actualizados.\nPrecios de venta aplicados.');
+    alert('¡Compra guardada!\nInventario y costos actualizados.\nPrecios de venta aplicados.' + (compraMetodoPago === 'Tarjeta' ? '\nPagada con tarjeta: no se descontó de "En caja".' : ''));
 }
 
 // -------------------- TRANSACCIONES --------------------
@@ -3171,7 +3202,7 @@ function renderDineroAcumulado() {
         const monto = Number(t.monto) || 0;
         if (t.tipo === 'Venta') total += monto - (Number(t.saldoPendiente) || 0);
         else if (t.tipo === 'Ingreso') total += monto;
-        else if (t.tipo === 'Gasto') total -= monto;
+        else if (t.tipo === 'Gasto' && t.metodoPago !== 'Tarjeta') total -= monto; // con tarjeta de crédito no sale de la caja
     });
     const el = $('acum-total');
     if (!el) return;
@@ -3184,17 +3215,19 @@ function renderTransacciones() {
     const lista = $('lista-transacciones');
     const desde = $('filtro-fecha-desde').value;
     const hasta = $('filtro-fecha-hasta').value;
-    let ingresos = 0, gastos = 0, count = 0;
+    let ingresos = 0, gastos = 0, tarjeta = 0, count = 0;
 
     const frag = document.createDocumentFragment();
     transacciones.forEach(t => {
         const f = t.fechaStr || hoy();
         if (desde && hasta && (f < desde || f > hasta)) return;
         count++;
+        const esTarjeta = t.tipo === 'Gasto' && t.metodoPago === 'Tarjeta';
         if (t.tipo === 'Venta' || t.tipo === 'Ingreso') ingresos += t.monto;
+        else if (esTarjeta) tarjeta += t.monto;
         else gastos += t.monto;
 
-        const color = t.tipo === 'Gasto' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600';
+        const color = esTarjeta ? 'bg-purple-50 text-purple-600' : (t.tipo === 'Gasto' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600');
         const subLabel = t.tipo === 'Venta'
             ? `${t.clienteNombre || 'General'} (${t.clienteDir || 'Mostrador'})`
             : t.descripcion;
@@ -3205,12 +3238,12 @@ function renderTransacciones() {
         div.innerHTML = `
             <div>
                 <div class="flex items-center gap-2">
-                    <span class="${color} text-[10px] px-2 py-0.5 rounded font-bold">${t.tipo}</span>
+                    <span class="${color} text-[10px] px-2 py-0.5 rounded font-bold">${t.tipo}${esTarjeta ? ' · 💳 Tarjeta' : ''}</span>
                     <span class="font-bold text-gray-800">${subLabel}</span>
                 </div>
                 <p class="text-[10px] text-gray-400 mt-1">${t.fecha} • <span class="uppercase">${t.categoria || ''}</span></p>
             </div>
-            <span class="font-bold ${t.tipo === 'Gasto' ? 'text-red-600' : 'text-emerald-600'}">${t.tipo === 'Gasto' ? '-' : '+'}${money(t.monto)}</span>
+            <span class="font-bold ${esTarjeta ? 'text-purple-600' : (t.tipo === 'Gasto' ? 'text-red-600' : 'text-emerald-600')}">${t.tipo === 'Gasto' ? '-' : '+'}${money(t.monto)}</span>
         `;
         frag.appendChild(div);
     });
@@ -3224,6 +3257,7 @@ function renderTransacciones() {
 
     $('fin-ingresos').innerText = money(ingresos);
     $('fin-gastos').innerText = money(gastos);
+    if ($('fin-tarjeta')) $('fin-tarjeta').innerText = money(tarjeta);
     $('fin-balance').innerText = money(ingresos - gastos);
 }
 
@@ -3231,7 +3265,7 @@ function abrirDetalleVenta(id) {
     const t = transacciones.find(x => x.id === id);
     if (!t) return;
     ventaSeleccionadaId = id;
-    $('det-venta-titulo').innerText = `${t.tipo} #${String(id).slice(-3)}`;
+    $('det-venta-titulo').innerText = `${t.tipo} #${String(id).slice(-3)}${t.metodoPago === 'Tarjeta' ? ' · 💳 Tarjeta' : ''}`;
     $('det-venta-cliente').innerText = t.clienteNombre || 'General';
     $('det-venta-dir').innerText = t.clienteDir || 'Mostrador';
     $('det-venta-total').innerText = money(t.monto);
@@ -3686,35 +3720,43 @@ let calcExpr = '';
 let calcRecienIgual = false;
 const CALC_OPS = /[+\-×÷]/;
 
-// Evalúa la cuenta respetando × ÷ antes que + − (sin usar eval)
+// Evalúa la cuenta respetando × ÷ antes que + − (sin usar eval).
+// Porcentaje: 200 − 10% = 180 (el % se toma de lo que llevas); 50 × 10% = 5; 10% solo = 0.1
 function calcEvaluar(expr) {
-    const m = String(expr).match(/(\d+\.?\d*|\.\d+)|[+\-×÷]/g);
+    const m = String(expr).match(/(\d+\.?\d*|\.\d+)%?|[+\-×÷]/g);
     if (!m) return null;
+    const num = (t) => ({ n: parseFloat(t), pct: t.endsWith('%') });
     const tokens = [];
     for (let i = 0; i < m.length; i++) {
         const t = m[i];
         if (t === '-' && (i === 0 || CALC_OPS.test(m[i - 1]))) { // signo negativo al inicio o después de un operador
             const sig = m[i + 1];
             if (sig === undefined || CALC_OPS.test(sig)) return null;
-            tokens.push(String(-parseFloat(sig)));
+            const o = num(sig);
+            o.n = -o.n;
+            tokens.push(o);
             i++;
-        } else tokens.push(t);
+        } else if (CALC_OPS.test(t)) tokens.push(t);
+        else tokens.push(num(t));
     }
-    while (tokens.length && /^[+\-×÷]$/.test(tokens[tokens.length - 1])) tokens.pop(); // operador sobrante al final
+    while (tokens.length && typeof tokens[tokens.length - 1] === 'string') tokens.pop(); // operador sobrante al final
     if (!tokens.length) return null;
     const paso = [tokens[0]];
     for (let i = 1; i < tokens.length; i += 2) {
         const op = tokens[i], n = tokens[i + 1];
         if (n === undefined) return null;
         if (op === '×' || op === '÷') {
-            const a = parseFloat(paso.pop()), b = parseFloat(n);
+            const izq = paso.pop();
+            const a = izq.pct ? izq.n / 100 : izq.n;
+            const b = n.pct ? n.n / 100 : n.n;
             if (op === '÷' && b === 0) return 'div0';
-            paso.push(String(op === '×' ? a * b : a / b));
+            paso.push({ n: op === '×' ? a * b : a / b, pct: false });
         } else paso.push(op, n);
     }
-    let r = parseFloat(paso[0]);
+    let r = paso[0].pct ? paso[0].n / 100 : paso[0].n;
     for (let i = 1; i < paso.length; i += 2) {
-        const b = parseFloat(paso[i + 1]);
+        const t = paso[i + 1];
+        const b = t.pct ? r * t.n / 100 : t.n;
         r = paso[i] === '+' ? r + b : r - b;
     }
     return Math.round(r * 1e8) / 1e8;
@@ -3740,7 +3782,11 @@ function calcTecla(t) {
     if (calcRecienIgual && !CALC_OPS.test(t)) calcExpr = ''; // después de "=", un número nuevo empieza otra cuenta
     calcRecienIgual = false;
     const ult = calcExpr.slice(-1);
-    if (CALC_OPS.test(t)) {
+    if (t === '%') {
+        if (/\d$/.test(calcExpr)) calcExpr += '%'; // solo después de un número
+    } else if ((t === '.' || /\d/.test(t)) && ult === '%') {
+        /* después de % no se escribe otro dígito: primero un operador */
+    } else if (CALC_OPS.test(t)) {
         if (calcExpr === '') { if (t === '-') calcExpr = '-'; }
         else if (calcExpr === '-') { /* solo hay un signo: no hacer nada */ }
         else if (CALC_OPS.test(ult)) calcExpr = calcExpr.slice(0, -1) + t; // cambia de operador
@@ -3767,18 +3813,10 @@ function calcIgual() {
     calcRender();
 }
 
-// Mete el total del carrito a la cuenta (útil para calcular el cambio)
-function calcTotalCarrito() {
-    const t = (typeof totalCarritoActual === 'function' ? totalCarritoActual() : 0).toFixed(2);
-    calcExpr = (calcExpr && CALC_OPS.test(calcExpr.slice(-1))) ? calcExpr + t : t;
-    calcRecienIgual = false;
-    calcRender();
-}
-
 function abrirCalculadora() {
     if (!$('calc-teclas').children.length) {
         const teclas = [
-            ['C', 'calcLimpiar()', '#fee2e2', '#b91c1c'], ['⌫', 'calcBorrar()', '#f3f4f6', '#374151'], ['🛒', 'calcTotalCarrito()', '#eff6ff', '#2563eb'], ['÷', "calcTecla('÷')", '#dbeafe', '#1d4ed8'],
+            ['C', 'calcLimpiar()', '#fee2e2', '#b91c1c'], ['⌫', 'calcBorrar()', '#f3f4f6', '#374151'], ['%', "calcTecla('%')", '#eff6ff', '#2563eb'], ['÷', "calcTecla('÷')", '#dbeafe', '#1d4ed8'],
             ['7', "calcTecla('7')"], ['8', "calcTecla('8')"], ['9', "calcTecla('9')"], ['×', "calcTecla('×')", '#dbeafe', '#1d4ed8'],
             ['4', "calcTecla('4')"], ['5', "calcTecla('5')"], ['6', "calcTecla('6')"], ['−', "calcTecla('-')", '#dbeafe', '#1d4ed8'],
             ['1', "calcTecla('1')"], ['2', "calcTecla('2')"], ['3', "calcTecla('3')"], ['+', "calcTecla('+')", '#dbeafe', '#1d4ed8'],

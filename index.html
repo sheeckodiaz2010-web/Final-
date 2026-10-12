@@ -113,6 +113,7 @@
             <div class="relative">
                 <input type="text" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
             </div>
+            <div id="chips-dias-clientes" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px"></div>
             <div id="lista-clientes-inicio" class="space-y-2"><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-blue-600 bg-blue-50">
             <div class="flex justify-between items-start">
                 <div>
@@ -446,6 +447,9 @@
             <button type="button" onclick="menuClienteAccion('historial')" class="w-full text-left p-3.5 rounded-xl hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
                 <span class="text-lg">📋</span> Historial
             </button>
+            <button type="button" onclick="menuClienteAccion('dias')" class="w-full text-left p-3.5 rounded-xl hover:bg-blue-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
+                <span>📅</span> Cambiar día / visitas
+            </button>
             <button type="button" onclick="menuClienteAccion('modificar')" class="w-full text-left p-3.5 rounded-xl hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
                 <span class="text-lg">✏️</span> Modificar
             </button>
@@ -475,6 +479,22 @@
         </div>
     </div>
 
+    <!-- Modal Cambiar días de cliente -->
+    <div id="modal-dias-cliente" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div>
+                    <h3 class="font-bold text-base" id="dias-cliente-nombre">Cliente</h3>
+                    <p class="text-[11px] text-gray-400">Elige uno o varios días de visita</p>
+                </div>
+                <button onclick="cerrarModal('modal-dias-cliente')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <input type="hidden" id="dias-cliente-id">
+            <div id="dias-cliente-selector" style="display:flex;gap:6px"></div>
+            <button onclick="guardarDiasCliente()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Guardar días</button>
+        </div>
+    </div>
+
     <!-- Modal Form Cliente -->
     <div id="modal-form-cliente" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
@@ -494,6 +514,10 @@
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Teléfono</label>
                 <input type="text" id="form-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Días de visita (puedes elegir más de uno)</label>
+                <div id="form-cliente-dias" style="display:flex;gap:6px"></div>
             </div>
             <button onclick="guardarClienteForm()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md mt-2">Guardar Cliente</button>
             <button id="btn-eliminar-cliente" onclick="eliminarClienteActual()" class="w-full hidden py-3.5 text-red-600 font-bold border border-red-200 bg-red-50/50 rounded-xl text-sm">Eliminar cliente</button>
@@ -1259,7 +1283,7 @@ function cargarClientes() {
         { id: 1, nombre: 'Cliente General', direccion: 'Mostrador', telefono: '' },
         { id: 2, nombre: 'Tienda Pancho', direccion: 'Av. Principal #45', telefono: '8610000000' }
     ];
-    return raw.map(c => ({ ...c, id: normalizarId(c.id) }));
+    return raw.map(c => ({ ...c, id: normalizarId(c.id), dias: Array.isArray(c.dias) ? c.dias : [] }));
 }
 
 let productos = cargarProductos();
@@ -1475,7 +1499,7 @@ function escucharCambiosNube() {
         if (!data || data._origen === instanciaId) return;
         sincronizandoDesdeNube = true;
         productos = data.productos || productos;
-        clientes = data.clientes || clientes;
+        clientes = (data.clientes || clientes).map(c => ({ ...c, dias: Array.isArray(c.dias) ? c.dias : [] }));
         transacciones = data.transacciones || transacciones;
         configTicket = data.configTicket || configTicket;
         ordenarProductosAlfabetico();
@@ -1525,24 +1549,106 @@ function actualizarContadorClientesUI() {
     renderListaClientesInicio();
 }
 
-function renderListaClientesInicio(filtro = '') {
+// ---- Días de visita (1=Lun ... 5=Vie) ----
+const DIAS_SEM = [
+    { n: 1, corto: 'Lun', largo: 'Lunes' },
+    { n: 2, corto: 'Mar', largo: 'Martes' },
+    { n: 3, corto: 'Mié', largo: 'Miércoles' },
+    { n: 4, corto: 'Jue', largo: 'Jueves' },
+    { n: 5, corto: 'Vie', largo: 'Viernes' }
+];
+function diaHoy() { const d = new Date().getDay(); return (d >= 1 && d <= 5) ? d : 'todos'; }
+let diaFiltroClientes = diaHoy();
+let ultimoDiaRevisado = new Date().toDateString();
+
+function quitarAcentos(t) { return (t || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function esClienteGeneral(c) { return (c.nombre || '').trim().toLowerCase() === 'cliente general'; }
+function textoDiasCliente(c) {
+    const d = (c.dias || []).slice().sort();
+    return d.map(n => DIAS_SEM[n - 1].corto).join(' · ');
+}
+
+// Selector de días reutilizable (botones tipo toggle)
+function renderSelectorDias(contId, seleccion) {
+    const cont = $(contId);
+    if (!cont) return;
+    cont.innerHTML = '';
+    DIAS_SEM.forEach(d => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.dia = d.n;
+        b.innerText = d.corto;
+        const pintar = () => {
+            const on = b.dataset.on === '1';
+            b.className = 'flex-1 py-2.5 rounded-xl text-xs font-bold border ' + (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 border-gray-200');
+        };
+        b.dataset.on = seleccion.includes(d.n) ? '1' : '0';
+        pintar();
+        b.addEventListener('click', () => { b.dataset.on = b.dataset.on === '1' ? '0' : '1'; pintar(); });
+        cont.appendChild(b);
+    });
+}
+function leerSelectorDias(contId) {
+    const cont = $(contId);
+    if (!cont) return [];
+    return [...cont.querySelectorAll('button')].filter(b => b.dataset.on === '1').map(b => Number(b.dataset.dia));
+}
+
+function renderChipsDiasClientes() {
+    const cont = $('chips-dias-clientes');
+    if (!cont) return;
+    const hoy = diaHoy();
+    const sinDia = clientes.filter(c => !esClienteGeneral(c) && (!c.dias || c.dias.length === 0)).length;
+    const items = DIAS_SEM.map(d => ({
+        k: d.n,
+        label: d.corto + (hoy === d.n ? ' •' : ''),
+        n: clientes.filter(c => !esClienteGeneral(c) && (c.dias || []).includes(d.n)).length
+    }));
+    items.push({ k: 'todos', label: 'Todos', n: clientes.length });
+    if (sinDia > 0) items.push({ k: 'sin', label: 'Sin día', n: sinDia });
+    cont.innerHTML = '';
+    items.forEach(it => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        const on = diaFiltroClientes === it.k;
+        b.className = 'px-3 py-1.5 rounded-full text-xs font-bold border ' + (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200');
+        b.style.flexShrink = '0';
+        b.innerText = `${it.label} (${it.n})`;
+        b.addEventListener('click', () => { diaFiltroClientes = it.k; renderListaClientesInicio(); });
+        cont.appendChild(b);
+    });
+}
+
+function renderListaClientesInicio(filtro) {
     const container = $('lista-clientes-inicio');
     if (!container) return;
-    const frag = document.createDocumentFragment();
+    if (filtro === undefined) { const inp = $('buscador-clientes'); filtro = inp ? inp.value : ''; }
+    renderChipsDiasClientes();
     if (clientes.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">No hay clientes. Toca + para agregar.</p>';
         return;
     }
-    const term = (filtro || '').toLowerCase();
-    const clientesOrdenados = [...clientes]
-        .filter(c => c.nombre.toLowerCase().includes(term))
-        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
-    if (clientesOrdenados.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">Sin resultados.</p>';
+    const term = quitarAcentos(filtro).trim();
+    let lista = [...clientes];
+    if (term) {
+        // Con búsqueda se busca en TODOS los clientes, sin importar el día
+        lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
+    } else if (diaFiltroClientes === 'sin') {
+        lista = lista.filter(c => !esClienteGeneral(c) && (!c.dias || c.dias.length === 0));
+    } else if (diaFiltroClientes !== 'todos') {
+        lista = lista.filter(c => esClienteGeneral(c) || (c.dias || []).includes(diaFiltroClientes));
+    }
+    lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    if (lista.length === 0) {
+        container.innerHTML = term
+            ? '<p class="text-center text-gray-400 text-sm py-8">Sin resultados.</p>'
+            : '<p class="text-center text-gray-400 text-sm py-8">No hay clientes para este día.</p>';
         return;
     }
-    clientesOrdenados.forEach(c => {
+    const frag = document.createDocumentFragment();
+    lista.forEach(c => {
         const activo = normalizarId(clienteSeleccionado.id) === normalizarId(c.id);
+        const diasTxt = textoDiasCliente(c);
         const div = document.createElement('div');
         div.className = `bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition ${activo ? 'border-blue-600 bg-blue-50' : 'border-gray-100'}`;
         div.innerHTML = `
@@ -1551,18 +1657,48 @@ function renderListaClientesInicio(filtro = '') {
                     <p class="font-bold text-sm text-gray-900">${c.nombre}</p>
                     <p class="text-xs text-blue-600 mt-0.5">📍 ${c.direccion || 'Sin dirección'}</p>
                     <p class="text-[11px] text-gray-400 mt-0.5">📞 ${c.telefono || 'Sin teléfono'}</p>
+                    ${diasTxt ? `<p class="text-[11px] text-gray-500 mt-0.5">📅 ${diasTxt}</p>` : ''}
                 </div>
                 ${activo ? '<span class="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Activo</span>' : '<span class="text-gray-300 text-lg">›</span>'}
             </div>
         `;
-        div.addEventListener('click', function () {
-            abrirMenuCliente(c.id);
-        });
+        div.addEventListener('click', function () { abrirMenuCliente(c.id); });
         frag.appendChild(div);
     });
     container.innerHTML = '';
     container.appendChild(frag);
 }
+
+function abrirModalDiasCliente(id) {
+    const idNum = normalizarId(id);
+    const c = clientes.find(x => normalizarId(x.id) === idNum);
+    if (!c) return;
+    $('dias-cliente-id').value = c.id;
+    $('dias-cliente-nombre').innerText = '📅 ' + c.nombre;
+    renderSelectorDias('dias-cliente-selector', c.dias || []);
+    $('modal-dias-cliente').classList.remove('hidden');
+}
+function guardarDiasCliente() {
+    const idNum = normalizarId($('dias-cliente-id').value);
+    const c = clientes.find(x => normalizarId(x.id) === idNum);
+    if (!c) return;
+    c.dias = leerSelectorDias('dias-cliente-selector');
+    guardarTodo();
+    cerrarModal('modal-dias-cliente');
+    renderClientesAdmin();
+    renderListaClientesInicio();
+}
+
+// Si la app queda abierta y cambia el día, vuelve a mostrar los clientes de hoy
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    const hoyStr = new Date().toDateString();
+    if (hoyStr !== ultimoDiaRevisado) {
+        ultimoDiaRevisado = hoyStr;
+        diaFiltroClientes = diaHoy();
+        renderListaClientesInicio();
+    }
+});
 
 function abrirMenuCliente(id) {
     const idNum = normalizarId(id);
@@ -1584,6 +1720,8 @@ function menuClienteAccion(accion) {
         cambiarVista('venta');
     } else if (accion === 'historial') {
         abrirHistorialCliente(id);
+    } else if (accion === 'dias') {
+        abrirModalDiasCliente(id);
     } else if (accion === 'modificar') {
         editarCliente(id);
     } else if (accion === 'eliminar') {
@@ -1675,6 +1813,7 @@ function renderClientesAdmin() {
                 <span class="font-bold block text-gray-800">${c.nombre}</span>
                 <span class="text-xs text-blue-600 block">📍 ${c.direccion || 'Sin dirección'}</span>
                 <span class="text-[11px] text-gray-400">📞 ${c.telefono || 'Sin teléfono'}</span>
+                ${textoDiasCliente(c) ? `<span class="text-[11px] text-gray-500 block">📅 ${textoDiasCliente(c)}</span>` : ''}
             </div>
             <button type="button" class="text-blue-600 font-bold text-xs bg-white border px-3 py-1.5 rounded-lg shadow-sm">Editar</button>
         `;
@@ -1692,6 +1831,7 @@ function abrirModalFormCliente() {
     $('form-cliente-nombre').value = '';
     $('form-cliente-dir').value = '';
     $('form-cliente-tel').value = '';
+    renderSelectorDias('form-cliente-dias', (typeof diaHoy() === 'number') ? [diaHoy()] : []);
     $('titulo-form-cliente').innerText = 'Nueva Tienda / Cliente';
     $('btn-eliminar-cliente').classList.add('hidden');
     $('modal-form-cliente').classList.remove('hidden');
@@ -1705,6 +1845,7 @@ function editarCliente(id) {
     $('form-cliente-nombre').value = c.nombre;
     $('form-cliente-dir').value = c.direccion || '';
     $('form-cliente-tel').value = c.telefono || '';
+    renderSelectorDias('form-cliente-dias', c.dias || []);
     $('titulo-form-cliente').innerText = 'Editar Tienda / Cliente';
     $('btn-eliminar-cliente').classList.remove('hidden');
     $('modal-form-cliente').classList.remove('hidden');
@@ -1715,12 +1856,13 @@ function guardarClienteForm() {
     const nombre = $('form-cliente-nombre').value.trim();
     const dir = $('form-cliente-dir').value.trim();
     const tel = $('form-cliente-tel').value.trim();
+    const dias = leerSelectorDias('form-cliente-dias');
     if (!nombre) return alert('Escribe el nombre de la tienda o cliente');
 
     if (id) {
         const idNum = normalizarId(id);
         const c = clientes.find(x => normalizarId(x.id) === idNum);
-        if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; }
+        if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; c.dias = dias; }
         // Si el cliente editado es el seleccionado, actualizar nombre en UI
         if (normalizarId(clienteSeleccionado.id) === idNum) {
             clienteSeleccionado = c;
@@ -1729,7 +1871,7 @@ function guardarClienteForm() {
             if (btnPago) btnPago.innerText = c.nombre;
         }
     } else {
-        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel });
+        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias });
     }
     guardarTodo();
     cerrarModal('modal-form-cliente');

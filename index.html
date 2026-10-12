@@ -789,6 +789,10 @@
                 <div class="font-bold text-sm">🏷️ Enviar precios al catálogo</div>
                 <div style="font-size:11px;color:#6b7280;margin-top:2px;">Corrige en el catálogo los precios que difieren de los del POS.</div>
             </button>
+            <button onclick="irACatalogo('nuevos')" class="w-full text-left p-4 rounded-2xl border border-gray-200 bg-gray-50 active:scale-95 transition">
+                <div class="font-bold text-sm">➕ Enviar productos nuevos al catálogo</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">Manda al catálogo solo los productos de tu POS cuyo código aún no existe allá. La foto se la pones en el catálogo.</div>
+            </button>
             <button onclick="irACatalogo('fotos')" class="w-full text-left p-4 rounded-2xl border border-gray-200 bg-gray-50 active:scale-95 transition">
                 <div class="font-bold text-sm">🖼️ Actualizar fotos del catálogo</div>
                 <div style="font-size:11px;color:#6b7280;margin-top:2px;">Descarga las fotos nuevas para la vista Catálogo de la venta.</div>
@@ -854,6 +858,24 @@
                 <input type="password" id="precios-cat-pass" placeholder="Contraseña" autocomplete="current-password" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <button id="btn-aplicar-precios-cat" onclick="enviarPreciosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Actualizar catálogo con estos precios</button>
+        </div>
+    </div>
+
+    <!-- Modal enviar productos nuevos del POS al catálogo -->
+    <div id="modal-nuevos-catalogo" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">➕ Productos nuevos al catálogo</h3>
+                <button onclick="cerrarModal('modal-nuevos-catalogo')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <p id="nuevos-cat-resumen" class="text-xs text-gray-500">Consultando catálogo…</p>
+            <div id="nuevos-cat-lista" class="overflow-y-auto flex-1 min-h-0"></div>
+            <div id="nuevos-cat-login" class="hidden space-y-2 border-t pt-3">
+                <p class="text-[11px] text-gray-400">Entra con tu cuenta de administrador del catálogo. La contraseña no se guarda.</p>
+                <input type="email" id="nuevos-cat-email" placeholder="Correo del administrador" autocomplete="username" class="w-full p-3 border rounded-xl text-sm">
+                <input type="password" id="nuevos-cat-pass" placeholder="Contraseña" autocomplete="current-password" class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <button id="btn-enviar-nuevos-cat" onclick="enviarNuevosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Enviar al catálogo</button>
         </div>
     </div>
 
@@ -3258,7 +3280,8 @@ function guardarFacturaCompraFinal() {
         categoria: 'Compra de mercancía',
         fechaStr: fechaInput,
         fecha: fechaCorta(fechaInput),
-        monto: totalFactura,
+        monto: totalFactura + compraFleteMonto(), // lo que realmente sale de tu bolsillo: factura + flete
+        totalFactura,
         descripcion: descParts.join(' · '),
         proveedor,
         folio,
@@ -3837,6 +3860,7 @@ function abrirMenuCatalogo() { $('modal-catalogo-menu').classList.remove('hidden
 function irACatalogo(op) {
     cerrarModal('modal-catalogo-menu');
     if (op === 'precios') abrirEnvioPreciosCatalogo();
+    else if (op === 'nuevos') abrirEnvioNuevosCatalogo();
     else sincronizarFotosCatalogo(true);
 }
 
@@ -4342,6 +4366,153 @@ async function enviarPreciosCatalogo() {
     } catch (e) {
         console.error(e);
         resumen.innerText = `No se pudo actualizar: ${e.message}`;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// -------------------- PRODUCTOS NUEVOS DEL POS AL CATÁLOGO --------------------
+// Se emparejan por código (SKU). Solo se CREAN en el catálogo los productos cuyo código no existe allá
+// (sin foto: la foto se agrega después en el catálogo). Nunca modifica ni borra los que ya existen.
+let nuevosParaCatalogo = [];
+
+async function categoriasDelCatalogo() {
+    try {
+        const url = `https://firestore.googleapis.com/v1/projects/${CATALOGO_PROJECT_ID}/databases/(default)/documents/productos/catalogConfig?key=${encodeURIComponent(CATALOGO_API_KEY)}`;
+        const r = await fetch(url);
+        if (!r.ok) return [];
+        const j = await r.json();
+        const vals = (j.fields && j.fields.categories && j.fields.categories.arrayValue && j.fields.categories.arrayValue.values) || [];
+        return vals.map(v => v.stringValue).filter(Boolean);
+    } catch (e) { return []; }
+}
+
+// Función pura: qué productos del POS no están en el catálogo (por código)
+function calcularNuevosParaCatalogo(itemsCatalogo, productosPos, categoriasCat) {
+    const enCatalogo = new Set();
+    itemsCatalogo.forEach(c => {
+        const k = String(c.codigo || c['código'] || c.sku || c.code || '').trim().toUpperCase();
+        if (k) enCatalogo.add(k);
+    });
+    const catPorNombre = new Map(categoriasCat.map(c => [c.trim().toLowerCase(), c]));
+    const nuevos = [];
+    const vistos = new Set();
+    let yaEstan = 0, sinCodigo = 0, sinPrecio = 0;
+    productosPos.forEach(p => {
+        const sku = String(p.sku || '').trim().toUpperCase();
+        if (!sku) { sinCodigo++; return; }
+        if (vistos.has(sku)) return; // código repetido en el POS: solo el primero
+        vistos.add(sku);
+        if (enCatalogo.has(sku)) { yaEstan++; return; }
+        const precio = Math.round((Number(p.precio) || 0) * 100) / 100;
+        if (precio <= 0) { sinPrecio++; return; } // nunca mandar precio 0 al catálogo
+        const catPos = String(p.categoria || '').trim().toLowerCase();
+        nuevos.push({ sku, nombre: String(p.nombre || '').trim(), precio, categoria: catPorNombre.get(catPos) || 'General' });
+    });
+    return { nuevos, yaEstan, sinCodigo, sinPrecio };
+}
+
+async function abrirEnvioNuevosCatalogo() {
+    $('modal-nuevos-catalogo').classList.remove('hidden');
+    $('nuevos-cat-resumen').innerText = 'Consultando catálogo…';
+    $('nuevos-cat-lista').innerHTML = '';
+    $('nuevos-cat-login').classList.add('hidden');
+    $('btn-enviar-nuevos-cat').classList.add('hidden');
+    $('nuevos-cat-email').value = localStorage.getItem('digar_cat_email') || '';
+    $('nuevos-cat-pass').value = '';
+    nuevosParaCatalogo = [];
+    try {
+        const [items, cats] = await Promise.all([descargarCatalogo(), categoriasDelCatalogo()]);
+        const r = calcularNuevosParaCatalogo(items, productos, cats);
+        nuevosParaCatalogo = r.nuevos;
+        const extra = [];
+        if (r.yaEstan) extra.push(`${r.yaEstan} ya están en el catálogo`);
+        if (r.sinCodigo) extra.push(`${r.sinCodigo} sin código (se omiten)`);
+        if (r.sinPrecio) extra.push(`${r.sinPrecio} con precio $0 (se omiten)`);
+        if (!r.nuevos.length) {
+            $('nuevos-cat-resumen').innerText = `No hay productos nuevos para enviar. ${extra.join(' · ')}`;
+            return;
+        }
+        $('nuevos-cat-resumen').innerText = `${r.nuevos.length} producto(s) del POS no están en el catálogo. ${extra.join(' · ')}`;
+        $('nuevos-cat-lista').innerHTML = r.nuevos.map((c, i) => `<label class="flex items-center gap-3 py-2 border-b text-xs">
+                <input type="checkbox" data-i="${i}" checked style="width:20px;height:20px;flex:none;">
+                <span class="flex-1" style="min-width:0;">
+                    <span class="block font-bold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(c.nombre)}</span>
+                    <span class="block text-gray-500">${escHtml(c.sku)} · ${escHtml(c.categoria)}</span>
+                </span>
+                <span class="font-bold text-blue-600 whitespace-nowrap">${money(c.precio)}</span>
+            </label>`).join('');
+        $('nuevos-cat-login').classList.remove('hidden');
+        $('btn-enviar-nuevos-cat').classList.remove('hidden');
+    } catch (e) {
+        console.error(e);
+        $('nuevos-cat-resumen').innerText = `No se pudo leer el catálogo (${e.message}). Revisa tu internet e intenta de nuevo.`;
+    }
+}
+
+async function enviarNuevosCatalogo() {
+    const marcados = Array.from(document.querySelectorAll('#nuevos-cat-lista input[type=checkbox]:checked'))
+        .map(el => nuevosParaCatalogo[Number(el.dataset.i)]).filter(Boolean);
+    if (!marcados.length) { alert('No marcaste ningún producto.'); return; }
+    const email = $('nuevos-cat-email').value.trim();
+    const pass = $('nuevos-cat-pass').value;
+    if (!email || !pass) { alert('Escribe el correo y la contraseña del administrador del catálogo.'); return; }
+    const apiKey = obtenerApiKeyCatalogo();
+    if (!apiKey) { alert('Hace falta la apiKey del catálogo para continuar.'); return; }
+
+    const btn = $('btn-enviar-nuevos-cat');
+    btn.disabled = true;
+    const resumen = $('nuevos-cat-resumen');
+    try {
+        resumen.innerText = 'Iniciando sesión…';
+        const rl = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: pass, returnSecureToken: true })
+        });
+        const jl = await rl.json();
+        if (!rl.ok || !jl.idToken) {
+            const msg = (jl.error && jl.error.message) || ('HTTP ' + rl.status);
+            if (/API_KEY/i.test(msg)) localStorage.removeItem('digar_cat_apikey');
+            throw new Error(/INVALID|EMAIL_NOT_FOUND|PASSWORD/i.test(msg) ? 'Correo o contraseña incorrectos' : msg);
+        }
+        try { localStorage.setItem('digar_cat_email', email); } catch (e) {}
+        $('nuevos-cat-pass').value = '';
+
+        const base = `https://firestore.googleapis.com/v1/projects/${CATALOGO_PROJECT_ID}/databases/(default)/documents/productos`;
+        const t0 = Date.now();
+        let ok = 0, yaExistian = 0; const fallos = [];
+        for (let i = 0; i < marcados.length; i++) {
+            const c = marcados[i];
+            resumen.innerText = `Enviando ${i + 1} de ${marcados.length}…`;
+            const id = String(t0 + i);
+            const precioField = Number.isInteger(c.precio) ? { integerValue: String(c.precio) } : { doubleValue: c.precio };
+            try {
+                // exists=false: solo crea; si el documento ya existiera, no lo pisa
+                const rp = await fetch(`${base}/${encodeURIComponent(id)}?currentDocument.exists=false`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jl.idToken },
+                    body: JSON.stringify({ fields: {
+                        id: { stringValue: id },
+                        name: { stringValue: c.nombre },
+                        code: { stringValue: c.sku },
+                        price: precioField,
+                        pieces: { stringValue: '' },
+                        category: { stringValue: c.categoria },
+                        image: { stringValue: '' },
+                        outOfStock: { booleanValue: false }
+                    } })
+                });
+                if (rp.status === 409 || rp.status === 412) { yaExistian++; continue; }
+                if (!rp.ok) throw new Error('HTTP ' + rp.status);
+                ok++;
+            } catch (e) { fallos.push(`${c.sku} (${e.message})`); }
+        }
+        cerrarModal('modal-nuevos-catalogo');
+        alert(`Enviados al catálogo: ${ok} producto(s). Ahora ponles la foto desde el catálogo.` + (yaExistian ? `\nYa existían: ${yaExistian}.` : '') + (fallos.length ? `\nNo se pudieron enviar: ${fallos.join(', ')}` : ''));
+    } catch (e) {
+        console.error(e);
+        resumen.innerText = `No se pudo enviar: ${e.message}`;
     } finally {
         btn.disabled = false;
     }

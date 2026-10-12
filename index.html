@@ -1314,6 +1314,7 @@ let productoCantidadId = null;
 let statsPeriodo = 'hoy';
 
 let clienteSeleccionado = null; // Ya no hay "Cliente General": en cada venta se elige un cliente
+let verTodosSeleccion = false; // en el selector de venta: false = solo clientes del día de hoy
 let pagoPendienteCliente = false; // true si se abrió el selector porque faltaba cliente al cobrar
 let clienteMenuActivoId = null; // cliente del menú contextual
 let carrito = [];
@@ -1892,6 +1893,7 @@ function eliminarClienteActual() {
 
 function abrirModalSeleccionarCliente(desdePago) {
     pagoPendienteCliente = (desdePago === true);
+    verTodosSeleccion = false;
     const buscador = $('buscador-seleccion-cliente');
     if (buscador) buscador.value = '';
     renderSeleccionClientes('');
@@ -1908,12 +1910,35 @@ function renderSeleccionClientes(filtro) {
     if (!contenedor) return;
     contenedor.innerHTML = '';
     const term = quitarAcentos(filtro || '').trim();
-    let lista = [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    const dia = diaHoy();
+    const soloHoy = !term && !verTodosSeleccion && typeof dia === 'number';
+    let lista = [...clientes];
     if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
+    else if (soloHoy) lista = lista.filter(c => (c.dias || []).includes(dia));
+    const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
+    lista.sort((a, b) => (visitados.has(a.id) - visitados.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+
+    // Encabezado: qué lista se está viendo + cambiar entre "de hoy" y "todos"
+    if (!term && typeof dia === 'number') {
+        const nombreDia = (DIAS_SEM.find(d => d.n === dia) || {}).largo || 'hoy';
+        const barra = document.createElement('div');
+        barra.className = 'flex justify-between items-center';
+        barra.innerHTML = `<span class="text-[11px] font-bold text-gray-500">${soloHoy ? `Clientes de hoy (${nombreDia}) · ${lista.length}` : `Todos los clientes · ${lista.length}`}</span>
+            <button type="button" class="text-[11px] font-bold text-blue-600 underline">${soloHoy ? 'Ver todos' : 'Solo los de hoy'}</button>`;
+        barra.querySelector('button').addEventListener('click', function () {
+            verTodosSeleccion = soloHoy;
+            renderSeleccionClientes($('buscador-seleccion-cliente').value);
+        });
+        contenedor.appendChild(barra);
+    }
+
     if (lista.length === 0) {
-        contenedor.innerHTML = term
-            ? '<p class="text-center text-gray-400 text-sm py-4">No encontré ese cliente. Agrégalo con el botón de arriba.</p>'
-            : '<p class="text-center text-gray-400 text-sm py-4">Aún no tienes clientes. Agrega el primero con el botón de arriba.</p>';
+        const p = document.createElement('p');
+        p.className = 'text-center text-gray-400 text-sm py-4';
+        p.innerText = term
+            ? 'No encontré ese cliente. Agrégalo con el botón de arriba.'
+            : (soloHoy ? 'No tienes clientes asignados a hoy. Toca "Ver todos" o agrega uno rápido.' : 'Aún no tienes clientes. Agrega el primero con el botón de arriba.');
+        contenedor.appendChild(p);
         return;
     }
     const frag = document.createDocumentFragment();
@@ -1931,6 +1956,7 @@ function renderSeleccionClientes(filtro) {
             <div>
                 <span class="font-bold block">${c.nombre}</span>
                 <span class="text-xs opacity-80">📍 ${c.direccion || 'Sin dirección'}</span>
+                ${visitados.has(c.id) ? '<span class="text-[10px] font-bold text-emerald-600 block">✓ Visitado hoy</span>' : ''}
             </div>
             ${activo ? '<span class="font-bold text-xs text-blue-600">✓ Seleccionado</span>' : '<span class="text-xs text-gray-400">Tocar para elegir</span>'}
         `;

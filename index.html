@@ -5,7 +5,6 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f8080">
     <meta name="color-scheme" content="only light">
-    <script>(function(){try{var t=localStorage.getItem('digar_tema')||'claro';var d=t==='oscuro'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();</script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DIGAR POS">
@@ -27,13 +26,8 @@
             user-select: none !important;
             -webkit-touch-callout: none !important;
         }
-        /* Modo claro por defecto; el celular no la oscurece por su cuenta (el modo oscuro lo controla la app) */
+        /* Siempre modo claro; el celular no oscurece la app por su cuenta */
         :root, html { color-scheme: only light; }
-        /* MODO OSCURO: se invierten los colores de toda la pantalla; fotos y video conservan sus colores */
-        html.dark { filter: invert(1) hue-rotate(180deg); background: #fff; }
-        html.dark img, html.dark video, html.dark canvas { filter: invert(1) hue-rotate(180deg); }
-        html.dark .bg-gray-900, html.dark .bg-blue-900, html.dark #tarjeta-acumulado { filter: invert(1) hue-rotate(180deg); }
-        html.dark .bg-black\/50 { background-color: rgba(255,255,255,.5); }
         /* Inputs y textareas sí deben permitir escribir */
         input, textarea, [contenteditable="true"] {
             -webkit-user-select: text !important;
@@ -103,7 +97,7 @@
             <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo">Clientes</span>
         </div>
         <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-            🏪 <span id="txt-cliente-actual">Cliente General</span>
+            🏪 <span id="txt-cliente-actual">Elegir cliente</span>
         </button>
     </header>
 
@@ -123,70 +117,7 @@
                 <input type="text" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
             </div>
             <div id="chips-dias-clientes" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px"></div>
-            <div id="lista-clientes-inicio" class="space-y-2"><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-blue-600 bg-blue-50">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Cliente General</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Sin dirección</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Sin teléfono</p>
-                </div>
-                <span class="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Activo</span>
-            </div>
-        </div><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-gray-100">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Pancjo</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Juanaaria </p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Sin teléfono</p>
-                </div>
-                <span class="text-gray-300 text-lg">›</span>
-            </div>
-        </div><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-gray-100">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Jana</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Jsjeje</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Sin teléfono</p>
-                </div>
-                <span class="text-gray-300 text-lg">›</span>
-            </div>
-        </div><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-gray-100">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Jsjdjdjd</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Jajajajs</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Sin teléfono</p>
-                </div>
-                <span class="text-gray-300 text-lg">›</span>
-            </div>
-        </div><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-gray-100">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Jajajsndkdod</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Jsjdjdodms</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Sin teléfono</p>
-                </div>
-                <span class="text-gray-300 text-lg">›</span>
-            </div>
-        </div><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-gray-100">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Juanito 2</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Juju</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Ja</p>
-                </div>
-                <span class="text-gray-300 text-lg">›</span>
-            </div>
-        </div><div class="bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition border-gray-100">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="font-bold text-sm text-gray-900">Dj muxquis</p>
-                    <p class="text-xs text-blue-600 mt-0.5">📍 Kakdjd</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 Jdjdjdj</p>
-                </div>
-                <span class="text-gray-300 text-lg">›</span>
-            </div>
-        </div></div>
+            <div id="lista-clientes-inicio" class="space-y-2"></div>
         </div>
 
         <!-- VISTA ESTADÍSTICAS -->
@@ -369,16 +300,6 @@
         <div id="vista-mas" class="hidden space-y-3">
             <div class="flex justify-between items-center mb-1">
                 <h2 class="text-lg font-bold">Configuraciones</h2>
-                <button onclick="alternarTema()" class="text-lg" aria-label="Cambiar entre modo claro y oscuro">🌙</button>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-gray-200 p-3 shadow-sm">
-                <div class="text-xs font-semibold text-gray-500 mb-2">Apariencia</div>
-                <div class="grid grid-cols-3 gap-2">
-                    <button id="tema-btn-claro" onclick="setTema('claro')" class="py-2.5 rounded-xl text-xs font-bold border">☀️ Claro</button>
-                    <button id="tema-btn-oscuro" onclick="setTema('oscuro')" class="py-2.5 rounded-xl text-xs font-bold border">🌙 Oscuro</button>
-                    <button id="tema-btn-auto" onclick="setTema('auto')" class="py-2.5 rounded-xl text-xs font-bold border">📱 Auto</button>
-                </div>
             </div>
 
             <div class="bg-white rounded-2xl border border-gray-200 divide-y overflow-hidden shadow-sm text-sm">
@@ -543,13 +464,38 @@
     </div>
 
     <!-- Modal Seleccionar Cliente -->
-    <div id="modal-seleccionar-cliente" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+    <div id="modal-seleccionar-cliente" class="fixed inset-0 bg-black/50 hidden flex flex-col justify-end max-w-md mx-auto" style="z-index:70">
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-base">Asignar Tienda / Cliente a la Venta</h3>
-                <button onclick="cerrarModal('modal-seleccionar-cliente')" class="text-gray-400 font-bold text-xl">×</button>
+                <h3 class="font-bold text-base">¿A qué cliente es la venta?</h3>
+                <button onclick="cerrarSelectorCliente()" class="text-gray-400 font-bold text-xl">×</button>
             </div>
+            <button onclick="abrirClienteRapido()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">➕ Agregar cliente rápido</button>
+            <input type="text" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
             <div id="lista-clientes-seleccion" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Modal Cliente Rápido -->
+    <div id="modal-cliente-rapido" class="fixed inset-0 bg-black/50 hidden flex flex-col justify-end max-w-md mx-auto" style="z-index:80">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">➕ Cliente rápido</h3>
+                <button onclick="cerrarModal('modal-cliente-rapido')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Nombre del negocio o cliente *</label>
+                <input type="text" id="rapido-cliente-nombre" placeholder="Ej. Tienda Pancho" class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Dirección (opcional)</label>
+                <input type="text" id="rapido-cliente-dir" placeholder="Ej. Av. Benito Juárez #123" class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Teléfono (opcional)</label>
+                <input type="text" id="rapido-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <button onclick="guardarClienteRapido()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md mt-2">Guardar y usar en esta venta</button>
         </div>
     </div>
 
@@ -1066,7 +1012,7 @@
     <div id="modal-pago" class="fixed inset-0 bg-white z-50 hidden flex flex-col max-w-md mx-auto p-5">
         <div class="flex items-center justify-between pb-4 border-b">
             <button onclick="cerrarModal('modal-pago')" class="text-lg font-bold">← Pago</button>
-            <button onclick="abrirModalSeleccionarCliente()" class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full" id="pago-cliente-btn">Cliente General</button>
+            <button onclick="abrirModalSeleccionarCliente()" class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full" id="pago-cliente-btn">Elegir cliente</button>
         </div>
         <div class="flex-1 py-4 flex flex-col justify-between space-y-4 overflow-y-auto">
             <div class="text-center space-y-1">
@@ -1319,11 +1265,10 @@ function cargarProductos() {
 }
 
 function cargarClientes() {
-    const raw = JSON.parse(localStorage.getItem('yimi_clientes')) || [
-        { id: 1, nombre: 'Cliente General', direccion: 'Mostrador', telefono: '' },
-        { id: 2, nombre: 'Tienda Pancho', direccion: 'Av. Principal #45', telefono: '8610000000' }
-    ];
-    return raw.map(c => ({ ...c, id: normalizarId(c.id), dias: Array.isArray(c.dias) ? c.dias : [] }));
+    const raw = JSON.parse(localStorage.getItem('yimi_clientes')) || [];
+    return raw
+        .filter(c => !esClienteGeneral(c))
+        .map(c => ({ ...c, id: normalizarId(c.id), dias: Array.isArray(c.dias) ? c.dias : [] }));
 }
 
 let productos = cargarProductos();
@@ -1368,7 +1313,8 @@ let configTicket = JSON.parse(localStorage.getItem('yimi_config_ticket')) || {
 let productoCantidadId = null;
 let statsPeriodo = 'hoy';
 
-let clienteSeleccionado = clientes[0] || { id: 1, nombre: 'Cliente General', direccion: 'Mostrador', telefono: '' };
+let clienteSeleccionado = null; // Ya no hay "Cliente General": en cada venta se elige un cliente
+let pagoPendienteCliente = false; // true si se abrió el selector porque faltaba cliente al cobrar
 let clienteMenuActivoId = null; // cliente del menú contextual
 let carrito = [];
 let facturaCompraItems = [];
@@ -1539,7 +1485,8 @@ function escucharCambiosNube() {
         if (!data || data._origen === instanciaId) return;
         sincronizandoDesdeNube = true;
         productos = data.productos || productos;
-        clientes = (data.clientes || clientes).map(c => ({ ...c, dias: Array.isArray(c.dias) ? c.dias : [] }));
+        clientes = (data.clientes || clientes).filter(c => !esClienteGeneral(c)).map(c => ({ ...c, dias: Array.isArray(c.dias) ? c.dias : [] }));
+        if (clienteSeleccionado && !clientes.some(c => normalizarId(c.id) === normalizarId(clienteSeleccionado.id))) clienteSeleccionado = null;
         transacciones = data.transacciones || transacciones;
         configTicket = data.configTicket || configTicket;
         ordenarProductosAlfabetico();
@@ -1602,7 +1549,19 @@ let diaFiltroClientes = diaHoy();
 let ultimoDiaRevisado = new Date().toDateString();
 
 function quitarAcentos(t) { return (t || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
-function esClienteGeneral(c) { return (c.nombre || '').trim().toLowerCase() === 'cliente general'; }
+function esClienteGeneral(c) { return (c.nombre || '').trim().toLowerCase() === 'cliente general'; } // solo para limpiar datos viejos
+// Visitado = ya tiene una venta registrada HOY. Se calcula con la fecha, así que mañana (o la próxima semana) vuelve a salir pendiente solo.
+function clienteVisitadoHoy(c) {
+    const f = hoy();
+    const nom = (c.nombre || '').trim().toLowerCase();
+    return transacciones.some(t => t.tipo === 'Venta' && t.fechaStr === f && (t.clienteNombre || '').trim().toLowerCase() === nom);
+}
+function esClienteActivo(c) { return !!clienteSeleccionado && normalizarId(clienteSeleccionado.id) === normalizarId(c.id); }
+function actualizarEtiquetaCliente() {
+    const nombre = clienteSeleccionado ? clienteSeleccionado.nombre : 'Elegir cliente';
+    const txt = $('txt-cliente-actual'); if (txt) txt.innerText = nombre;
+    const btnPago = $('pago-cliente-btn'); if (btnPago) btnPago.innerText = nombre;
+}
 function textoDiasCliente(c) {
     const d = (c.dias || []).slice().sort();
     return d.map(n => DIAS_SEM[n - 1].corto).join(' · ');
@@ -1638,11 +1597,11 @@ function renderChipsDiasClientes() {
     const cont = $('chips-dias-clientes');
     if (!cont) return;
     const hoy = diaHoy();
-    const sinDia = clientes.filter(c => !esClienteGeneral(c) && (!c.dias || c.dias.length === 0)).length;
+    const sinDia = clientes.filter(c => !c.dias || c.dias.length === 0).length;
     const items = DIAS_SEM.map(d => ({
         k: d.n,
         label: d.corto + (hoy === d.n ? ' •' : ''),
-        n: clientes.filter(c => !esClienteGeneral(c) && (c.dias || []).includes(d.n)).length
+        n: clientes.filter(c => (c.dias || []).includes(d.n)).length
     }));
     items.push({ k: 'todos', label: 'Todos', n: clientes.length });
     if (sinDia > 0) items.push({ k: 'sin', label: 'Sin día', n: sinDia });
@@ -1674,11 +1633,13 @@ function renderListaClientesInicio(filtro) {
         // Con búsqueda se busca en TODOS los clientes, sin importar el día
         lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
     } else if (diaFiltroClientes === 'sin') {
-        lista = lista.filter(c => !esClienteGeneral(c) && (!c.dias || c.dias.length === 0));
+        lista = lista.filter(c => !c.dias || c.dias.length === 0);
     } else if (diaFiltroClientes !== 'todos') {
-        lista = lista.filter(c => esClienteGeneral(c) || (c.dias || []).includes(diaFiltroClientes));
+        lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes));
     }
-    lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
+    // Pendientes primero, visitados al final; alfabético dentro de cada grupo
+    lista.sort((a, b) => (visitados.has(a.id) - visitados.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     if (lista.length === 0) {
         container.innerHTML = term
             ? '<p class="text-center text-gray-400 text-sm py-8">Sin resultados.</p>'
@@ -1687,14 +1648,18 @@ function renderListaClientesInicio(filtro) {
     }
     const frag = document.createDocumentFragment();
     lista.forEach(c => {
-        const activo = normalizarId(clienteSeleccionado.id) === normalizarId(c.id);
+        const activo = esClienteActivo(c);
         const diasTxt = textoDiasCliente(c);
+        const visitado = visitados.has(c.id);
         const div = document.createElement('div');
-        div.className = `bg-white p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition ${activo ? 'border-blue-600 bg-blue-50' : 'border-gray-100'}`;
+        div.className = `p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition ${activo ? 'bg-blue-50 border-blue-600' : (visitado ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100')}`;
         div.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
                     <p class="font-bold text-sm text-gray-900">${c.nombre}</p>
+                    ${visitado
+                        ? '<p class="text-[10px] font-bold text-emerald-600 mt-0.5">✓ Visitado hoy</p>'
+                        : '<p class="text-[10px] text-gray-400 mt-0.5">Sin venta hoy</p>'}
                     <p class="text-xs text-blue-600 mt-0.5">📍 ${c.direccion || 'Sin dirección'}</p>
                     <p class="text-[11px] text-gray-400 mt-0.5">📞 ${c.telefono || 'Sin teléfono'}</p>
                     ${diasTxt ? `<p class="text-[11px] text-gray-500 mt-0.5">📅 ${diasTxt}</p>` : ''}
@@ -1766,16 +1731,13 @@ function menuClienteAccion(accion) {
         editarCliente(id);
     } else if (accion === 'eliminar') {
         const idNum = normalizarId(id);
-        if (clientes.length <= 1) return alert('Debes tener al menos un cliente');
         const c = clientes.find(x => normalizarId(x.id) === idNum);
         if (!c) return;
         if (!confirm(`¿Eliminar a "${c.nombre}"?`)) return;
         clientes = clientes.filter(x => normalizarId(x.id) !== idNum);
-        if (normalizarId(clienteSeleccionado.id) === idNum) {
-            clienteSeleccionado = clientes[0];
-            $('txt-cliente-actual').innerText = clienteSeleccionado.nombre;
-            const btnPago = $('pago-cliente-btn');
-            if (btnPago) btnPago.innerText = clienteSeleccionado.nombre;
+        if (clienteSeleccionado && normalizarId(clienteSeleccionado.id) === idNum) {
+            clienteSeleccionado = null;
+            actualizarEtiquetaCliente();
         }
         guardarTodo();
         renderListaClientesInicio();
@@ -1792,10 +1754,7 @@ function seleccionarClienteVentaDesdeInicio(id) {
         return;
     }
     clienteSeleccionado = c;
-    const txt = $('txt-cliente-actual');
-    if (txt) txt.innerText = c.nombre;
-    const btnPago = $('pago-cliente-btn');
-    if (btnPago) btnPago.innerText = c.nombre;
+    actualizarEtiquetaCliente();
     renderListaClientesInicio();
 }
 
@@ -1904,11 +1863,9 @@ function guardarClienteForm() {
         const c = clientes.find(x => normalizarId(x.id) === idNum);
         if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; c.dias = dias; }
         // Si el cliente editado es el seleccionado, actualizar nombre en UI
-        if (normalizarId(clienteSeleccionado.id) === idNum) {
+        if (c && clienteSeleccionado && normalizarId(clienteSeleccionado.id) === idNum) {
             clienteSeleccionado = c;
-            $('txt-cliente-actual').innerText = c.nombre;
-            const btnPago = $('pago-cliente-btn');
-            if (btnPago) btnPago.innerText = c.nombre;
+            actualizarEtiquetaCliente();
         }
     } else {
         clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias });
@@ -1921,14 +1878,11 @@ function guardarClienteForm() {
 
 function eliminarClienteActual() {
     const id = normalizarId($('form-cliente-id').value);
-    if (clientes.length <= 1) return alert('Debes tener al menos un cliente');
     if (!confirm('¿Eliminar esta tienda/cliente?')) return;
     clientes = clientes.filter(x => normalizarId(x.id) !== id);
-    if (normalizarId(clienteSeleccionado.id) === id) {
-        clienteSeleccionado = clientes[0];
-        $('txt-cliente-actual').innerText = clienteSeleccionado.nombre;
-        const btnPago = $('pago-cliente-btn');
-        if (btnPago) btnPago.innerText = clienteSeleccionado.nombre;
+    if (clienteSeleccionado && normalizarId(clienteSeleccionado.id) === id) {
+        clienteSeleccionado = null;
+        actualizarEtiquetaCliente();
     }
     guardarTodo();
     cerrarModal('modal-form-cliente');
@@ -1936,17 +1890,38 @@ function eliminarClienteActual() {
     renderListaClientesInicio();
 }
 
-function abrirModalSeleccionarCliente() {
+function abrirModalSeleccionarCliente(desdePago) {
+    pagoPendienteCliente = (desdePago === true);
+    const buscador = $('buscador-seleccion-cliente');
+    if (buscador) buscador.value = '';
+    renderSeleccionClientes('');
+    $('modal-seleccionar-cliente').classList.remove('hidden');
+}
+
+function cerrarSelectorCliente() {
+    pagoPendienteCliente = false;
+    cerrarModal('modal-seleccionar-cliente');
+}
+
+function renderSeleccionClientes(filtro) {
     const contenedor = $('lista-clientes-seleccion');
     if (!contenedor) return;
     contenedor.innerHTML = '';
+    const term = quitarAcentos(filtro || '').trim();
+    let lista = [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
+    if (lista.length === 0) {
+        contenedor.innerHTML = term
+            ? '<p class="text-center text-gray-400 text-sm py-4">No encontré ese cliente. Agrégalo con el botón de arriba.</p>'
+            : '<p class="text-center text-gray-400 text-sm py-4">Aún no tienes clientes. Agrega el primero con el botón de arriba.</p>';
+        return;
+    }
     const frag = document.createDocumentFragment();
-    clientes.forEach(c => {
-        const activo = normalizarId(clienteSeleccionado.id) === normalizarId(c.id);
+    lista.forEach(c => {
+        const activo = esClienteActivo(c);
         const div = document.createElement('div');
         div.className = `p-3.5 rounded-xl border flex justify-between items-center text-sm cursor-pointer active:scale-[0.98] transition ${activo ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`;
         div.setAttribute('data-cliente-id', c.id);
-        // Usar addEventListener + función con id capturado de forma segura
         div.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -1962,12 +1937,46 @@ function abrirModalSeleccionarCliente() {
         frag.appendChild(div);
     });
     contenedor.appendChild(frag);
-    $('modal-seleccionar-cliente').classList.remove('hidden');
 }
 
 function seleccionarClienteVenta(id) {
     seleccionarClienteVentaDesdeInicio(id);
     cerrarModal('modal-seleccionar-cliente');
+    continuarPagoSiPendiente();
+}
+
+function continuarPagoSiPendiente() {
+    if (pagoPendienteCliente) {
+        pagoPendienteCliente = false;
+        abrirPantallaPago();
+    }
+}
+
+// ---- Agregado rápido de cliente (desde la venta) ----
+function abrirClienteRapido() {
+    const buscado = ($('buscador-seleccion-cliente') || {}).value || '';
+    $('rapido-cliente-nombre').value = buscado.trim();
+    $('rapido-cliente-dir').value = '';
+    $('rapido-cliente-tel').value = '';
+    $('modal-cliente-rapido').classList.remove('hidden');
+    setTimeout(() => { const i = $('rapido-cliente-nombre'); if (i) i.focus(); }, 50);
+}
+
+function guardarClienteRapido() {
+    const nombre = $('rapido-cliente-nombre').value.trim();
+    const dir = $('rapido-cliente-dir').value.trim();
+    const tel = $('rapido-cliente-tel').value.trim();
+    if (!nombre) return alert('Escribe el nombre del cliente o tienda');
+    const existente = clientes.find(c => quitarAcentos(c.nombre).trim() === quitarAcentos(nombre).trim());
+    if (existente && !confirm(`Ya existe un cliente llamado "${existente.nombre}". ¿Quieres crear otro igual?`)) return;
+    const nuevo = { id: Date.now(), nombre, direccion: dir, telefono: tel, dias: (typeof diaHoy() === 'number') ? [diaHoy()] : [] };
+    clientes.push(nuevo);
+    guardarTodo();
+    seleccionarClienteVentaDesdeInicio(nuevo.id);
+    cerrarModal('modal-cliente-rapido');
+    cerrarModal('modal-seleccionar-cliente');
+    renderClientesAdmin();
+    continuarPagoSiPendiente();
 }
 
 // -------------------- NAVEGACIÓN --------------------
@@ -2488,9 +2497,14 @@ function actualizarMontoPago() {
 
 function abrirPantallaPago() {
     if (carrito.length === 0) return alert('Carrito vacío');
+    if (!clienteSeleccionado) {
+        // Cada venta necesita cliente: se abre el selector (con agregado rápido) y luego se continúa al pago
+        abrirModalSeleccionarCliente(true);
+        return;
+    }
     const total = totalACobrar();
     actualizarMontoPago();
-    $('pago-cliente-btn').innerText = clienteSeleccionado.nombre;
+    actualizarEtiquetaCliente();
     $('modal-carrito').classList.add('hidden');
     $('modal-pago').classList.remove('hidden');
     $('pago-efectivo').value = total.toFixed(2);
@@ -2511,14 +2525,6 @@ function alternarModoCredito() {
     const billetesWrap = $('pago-billetes-wrap');
     if (billetesWrap) billetesWrap.classList.toggle('hidden', esCredito);
     $('btn-cobrar-final').innerText = esCredito ? '💳 Dejar a Crédito e Imprimir' : 'Cobrar e Imprimir';
-    if (esCredito && clienteSeleccionado.nombre === 'Cliente General') {
-        alert('Para dejar a crédito, primero elige un cliente específico (no "Cliente General"), así puedes cobrarle después.');
-        $('pago-es-credito').checked = false;
-        $('pago-cambio-fila').classList.remove('hidden');
-        $('pago-efectivo').closest('.w-full.space-y-2').classList.remove('hidden');
-        if (billetesWrap) billetesWrap.classList.remove('hidden');
-        $('btn-cobrar-final').innerText = 'Cobrar e Imprimir';
-    }
 }
 
 function calcularCambioModal() {
@@ -2528,6 +2534,7 @@ function calcularCambioModal() {
 }
 
 async function ejecutarCobroFinal() {
+    if (!clienteSeleccionado) { alert('Elige un cliente para esta venta'); abrirModalSeleccionarCliente(); return; }
     const totalTicket = totalCarritoActual();
     const total = totalTicket;
     const esCredito = $('pago-es-credito').checked;
@@ -2618,13 +2625,10 @@ async function ejecutarCobroFinal() {
 
 function cerrarExitoNuevaVenta() {
     $('modal-exito').classList.add('hidden');
-    if (clientes.length > 0) {
-        clienteSeleccionado = clientes[0];
-        $('txt-cliente-actual').innerText = clienteSeleccionado.nombre;
-        const btnPago = $('pago-cliente-btn');
-        if (btnPago) btnPago.innerText = clienteSeleccionado.nombre;
-        renderListaClientesInicio();
-    }
+    // Nueva venta: se vuelve a pedir cliente
+    clienteSeleccionado = null;
+    actualizarEtiquetaCliente();
+    renderListaClientesInicio();
 }
 
 // -------------------- CREDITOS --------------------
@@ -5483,12 +5487,13 @@ function aplicarRespaldo(json) {
     try {
         const data = JSON.parse(json);
         if (data.productos) productos = data.productos;
-        if (data.clientes) clientes = data.clientes;
+        if (data.clientes) clientes = data.clientes.filter(c => !esClienteGeneral(c));
         if (data.transacciones) transacciones = data.transacciones;
         if (data.configTicket) configTicket = data.configTicket;
         if (Array.isArray(data.categorias)) { categoriasProd = data.categorias; guardarCategoriasProd(); chipsFirma = ''; }
         ordenarProductosAlfabetico();
-        clienteSeleccionado = clientes[0] || clienteSeleccionado;
+        clienteSeleccionado = null;
+        actualizarEtiquetaCliente();
         guardarTodo();
         alert('Datos restaurados correctamente');
         renderVenta();
@@ -5683,40 +5688,6 @@ async function initHuellaLogin() {
     if (btn) btn.classList.remove('hidden');
     loginConHuella(); // pide la huella automáticamente al abrir
 }
-
-// -------------------- MODO CLARO / OSCURO --------------------
-const TEMA_KEY = 'digar_tema';
-function temaGuardado() { try { return localStorage.getItem(TEMA_KEY) || 'claro'; } catch (e) { return 'claro'; } }
-function temaEsOscuro(t) {
-    return t === 'oscuro' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-}
-function aplicarTema() {
-    const t = temaGuardado();
-    const oscuro = temaEsOscuro(t);
-    document.documentElement.classList.toggle('dark', oscuro);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', oscuro ? '#0b1220' : '#0f8080');
-    ['claro', 'oscuro', 'auto'].forEach(k => {
-        const el = $('tema-btn-' + k);
-        if (!el) return;
-        const on = t === k;
-        el.style.background = on ? '#2563eb' : '#f9fafb';
-        el.style.color = on ? '#fff' : '#4b5563';
-        el.style.borderColor = on ? '#2563eb' : '#e5e7eb';
-    });
-}
-function setTema(t) {
-    try { localStorage.setItem(TEMA_KEY, t); } catch (e) {}
-    aplicarTema();
-}
-function alternarTema() { setTema(document.documentElement.classList.contains('dark') ? 'claro' : 'oscuro'); }
-if (window.matchMedia) {
-    const mqOscuro = matchMedia('(prefers-color-scheme: dark)');
-    const alCambiarSistema = () => { if (temaGuardado() === 'auto') aplicarTema(); };
-    if (mqOscuro.addEventListener) mqOscuro.addEventListener('change', alCambiarSistema);
-    else if (mqOscuro.addListener) mqOscuro.addListener(alCambiarSistema);
-}
-aplicarTema();
 
 // -------------------- INICIALIZACIÓN --------------------
 $('buscador-venta').addEventListener('input', e => filtrarVenta(e.target.value));

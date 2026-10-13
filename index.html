@@ -5009,6 +5009,51 @@ function obtenerIngresosFiltradosPreliq() {
     });
 }
 
+function obtenerGastosFiltradosPreliq() {
+    const desde = $('filtro-fecha-desde').value;
+    const hasta = $('filtro-fecha-hasta').value;
+    return transacciones.filter(t => {
+        if (t.tipo !== 'Gasto') return false;
+        const f = t.fechaStr || '';
+        if (desde && f < desde) return false;
+        if (hasta && f > hasta) return false;
+        return true;
+    });
+}
+
+// Gastos del rango: los de efectivo se descuentan de lo que hay que liquidar; los de tarjeta se muestran aparte y no descuentan
+function bloqueGastosPreliq(gastos) {
+    if (!gastos.length) return [];
+    const encoder = new TextEncoder();
+    const enc = (x) => encoder.encode(limpiarTxt(x));
+    const out = [];
+    const efectivo = gastos.filter(t => t.metodoPago !== 'Tarjeta');
+    const tarjeta = gastos.filter(t => t.metodoPago === 'Tarjeta');
+    if (efectivo.length) {
+        let total = 0;
+        out.push(enc(`GASTOS\n`));
+        efectivo.forEach(t => {
+            total += Number(t.monto) || 0;
+            out.push(enc(`${padRight(t.descripcion || t.categoria || 'Gasto', 20)}${padLeft('-' + money(t.monto || 0), 12)}\n`));
+        });
+        out.push(enc(`--------------------------------\n`));
+        out.push(enc(`${padRight('TOTAL GASTOS', 20)}${padLeft('-' + money(total), 12)}\n`));
+        out.push(enc(`================================\n`));
+    }
+    if (tarjeta.length) {
+        let totalT = 0;
+        out.push(enc(`GASTOS CON TARJETA (no descuentan)\n`));
+        tarjeta.forEach(t => {
+            totalT += Number(t.monto) || 0;
+            out.push(enc(`${padRight(t.descripcion || t.categoria || 'Gasto', 20)}${padLeft(money(t.monto || 0), 12)}\n`));
+        });
+        out.push(enc(`--------------------------------\n`));
+        out.push(enc(`${padRight('TOTAL TARJETA', 20)}${padLeft(money(totalT), 12)}\n`));
+        out.push(enc(`================================\n`));
+    }
+    return out;
+}
+
 function bloqueIngresosPreliq(ingresos) {
     if (!ingresos.length) return [];
     const encoder = new TextEncoder();
@@ -5026,18 +5071,22 @@ function bloqueIngresosPreliq(ingresos) {
     return out;
 }
 
-function bloqueLiquidarPreliq(totalContado, ingresos) {
-    if (!ingresos.length) return [];
+function bloqueLiquidarPreliq(totalContado, ingresos, gastos) {
+    gastos = gastos || [];
+    const gastosEfectivo = gastos.filter(t => t.metodoPago !== 'Tarjeta');
+    if (!ingresos.length && !gastosEfectivo.length) return [];
     const encoder = new TextEncoder();
     const enc = (x) => encoder.encode(limpiarTxt(x));
-    const totalIng = ingresos.reduce((a, t) => a + (t.monto || 0), 0);
-    return [
-        enc(`${padRight('Contado', 20)}${padLeft(money(totalContado), 12)}\n`),
-        enc(`${padRight('+ Abonos/Ingresos', 20)}${padLeft(money(totalIng), 12)}\n`),
-        enc(`--------------------------------\n`),
-        enc(`${padRight('A LIQUIDAR', 20)}${padLeft(money(totalContado + totalIng), 12)}\n`),
-        enc(`================================\n`)
-    ];
+    const totalIng = ingresos.reduce((a, t) => a + (Number(t.monto) || 0), 0);
+    const totalGas = gastosEfectivo.reduce((a, t) => a + (Number(t.monto) || 0), 0);
+    const aLiquidar = totalContado + totalIng - totalGas;
+    const out = [enc(`${padRight('Contado', 20)}${padLeft(money(totalContado), 12)}\n`)];
+    if (ingresos.length) out.push(enc(`${padRight('+ Abonos/Ingresos', 20)}${padLeft(money(totalIng), 12)}\n`));
+    if (gastosEfectivo.length) out.push(enc(`${padRight('- Gastos', 20)}${padLeft('-' + money(totalGas), 12)}\n`));
+    out.push(enc(`--------------------------------\n`));
+    out.push(enc(`${padRight('A LIQUIDAR', 20)}${padLeft((aLiquidar < 0 ? '-' : '') + money(Math.abs(aLiquidar)), 12)}\n`));
+    out.push(enc(`================================\n`));
+    return out;
 }
 
 function obtenerVentasFiltradasPreliq() {
@@ -5065,7 +5114,8 @@ function textoRangoPreliq() {
 async function imprimirPreliquidacionProductos() {
     const ventas = obtenerVentasFiltradasPreliq();
     const ingresosPreliq = obtenerIngresosFiltradosPreliq();
-    if (ventas.length === 0 && ingresosPreliq.length === 0) return alert('No hay ventas ni ingresos en el rango de fechas seleccionado.');
+    const gastosPreliq = obtenerGastosFiltradosPreliq();
+    if (ventas.length === 0 && ingresosPreliq.length === 0 && gastosPreliq.length === 0) return alert('No hay ventas, ingresos ni gastos en el rango de fechas seleccionado.');
 
     let totalVendido = 0, totalGanancia = 0, totalContado = 0, totalCredito = 0;
     const porProducto = {};
@@ -5139,7 +5189,8 @@ async function imprimirPreliquidacionProductos() {
     cmds.push(enc(`Total de piezas: ${totalPiezas}\n`));
     cmds.push(enc(`================================\n`));
     bloqueIngresosPreliq(ingresosPreliq).forEach(c => cmds.push(c));
-    bloqueLiquidarPreliq(totalContado, ingresosPreliq).forEach(c => cmds.push(c));
+    bloqueGastosPreliq(gastosPreliq).forEach(c => cmds.push(c));
+    bloqueLiquidarPreliq(totalContado, ingresosPreliq, gastosPreliq).forEach(c => cmds.push(c));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`Fin del reporte\n\n\n`));
 
@@ -5149,7 +5200,8 @@ async function imprimirPreliquidacionProductos() {
 async function imprimirPreliquidacionClientes() {
     const ventas = obtenerVentasFiltradasPreliq();
     const ingresosPreliq = obtenerIngresosFiltradosPreliq();
-    if (ventas.length === 0 && ingresosPreliq.length === 0) return alert('No hay ventas ni ingresos en el rango de fechas seleccionado.');
+    const gastosPreliq = obtenerGastosFiltradosPreliq();
+    if (ventas.length === 0 && ingresosPreliq.length === 0 && gastosPreliq.length === 0) return alert('No hay ventas, ingresos ni gastos en el rango de fechas seleccionado.');
 
     let totalVendido = 0, totalGanancia = 0, totalContado = 0, totalCredito = 0;
     const porCliente = {};
@@ -5222,7 +5274,8 @@ async function imprimirPreliquidacionClientes() {
     cmds.push(enc(`TOTAL: ${money(totalVendido)}\n`));
     cmds.push(enc(`================================\n`));
     bloqueIngresosPreliq(ingresosPreliq).forEach(c => cmds.push(c));
-    bloqueLiquidarPreliq(totalContado, ingresosPreliq).forEach(c => cmds.push(c));
+    bloqueGastosPreliq(gastosPreliq).forEach(c => cmds.push(c));
+    bloqueLiquidarPreliq(totalContado, ingresosPreliq, gastosPreliq).forEach(c => cmds.push(c));
     cmds.push(new Uint8Array([0x1B, 0x61, 0x01]));
     cmds.push(enc(`Fin del reporte\n\n\n`));
 

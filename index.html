@@ -1219,8 +1219,6 @@
         </div>
     </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ============================================================
    POS DIGAR - VERSIÓN OPTIMIZADA
@@ -1271,9 +1269,53 @@ function cargarClientes() {
         .map(c => ({ ...c, id: normalizarId(c.id), dias: Array.isArray(c.dias) ? c.dias : [] }));
 }
 
+// -------------------- ALMACENAMIENTO LIGERO --------------------
+// Solo se escribe en el teléfono lo que realmente cambió, y las ventas/movimientos de más de
+// ARCHIVO_DIAS días se guardan aparte (yimi_trans_archivo) para no reescribirlos en cada venta.
+// En memoria sigue todo junto, así que reportes, filtros y totales no cambian.
+const ARCHIVO_DIAS = 90;
+const _ultimoGuardado = {};
+let _avisoLlenoMostrado = false;
+function _escribirSiCambio(clave, valor) {
+    const json = JSON.stringify(valor);
+    if (_ultimoGuardado[clave] === json) return;
+    try {
+        localStorage.setItem(clave, json);
+        _ultimoGuardado[clave] = json;
+    } catch (e) {
+        console.error('No se pudo guardar ' + clave, e);
+        if (!_avisoLlenoMostrado) {
+            _avisoLlenoMostrado = true;
+            alert('El almacenamiento del teléfono está lleno y no se pudo guardar. Haz un respaldo y libera espacio.');
+        }
+    }
+}
+function guardarTransacciones() {
+    const d = new Date();
+    d.setDate(d.getDate() - ARCHIVO_DIAS);
+    const corte = fechaLocal(d);
+    const recientes = [], archivo = [];
+    transacciones.forEach(t => {
+        const f = t.fechaStr || '';
+        // lo reciente, lo sin fecha y lo que aún tiene saldo por cobrar se queda en la parte activa
+        if (!f || f >= corte || (Number(t.saldoPendiente) || 0) > 0) recientes.push(t);
+        else archivo.push(t);
+    });
+    _escribirSiCambio('yimi_trans_archivo', archivo); // primero el archivo: si se corta, al cargar se quitan duplicados por id
+    _escribirSiCambio('yimi_trans', recientes);
+}
+function cargarTransacciones() {
+    let rec = [], arc = [];
+    try { rec = JSON.parse(localStorage.getItem('yimi_trans')) || []; } catch (e) { console.error(e); }
+    try { arc = JSON.parse(localStorage.getItem('yimi_trans_archivo')) || []; } catch (e) { console.error(e); }
+    if (!arc.length) return rec;
+    const ids = new Set(rec.map(t => t.id));
+    return rec.concat(arc.filter(t => t.id == null || !ids.has(t.id)));
+}
+
 let productos = cargarProductos();
 let clientes = cargarClientes();
-let transacciones = JSON.parse(localStorage.getItem('yimi_trans')) || [];
+let transacciones = cargarTransacciones();
 
 (function separarExtraDeVentas() {
     let n = 0;
@@ -1286,7 +1328,7 @@ let transacciones = JSON.parse(localStorage.getItem('yimi_trans')) || [];
             n++;
         }
     });
-    if (n) localStorage.setItem('yimi_trans', JSON.stringify(transacciones));
+    if (n) guardarTransacciones();
 })();
 
 (function corregirFechasVentas() {
@@ -1297,7 +1339,7 @@ let transacciones = JSON.parse(localStorage.getItem('yimi_trans')) || [];
             if (t.fechaStr !== f) { t.fechaStr = f; n++; }
         }
     });
-    if (n) localStorage.setItem('yimi_trans', JSON.stringify(transacciones));
+    if (n) guardarTransacciones();
 })();
 let configTicket = JSON.parse(localStorage.getItem('yimi_config_ticket')) || {
     negocio: 'DIGAR',
@@ -1427,10 +1469,10 @@ let bluetoothCharacteristic = null;
 
 // -------------------- PERSISTENCIA --------------------
 function guardarTodo() {
-    localStorage.setItem('yimi_productos', JSON.stringify(productos));
-    localStorage.setItem('yimi_clientes', JSON.stringify(clientes));
-    localStorage.setItem('yimi_trans', JSON.stringify(transacciones));
-    localStorage.setItem('yimi_config_ticket', JSON.stringify(configTicket));
+    _escribirSiCambio('yimi_productos', productos);
+    _escribirSiCambio('yimi_clientes', clientes);
+    guardarTransacciones();
+    _escribirSiCambio('yimi_config_ticket', configTicket);
     actualizarContadorClientesUI();
     subirDatosNubeDebounced();
 }
@@ -1460,22 +1502,47 @@ function hashSimple(str) {
     return Math.abs(h).toString(36);
 }
 
+// Los scripts de Firebase se descargan solo si la nube está configurada (y no bloquean el arranque de la app)
+let _firebaseCargando = null;
+function cargarFirebase() {
+    if (window.firebase && firebase.firestore) return Promise.resolve();
+    if (_firebaseCargando) return _firebaseCargando;
+    const cargar = src => new Promise((ok, fail) => {
+        const sc = document.createElement('script');
+        sc.src = src;
+        sc.onload = ok;
+        sc.onerror = () => fail(new Error('No se pudo cargar ' + src));
+        document.head.appendChild(sc);
+    });
+    _firebaseCargando = cargar('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js')
+        .then(() => cargar('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'))
+        .catch(e => { _firebaseCargando = null; throw e; });
+    return _firebaseCargando;
+}
+
+let _credencialesNube = null;
 function iniciarFirebase(telefono, password) {
     if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith('PEGA_AQUI')) {
         console.warn('Firebase no está configurado todavía: la app seguirá funcionando solo en este dispositivo.');
         return;
     }
-    try {
+    _credencialesNube = { telefono, password };
+    cargarFirebase().then(() => {
+        if (firestoreDocRef) return; // ya conectado
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         dbFirestore = firebase.firestore();
         const docId = hashSimple(telefono + '|' + password);
         firestoreDocRef = dbFirestore.collection('pos_datos').doc(docId);
         escucharCambiosNube();
         subirDatosNube();
-    } catch (e) {
-        console.error('No se pudo conectar con Firebase:', e);
-    }
+    }).catch(e => {
+        console.error('No se pudo conectar con Firebase (se reintenta al volver el internet):', e);
+    });
 }
+// Si arrancó sin internet, al regresar la señal se conecta a la nube
+window.addEventListener('online', () => {
+    if (_credencialesNube && !firestoreDocRef) iniciarFirebase(_credencialesNube.telefono, _credencialesNube.password);
+});
 
 function escucharCambiosNube() {
     if (!firestoreDocRef || firestoreListenerActivo) return;
@@ -1491,10 +1558,10 @@ function escucharCambiosNube() {
         transacciones = data.transacciones || transacciones;
         configTicket = data.configTicket || configTicket;
         ordenarProductosAlfabetico();
-        localStorage.setItem('yimi_productos', JSON.stringify(productos));
-        localStorage.setItem('yimi_clientes', JSON.stringify(clientes));
-        localStorage.setItem('yimi_trans', JSON.stringify(transacciones));
-        localStorage.setItem('yimi_config_ticket', JSON.stringify(configTicket));
+        _escribirSiCambio('yimi_productos', productos);
+        _escribirSiCambio('yimi_clientes', clientes);
+        guardarTransacciones();
+        _escribirSiCambio('yimi_config_ticket', configTicket);
         renderVenta();
         renderListaClientesInicio();
         actualizarContadorClientesUI();

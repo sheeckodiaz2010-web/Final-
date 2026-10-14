@@ -84,9 +84,10 @@
         </div>
     </div>
 
-    <!-- BARRA SUPERIOR -->
+    <!-- BARRA SUPERIOR + HEADER (juntos y fijos arriba, así el reloj siempre se ve) -->
+    <div style="position:sticky;top:0;z-index:30;">
     <div class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-between items-center">
-        <span>Sistema POS DIGAR - Clientes Comerciales</span>
+        <span id="reloj-app" style="font-size:15px;font-weight:800;letter-spacing:.2px;font-variant-numeric:tabular-nums;" aria-label="Hora actual"></span>
         <button onclick="copiarCodigoFuente(this)" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-[11px] font-bold">Copiar Código</button>
     </div>
 
@@ -100,6 +101,7 @@
             🏪 <span id="txt-cliente-actual">Elegir cliente</span>
         </button>
     </header>
+    </div>
 
     <!-- CONTENEDOR DE VISTAS -->
     <main class="max-w-md mx-auto p-4">
@@ -6068,6 +6070,23 @@ async function initHuellaLogin() {
 }
 
 // -------------------- INICIALIZACIÓN --------------------
+// -------------------- RELOJ (barra superior) --------------------
+function pintarReloj() {
+    const el = $('reloj-app');
+    if (!el) return;
+    const d = new Date();
+    const hora = d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\s?([ap])\.?\s?m\.?/i, (m, x) => ' ' + x.toUpperCase() + 'M');
+    const fecha = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
+    el.textContent = `🕐 ${hora} · ${fecha}`;
+}
+function programarReloj() {
+    pintarReloj();
+    // se actualiza justo al cambiar el minuto (una sola vez por minuto, casi no gasta batería)
+    setTimeout(programarReloj, 60000 - (Date.now() % 60000) + 50);
+}
+programarReloj();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pintarReloj(); });
+
 $('buscador-venta').addEventListener('input', e => filtrarVenta(e.target.value));
 $('buscador-inventario').addEventListener('input', e => filtrarInventario(e.target.value));
 $('buscador-clientes').addEventListener('input', e => renderListaClientesInicio(e.target.value));

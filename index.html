@@ -162,7 +162,6 @@
                     <span id="icono-vista-modo">🔲</span> <span id="texto-vista-modo" class="text-xs">Grid</span>
                 </button>
             </div>
-            <div id="chips-categorias-venta" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch;"></div>
 
             <div id="banner-fotos" style="display:none;font-size:12px;color:#2563eb;background:#eff6ff;border-radius:10px;padding:8px 12px;margin-bottom:8px;"></div>
             <div id="grid-venta" class="grid grid-cols-3 gap-2.5"><div class="bg-white border-2 border-dashed border-blue-200 p-3 rounded-2xl flex flex-col items-center justify-center text-center h-28 cursor-pointer"><span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold text-lg flex items-center justify-center mb-1">+</span><span class="text-xs font-bold text-blue-600">Producto</span></div><div class="bg-blue-900 text-white p-3 rounded-2xl flex flex-col justify-between h-28 cursor-pointer shadow-sm select-none">
@@ -458,8 +457,38 @@
                 <label class="text-xs font-semibold text-gray-500">Días de visita (puedes elegir más de uno)</label>
                 <div id="form-cliente-dias" style="display:flex;gap:6px"></div>
             </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">¿Cada cuándo lo visitas?</label>
+                <select id="form-cliente-frecuencia" class="w-full p-3 border rounded-xl text-sm bg-white">
+                    <option value="semanal">Cada semana</option>
+                    <option value="quincenal_esta">Cada 15 días (le toca esta semana)</option>
+                    <option value="quincenal_prox">Cada 15 días (le toca la próxima semana)</option>
+                </select>
+            </div>
             <button onclick="guardarClienteForm()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md mt-2">Guardar Cliente</button>
             <button id="btn-eliminar-cliente" onclick="eliminarClienteActual()" class="w-full hidden py-3.5 text-red-600 font-bold border border-red-200 bg-red-50/50 rounded-xl text-sm">Eliminar cliente</button>
+        </div>
+    </div>
+
+    <!-- Modal Borrar Todo (pide acceso) -->
+    <div id="modal-borrar-todo" class="fixed inset-0 bg-black/50 hidden flex flex-col justify-end max-w-md mx-auto" style="z-index:90">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base text-red-600">🗑️ Borrar todo el sistema</h3>
+                <button onclick="cerrarModal('modal-borrar-todo')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <p class="text-xs text-gray-500">Por seguridad, escribe el usuario y la contraseña con los que entras a la app.</p>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Usuario (el mismo que usas para entrar)</label>
+                <input type="text" id="borrar-usuario" autocomplete="off" class="w-full p-3 border rounded-xl text-sm">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Contraseña</label>
+                <input type="password" id="borrar-password" autocomplete="off" class="w-full p-3 border rounded-xl text-sm" onkeydown="if(event.key==='Enter')validarBorrarTodo()">
+            </div>
+            <p id="borrar-error" class="text-xs text-red-600 hidden"></p>
+            <button onclick="validarBorrarTodo()" class="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Continuar</button>
+            <button onclick="cerrarModal('modal-borrar-todo')" class="w-full py-3 text-gray-500 font-bold text-sm">Cancelar</button>
         </div>
     </div>
 
@@ -996,7 +1025,7 @@
                 <label class="text-xs font-semibold text-gray-500">Cantidad</label>
                 <div class="flex items-center justify-between bg-gray-50 p-3 rounded-2xl border border-gray-200">
                     <button onclick="cambiarCantConfigItem(-1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">-</button>
-                    <span id="cfg-item-cant" class="text-3xl font-black text-gray-900">1</span>
+                    <input id="cfg-item-cant" type="text" inputmode="numeric" pattern="[0-9]*" value="1" onfocus="this.select()" onchange="fijarCantConfigItem(this.value)" style="width:110px;text-align:center;font-size:30px;font-weight:900;border:1px solid #e5e7eb;border-radius:12px;padding:4px 0;background:#fff;color:#111827;">
                     <button onclick="cambiarCantConfigItem(1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">+</button>
                 </div>
             </div>
@@ -1630,9 +1659,35 @@ function actualizarEtiquetaCliente() {
     const txt = $('txt-cliente-actual'); if (txt) txt.innerText = nombre;
     const btnPago = $('pago-cliente-btn'); if (btnPago) btnPago.innerText = nombre;
 }
+// Frecuencia de visita: 'semanal' (default) o 'quincenal' (cada 15 días). En quincenal se guarda semanaBase =
+// el lunes de una semana en la que SÍ le toca; le toca esa semana, 2 después, 4 después, etc.
+function lunesDe(fecha) {
+    const x = new Date(fecha);
+    x.setHours(12, 0, 0, 0);
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    return x;
+}
+function tocaEstaSemana(c, ref) {
+    if (!c || c.frecuencia !== 'quincenal' || !c.semanaBase) return true;
+    const base = lunesDe(new Date(c.semanaBase + 'T12:00:00'));
+    const actual = lunesDe(ref || new Date());
+    const semanas = Math.round((actual - base) / 604800000);
+    return ((semanas % 2) + 2) % 2 === 0;
+}
+function frecuenciaDesdeForm() {
+    const v = $('form-cliente-frecuencia') ? $('form-cliente-frecuencia').value : 'semanal';
+    if (v === 'semanal') return { frecuencia: 'semanal', semanaBase: '' };
+    const lunes = lunesDe(new Date());
+    if (v === 'quincenal_prox') lunes.setDate(lunes.getDate() + 7);
+    return { frecuencia: 'quincenal', semanaBase: fechaLocal(lunes) };
+}
 function textoDiasCliente(c) {
     const d = (c.dias || []).slice().sort();
-    return d.map(n => DIAS_SEM[n - 1].corto).join(' · ');
+    let t = d.map(n => DIAS_SEM[n - 1].corto).join(' · ');
+    if (c.frecuencia === 'quincenal') {
+        t = (t ? t + ' · ' : '') + 'cada 15 días' + (tocaEstaSemana(c) ? '' : ' (le toca la próxima semana)');
+    }
+    return t;
 }
 
 // Selector de días reutilizable (botones tipo toggle)
@@ -1669,7 +1724,7 @@ function renderChipsDiasClientes() {
     const items = DIAS_SEM.map(d => ({
         k: d.n,
         label: d.corto + (hoy === d.n ? ' •' : ''),
-        n: clientes.filter(c => (c.dias || []).includes(d.n)).length
+        n: clientes.filter(c => (c.dias || []).includes(d.n) && tocaEstaSemana(c)).length
     }));
     items.push({ k: 'todos', label: 'Todos', n: clientes.length });
     if (sinDia > 0) items.push({ k: 'sin', label: 'Sin día', n: sinDia });
@@ -1703,7 +1758,7 @@ function renderListaClientesInicio(filtro) {
     } else if (diaFiltroClientes === 'sin') {
         lista = lista.filter(c => !c.dias || c.dias.length === 0);
     } else if (diaFiltroClientes !== 'todos') {
-        lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes));
+        lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes) && tocaEstaSemana(c));
     }
     const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
     // Pendientes primero, visitados al final; alfabético dentro de cada grupo
@@ -1899,6 +1954,7 @@ function abrirModalFormCliente() {
     $('form-cliente-dir').value = '';
     $('form-cliente-tel').value = '';
     renderSelectorDias('form-cliente-dias', (typeof diaHoy() === 'number') ? [diaHoy()] : []);
+    $('form-cliente-frecuencia').value = 'semanal';
     $('titulo-form-cliente').innerText = 'Nueva Tienda / Cliente';
     $('btn-eliminar-cliente').classList.add('hidden');
     $('modal-form-cliente').classList.remove('hidden');
@@ -1913,6 +1969,7 @@ function editarCliente(id) {
     $('form-cliente-dir').value = c.direccion || '';
     $('form-cliente-tel').value = c.telefono || '';
     renderSelectorDias('form-cliente-dias', c.dias || []);
+    $('form-cliente-frecuencia').value = c.frecuencia === 'quincenal' ? (tocaEstaSemana(c) ? 'quincenal_esta' : 'quincenal_prox') : 'semanal';
     $('titulo-form-cliente').innerText = 'Editar Tienda / Cliente';
     $('btn-eliminar-cliente').classList.remove('hidden');
     $('modal-form-cliente').classList.remove('hidden');
@@ -1924,19 +1981,20 @@ function guardarClienteForm() {
     const dir = $('form-cliente-dir').value.trim();
     const tel = $('form-cliente-tel').value.trim();
     const dias = leerSelectorDias('form-cliente-dias');
+    const frec = frecuenciaDesdeForm();
     if (!nombre) return alert('Escribe el nombre de la tienda o cliente');
 
     if (id) {
         const idNum = normalizarId(id);
         const c = clientes.find(x => normalizarId(x.id) === idNum);
-        if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; c.dias = dias; }
+        if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; c.dias = dias; c.frecuencia = frec.frecuencia; c.semanaBase = frec.semanaBase; }
         // Si el cliente editado es el seleccionado, actualizar nombre en UI
         if (c && clienteSeleccionado && normalizarId(clienteSeleccionado.id) === idNum) {
             clienteSeleccionado = c;
             actualizarEtiquetaCliente();
         }
     } else {
-        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias });
+        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias, frecuencia: frec.frecuencia, semanaBase: frec.semanaBase });
     }
     guardarTodo();
     cerrarModal('modal-form-cliente');
@@ -1981,7 +2039,7 @@ function renderSeleccionClientes(filtro) {
     const soloHoy = !term && !verTodosSeleccion && typeof dia === 'number';
     let lista = [...clientes];
     if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
-    else if (soloHoy) lista = lista.filter(c => (c.dias || []).includes(dia));
+    else if (soloHoy) lista = lista.filter(c => (c.dias || []).includes(dia) && tocaEstaSemana(c));
     const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
     lista.sort((a, b) => (visitados.has(a.id) - visitados.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 
@@ -2223,9 +2281,18 @@ function bindProductoToque(el, prodId) {
     el.addEventListener('contextmenu', e => e.preventDefault());
 }
 
+// Tarjetas de producto en caché: al tocar/agregar solo se rehace la tarjeta que cambió, no toda la lista.
+// Antes se destruían y recreaban TODAS (con sus fotos) en cada toque, y eso hacía que la app se trabara.
+const cacheTarjetasVenta = new Map();
+function firmaTarjetaVenta(p, modo, mapaCarrito) {
+    const ec = mapaCarrito.get(p.id);
+    const foto = modo === 'catalogo' ? (fotosCatalogo[codigoFotoProducto(p)] || '') : '';
+    return [modo, p.nombre, p.sku || '', p.precio, p.stock, ec ? ec.cant : 0, productoSeleccionadoId === p.id ? 1 : 0, foto.length, foto.slice(-16)].join('\u0001');
+}
+
 function renderVenta(filtro = '') {
     const grid = $('grid-venta');
-    renderChipsCategoriasVenta();
+    categoriaVentaActiva = 'General'; // sin categorías en ventas: se muestra todo y se desliza hacia abajo
     const filtrados = productos
         .filter(p => p.nombre.toLowerCase().includes((filtro || '').toLowerCase()))
         .filter(filtroCategoriaVenta)
@@ -2237,6 +2304,7 @@ function renderVenta(filtro = '') {
             return a.i - b.i;
         })
         .map(x => x.p);
+    const mapaCarrito = new Map(carrito.map(x => [x.id, x]));
     const frag = document.createDocumentFragment();
     grid.style.cssText = '';
 
@@ -2250,6 +2318,10 @@ function renderVenta(filtro = '') {
         frag.appendChild(addBtn);
 
         filtrados.forEach(p => {
+            const _f = firmaTarjetaVenta(p, 'grid', mapaCarrito);
+            const _c = cacheTarjetasVenta.get(p.id);
+            if (_c && _c.f === _f) { frag.appendChild(_c.el); return; } // sin cambios: se reutiliza la tarjeta ya armada (nada de recargar fotos)
+
             const div = document.createElement('div');
             const agotado = p.stock <= 0;
             div.className = 'text-white rounded-xl flex flex-col h-28 cursor-pointer shadow-sm select-none relative overflow-hidden';
@@ -2267,6 +2339,7 @@ function renderVenta(filtro = '') {
                 div.replaceChild(crearBotonAgregar(p, carrito.find(x => x.id === p.id), 'barra'), div.lastElementChild);
             }
             bindProductoToque(div, p.id);
+            cacheTarjetasVenta.set(p.id, { f: _f, el: div });
             frag.appendChild(div);
         });
         const celdas = filtrados.length + 1;
@@ -2287,6 +2360,10 @@ function renderVenta(filtro = '') {
         frag.appendChild(addBtn);
 
         filtrados.forEach(p => {
+            const _f = firmaTarjetaVenta(p, 'catalogo', mapaCarrito);
+            const _c = cacheTarjetasVenta.get(p.id);
+            if (_c && _c.f === _f) { frag.appendChild(_c.el); return; } // sin cambios: se reutiliza la tarjeta ya armada (nada de recargar fotos)
+
             const agotado = p.stock <= 0;
             const enCarrito = carrito.find(x => x.id === p.id);
             const div = document.createElement('div');
@@ -2297,6 +2374,8 @@ function renderVenta(filtro = '') {
             const src = fotosCatalogo[codigoFotoProducto(p)];
             if (src) {
                 const img = document.createElement('img');
+                img.loading = 'lazy';
+                img.decoding = 'async';
                 img.src = src;
                 img.alt = '';
                 img.draggable = false;
@@ -2331,11 +2410,16 @@ function renderVenta(filtro = '') {
                 div.appendChild(t);
             }
             bindProductoToque(div, p.id);
+            cacheTarjetasVenta.set(p.id, { f: _f, el: div });
             frag.appendChild(div);
         });
     } else {
         grid.className = 'space-y-2';
         filtrados.forEach(p => {
+            const _f = firmaTarjetaVenta(p, 'lista', mapaCarrito);
+            const _c = cacheTarjetasVenta.get(p.id);
+            if (_c && _c.f === _f) { frag.appendChild(_c.el); return; } // sin cambios: se reutiliza la tarjeta ya armada (nada de recargar fotos)
+
             const div = document.createElement('div');
             const agotado = p.stock <= 0;
             div.className = 'bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer select-none relative';
@@ -2352,12 +2436,17 @@ function renderVenta(filtro = '') {
                 div.replaceChild(crearBotonAgregar(p, carrito.find(x => x.id === p.id), 'pildora'), div.lastElementChild);
             }
             bindProductoToque(div, p.id);
+            cacheTarjetasVenta.set(p.id, { f: _f, el: div });
             frag.appendChild(div);
         });
     }
 
     grid.innerHTML = '';
     grid.appendChild(frag);
+    if (cacheTarjetasVenta.size > productos.length + 60) { // limpiar tarjetas de productos que ya no existen
+        const vivos = new Set(productos.map(x => x.id));
+        for (const k of [...cacheTarjetasVenta.keys()]) if (!vivos.has(k)) cacheTarjetasVenta.delete(k);
+    }
     actualizarBadgeCarrito();
 }
 
@@ -2443,6 +2532,47 @@ function confirmarCantidadAlCarrito() {
     productoCantidadId = null;
 }
 
+function actualizarTotalesCarrito() {
+    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    const piezas = carrito.reduce((a, b) => a + (b.cant || 0), 0);
+    $('modal-total').innerText = money(total);
+    const elPiezas = $('modal-piezas');
+    if (elPiezas) elPiezas.innerText = piezas;
+    actualizarBadgeCarrito();
+}
+
+// Pone la cantidad exacta de una línea del carrito (ajusta el stock). Devuelve la cantidad que quedó.
+function fijarCantidadCarrito(idx, nueva) {
+    const item = carrito[idx];
+    if (!item) return 0;
+    const p = productos.find(x => x.id === item.id);
+    let n = parseInt(String(nueva).replace(/\D/g, ''), 10);
+    if (!isFinite(n) || n < 1) n = item.cant; // dato inválido o 0: se queda como estaba
+    const extra = n - item.cant;
+    if (extra > 0) {
+        const disponible = p ? Math.max(0, Number(p.stock) || 0) : 0;
+        if (extra > disponible) {
+            alert(`Solo hay ${disponible} pieza(s) más en stock.`);
+            n = item.cant + disponible;
+        }
+    }
+    if (p) p.stock -= (n - item.cant);
+    item.cant = n;
+    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+    return n;
+}
+
+function quitarDelCarrito(idx) {
+    const item = carrito[idx];
+    if (!item) return;
+    const p = productos.find(x => x.id === item.id);
+    if (p) p.stock += item.cant;
+    carrito.splice(idx, 1);
+    abrirCarrito();
+    actualizarBadgeCarrito();
+    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+}
+
 function abrirCarrito() {
     const contenedor = $('items-carrito');
     contenedor.innerHTML = '';
@@ -2451,17 +2581,81 @@ function abrirCarrito() {
     } else {
         const frag = document.createDocumentFragment();
         carrito.forEach((item, idx) => {
-            const div = document.createElement('div');
-            div.className = 'bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center cursor-pointer';
-            div.onclick = () => abrirConfigItemCarrito(idx);
-            div.innerHTML = `
-                <div>
-                    <p class="font-bold text-sm text-gray-800">${item.nombre}</p>
-                    <p class="text-xs text-gray-400">${money(item.precioPersonalizado)} x ${item.cant}</p>
-                </div>
-                <span class="font-black text-sm text-blue-600">${money(item.precioPersonalizado * item.cant)}</span>
-            `;
-            frag.appendChild(div);
+            const fila = document.createElement('div');
+            fila.style.cssText = 'background:#fff;border:1px solid #f3f4f6;border-radius:16px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);';
+
+            // Arriba: nombre, precio y subtotal (tocar aquí abre precio / eliminar)
+            const arriba = document.createElement('div');
+            arriba.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;gap:8px;cursor:pointer;';
+            arriba.addEventListener('click', () => abrirConfigItemCarrito(idx));
+            const info = document.createElement('div');
+            info.style.cssText = 'min-width:0;flex:1;';
+            const nom = document.createElement('p');
+            nom.className = 'font-bold text-sm text-gray-800';
+            nom.textContent = item.nombre;
+            const pre = document.createElement('p');
+            pre.className = 'text-xs text-gray-400';
+            info.appendChild(nom);
+            info.appendChild(pre);
+            const sub = document.createElement('span');
+            sub.className = 'font-black text-sm text-blue-600';
+            arriba.appendChild(info);
+            arriba.appendChild(sub);
+
+            // Abajo: piezas pedidas con − [número] +  (tocar el número abre el teclado)
+            const abajo = document.createElement('div');
+            abajo.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:10px;';
+            const etq = document.createElement('span');
+            etq.className = 'text-xs text-gray-500';
+            etq.textContent = 'Piezas pedidas';
+            const ctrl = document.createElement('div');
+            ctrl.style.cssText = 'display:flex;align-items:center;gap:8px;';
+            const boton = (txt, fn) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = txt;
+                b.style.cssText = 'width:42px;height:42px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:900;font-size:22px;line-height:1;border:0;';
+                b.addEventListener('click', e => { e.stopPropagation(); fn(); });
+                return b;
+            };
+            const inp = document.createElement('input');
+            inp.type = 'text';
+            inp.inputMode = 'numeric';
+            inp.pattern = '[0-9]*';
+            inp.setAttribute('aria-label', 'Piezas');
+            inp.style.cssText = 'width:68px;height:42px;text-align:center;font-weight:900;font-size:18px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#111827;';
+            inp.addEventListener('focus', () => inp.select());
+            inp.addEventListener('click', e => e.stopPropagation());
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+
+            const pintar = () => {
+                inp.value = item.cant;
+                pre.textContent = `${money(item.precioPersonalizado)} c/u`;
+                sub.textContent = money(item.precioPersonalizado * item.cant);
+                actualizarTotalesCarrito();
+            };
+            inp.addEventListener('change', () => { fijarCantidadCarrito(idx, inp.value); pintar(); });
+            const menos = boton('−', () => {
+                if (item.cant <= 1) {
+                    if (confirm('¿Quitar este producto del carrito?')) quitarDelCarrito(idx);
+                    return;
+                }
+                fijarCantidadCarrito(idx, item.cant - 1);
+                pintar();
+            });
+            const mas = boton('+', () => { fijarCantidadCarrito(idx, item.cant + 1); pintar(); });
+            ctrl.appendChild(menos);
+            ctrl.appendChild(inp);
+            ctrl.appendChild(mas);
+            abajo.appendChild(etq);
+            abajo.appendChild(ctrl);
+
+            fila.appendChild(arriba);
+            fila.appendChild(abajo);
+            inp.value = item.cant;
+            pre.textContent = `${money(item.precioPersonalizado)} c/u`;
+            sub.textContent = money(item.precioPersonalizado * item.cant);
+            frag.appendChild(fila);
         });
         contenedor.appendChild(frag);
     }
@@ -2479,7 +2673,7 @@ function abrirConfigItemCarrito(idx) {
     $('modal-carrito').classList.add('hidden');
     $('cfg-item-titulo').innerText = item.nombre;
     $('cfg-item-precio-txt').innerText = money(item.precioPersonalizado);
-    $('cfg-item-cant').innerText = item.cant;
+    $('cfg-item-cant').value = item.cant;
     actualizarResumenConfigItem();
     $('modal-config-item').classList.remove('hidden');
 }
@@ -2502,7 +2696,13 @@ function cambiarCantConfigItem(delta) {
         p.stock++;
         item.cant--;
     }
-    $('cfg-item-cant').innerText = item.cant;
+    $('cfg-item-cant').value = item.cant;
+    actualizarResumenConfigItem();
+}
+
+function fijarCantConfigItem(v) {
+    const n = fijarCantidadCarrito(indexItemConfigActivo, v);
+    $('cfg-item-cant').value = n;
     actualizarResumenConfigItem();
 }
 
@@ -2683,7 +2883,7 @@ async function ejecutarCobroFinal() {
 
     const containerRecibo = $('recibo-lista-items');
     containerRecibo.innerHTML = '';
-    carrito.forEach(i => {
+    [...carrito].sort(ordenAlfaItems).forEach(i => {
         containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
     });
     $('recibo-subtotal').innerText = money(total);
@@ -3556,7 +3756,7 @@ function abrirDetalleVenta(id) {
     const container = $('det-venta-items');
     container.innerHTML = '';
     if (t.items) {
-        t.items.forEach(i => {
+        [...t.items].sort(ordenAlfaItems).forEach(i => {
             container.innerHTML += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre}</span><span class="font-bold">${money(i.precioPersonalizado * i.cant)}</span></div>`;
         });
     } else if (t.itemsCompra) {
@@ -4805,6 +5005,10 @@ async function imprimirTransaccionEspecifica(id) {
 }
 
 // Quita acentos y símbolos que la mayoría de impresoras térmicas no soportan (evita que salgan caracteres raros)
+function ordenAlfaItems(a, b) {
+    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base', numeric: true });
+}
+
 function limpiarTxt(s) {
     return String(s)
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -5009,7 +5213,7 @@ async function enviarImpresionTicketESC_POS(t, opciones) {
     cmds.push(enc(`================================\n`));
 
     if (t.items) {
-        t.items.forEach(i => {
+        [...t.items].sort(ordenAlfaItems).forEach(i => {
             // Código: SKU guardado en la línea o, si no, el del producto actual; en blanco si no tiene
             const prodActual = productos.find(x => String(x.id) === String(i.id));
             const sku = String(i.sku || (prodActual && prodActual.sku) || '').trim();
@@ -5673,11 +5877,39 @@ function cerrarBannerRespaldo() {
     if (el) el.classList.add('hidden');
 }
 
+// Borrar todo: 1) pide usuario y contraseña del acceso, 2) pide una última confirmación
 function borrarTodo() {
-    if (confirm('¿Borrar TODO el sistema? Esta acción no se puede deshacer.')) {
-        localStorage.clear();
-        location.reload();
+    if (!yimiAuth) return confirmarBorradoFinal(); // si nunca se creó un acceso, solo la confirmación final
+    $('borrar-usuario').value = '';
+    $('borrar-password').value = '';
+    $('borrar-error').classList.add('hidden');
+    $('modal-borrar-todo').classList.remove('hidden');
+    setTimeout(() => { const i = $('borrar-usuario'); if (i) i.focus(); }, 50);
+}
+
+function validarBorrarTodo() {
+    const norm = x => String(x || '').trim().toLowerCase().replace(/[\s()\-+]/g, '');
+    const u = $('borrar-usuario').value;
+    const p = $('borrar-password').value;
+    if (!norm(u) || !p) return mostrarErrorBorrar('Escribe tu usuario y tu contraseña.');
+    if (norm(u) !== norm(yimiAuth.telefono) || p !== yimiAuth.password) {
+        $('borrar-password').value = '';
+        return mostrarErrorBorrar('Usuario o contraseña incorrectos.');
     }
+    cerrarModal('modal-borrar-todo');
+    confirmarBorradoFinal();
+}
+
+function mostrarErrorBorrar(msg) {
+    const el = $('borrar-error');
+    el.innerText = msg;
+    el.classList.remove('hidden');
+}
+
+function confirmarBorradoFinal() {
+    if (!confirm('⚠️ ÚLTIMA CONFIRMACIÓN\n\nSe borrarán TODAS tus ventas, clientes, inventario y configuración de este celular. No se puede deshacer.\n\nSi no has exportado un respaldo, cancela y hazlo primero.\n\n¿Seguro que quieres borrar todo el sistema?')) return;
+    localStorage.clear();
+    location.reload();
 }
 
 // -------------------- ACCESO (LOGIN) --------------------

@@ -363,20 +363,20 @@
     </div>
 
     <!-- NAVEGACIÓN -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 px-6 flex justify-between items-center z-30 max-w-md mx-auto">
-        <button onclick="cambiarVista('clientes')" id="nav-clientes" class="flex flex-col items-center text-blue-600 text-[10px] font-bold">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between items-stretch z-30 max-w-md mx-auto">
+        <button onclick="cambiarVista('clientes')" id="nav-clientes" class="flex flex-col items-center text-blue-600 text-[10px] font-bold" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 2px calc(9px + env(safe-area-inset-bottom, 0px));min-height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 2 11.2h3V20h5.2v-5.6h3.6V20H19v-8.8h3z"/></svg> Clientes
         </button>
-        <button onclick="cambiarVista('productos')" id="nav-productos" class="flex flex-col items-center text-gray-700 text-[10px] font-medium">
+        <button onclick="cambiarVista('productos')" id="nav-productos" class="flex flex-col items-center text-gray-700 text-[10px] font-medium" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 2px calc(9px + env(safe-area-inset-bottom, 0px));min-height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M3 4h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M4 10h16v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm5 3v2h6v-2z"/></svg> Productos
         </button>
-        <button onclick="cambiarVista('venta')" id="nav-venta" class="flex flex-col items-center text-gray-700 text-[10px] font-medium">
+        <button onclick="cambiarVista('venta')" id="nav-venta" class="flex flex-col items-center text-gray-700 text-[10px] font-medium" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 2px calc(9px + env(safe-area-inset-bottom, 0px));min-height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M12 7v10M7 12h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg> Venta
         </button>
-        <button onclick="cambiarVista('transacciones')" id="nav-transacciones" class="flex flex-col items-center text-gray-700 text-[10px] font-medium">
+        <button onclick="cambiarVista('transacciones')" id="nav-transacciones" class="flex flex-col items-center text-gray-700 text-[10px] font-medium" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 2px calc(9px + env(safe-area-inset-bottom, 0px));min-height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M6 2h12a1 1 0 0 1 1 1v18.5l-2.5-1.6-2 1.6-2-1.6-2 1.6-2.5-1.6L5 21.5V3a1 1 0 0 1 1-1zm2 5v1.7h8V7zm0 4v1.7h8V11zm0 4v1.7h5V15z"/></svg> Transacciones
         </button>
-        <button onclick="cambiarVista('mas')" id="nav-mas" class="flex flex-col items-center text-gray-700 text-[10px] font-medium">
+        <button onclick="cambiarVista('mas')" id="nav-mas" class="flex flex-col items-center text-gray-700 text-[10px] font-medium" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 2px calc(9px + env(safe-area-inset-bottom, 0px));min-height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="5" width="18" height="2.6" rx="1.3"/><rect x="3" y="10.7" width="18" height="2.6" rx="1.3"/><rect x="3" y="16.4" width="18" height="2.6" rx="1.3"/></svg> Más
         </button>
     </nav>
@@ -2299,8 +2299,15 @@ function firmaTarjetaVenta(p, modo, mapaCarrito) {
     return [modo, p.nombre, p.sku || '', p.precio, p.stock, ec ? ec.cant : 0, productoSeleccionadoId === p.id ? 1 : 0, foto.length, foto.slice(-16)].join('\u0001');
 }
 
+let ultimoFiltroVenta = '';
+let temporizadorAltoGrid = null;
 function renderVenta(filtro = '') {
     const grid = $('grid-venta');
+    // Guardar dónde va la pantalla: al tocar/agregar un producto la lista NO debe regresar al principio
+    const yAntes = window.scrollY;
+    const conservar = (filtro || '') === ultimoFiltroVenta; // si cambió la búsqueda, sí es normal volver arriba
+    ultimoFiltroVenta = filtro || '';
+    const altoAntes = grid.offsetHeight;
     categoriaVentaActiva = 'General'; // sin categorías en ventas: se muestra todo y se desliza hacia abajo
     const filtrados = productos
         .filter(p => p.nombre.toLowerCase().includes((filtro || '').toLowerCase()))
@@ -2450,8 +2457,21 @@ function renderVenta(filtro = '') {
         });
     }
 
-    grid.innerHTML = '';
-    grid.appendChild(frag);
+    // Mientras se cambia el contenido, la lista conserva su altura (si se encogiera un instante, el navegador subiría la pantalla)
+    if (conservar && altoAntes > 0) {
+        grid.style.minHeight = altoAntes + 'px';
+        clearTimeout(temporizadorAltoGrid);
+        temporizadorAltoGrid = setTimeout(() => { grid.style.minHeight = ''; }, 400);
+    }
+    grid.replaceChildren(frag);
+    if (conservar && yAntes > 120) {
+        const restaurar = () => { if (Math.abs(window.scrollY - yAntes) > 2) window.scrollTo(0, yAntes); };
+        const ahora = window.scrollY;
+        if (Math.abs(ahora - yAntes) > 40) diag('scroll', `la lista saltó de ${Math.round(yAntes)} a ${Math.round(ahora)}; se regresó a su lugar`);
+        restaurar();
+        requestAnimationFrame(restaurar);
+        setTimeout(() => { if (window.scrollY < 5) window.scrollTo(0, yAntes); }, 150); // solo corrige si se fue hasta arriba
+    }
     if (cacheTarjetasVenta.size > productos.length + 60) { // limpiar tarjetas de productos que ya no existen
         const vivos = new Set(productos.map(x => x.id));
         for (const k of [...cacheTarjetasVenta.keys()]) if (!vivos.has(k)) cacheTarjetasVenta.delete(k);
@@ -6119,6 +6139,26 @@ async function initHuellaLogin() {
 }
 
 // -------------------- INICIALIZACIÓN --------------------
+// -------------------- BARRA INFERIOR: responde al tocar --------------------
+// En el diagnóstico se vio que a veces el teléfono avisa del toque pero nunca "suelta" el dedo (zona de gestos del borde),
+// y entonces no llegaba el click. Por eso aquí se cambia de pantalla en cuanto se toca, y el click que llegue después se ignora.
+let ignorarClickNavHasta = 0;
+(function () {
+    const nav = document.querySelector('nav.fixed.bottom-0');
+    if (!nav) return;
+    nav.addEventListener('touchstart', e => {
+        const b = e.target.closest && e.target.closest('button[id^="nav-"]');
+        if (!b) return;
+        const v = b.id.replace('nav-', '');
+        ignorarClickNavHasta = Date.now() + 700;
+        diag('nav', 'abre ' + v + ' al tocar');
+        cambiarVista(v);
+    }, { passive: true });
+    nav.addEventListener('click', e => {
+        if (Date.now() < ignorarClickNavHasta) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+})();
+
 // -------------------- RELOJ (barra superior) --------------------
 function pintarReloj() {
     const el = $('reloj-app');

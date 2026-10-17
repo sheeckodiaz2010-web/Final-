@@ -93,6 +93,13 @@ img{content-visibility:auto}
 #toast-pro{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:88%;padding:11px 16px;border-radius:14px;background:#111827;color:#fff;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;z-index:9999;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);text-align:center}
 #toast-pro.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* ===== Ventanas: fondo bloqueado + título fijo ===== */
+html:has([id^="modal-"].fixed:not(.hidden)),body:has([id^="modal-"].fixed:not(.hidden)),html:has(#dlg-pro),body:has(#dlg-pro){overflow:hidden!important;overscroll-behavior:none}
+[id^="modal-"].fixed:not(.hidden){touch-action:none}
+[id^="modal-"].fixed .overflow-y-auto,[id^="modal-"].fixed>.bg-white{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+[id^="modal-"].fixed>.bg-white:not([class*="max-h-"]){max-height:90vh;max-height:90dvh;overflow-y:auto}
+[id^="modal-"].fixed>.bg-white:has(>:first-child.flex.justify-between.items-center){padding-top:0!important}
+[id^="modal-"].fixed>.bg-white>:first-child.flex.justify-between.items-center{position:sticky;top:0;z-index:5;background:#fff;padding-top:18px;margin-top:0}
 /* ===== Íconos propios (reemplazan emojis) ===== */
 .ic-pro{display:inline-flex;align-items:center;justify-content:center;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none;line-height:1}
 .ic-pro svg{width:100%;height:100%;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

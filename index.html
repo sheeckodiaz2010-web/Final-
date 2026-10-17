@@ -93,6 +93,9 @@ img{content-visibility:auto}
 #toast-pro{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:88%;padding:11px 16px;border-radius:14px;background:#111827;color:#fff;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;z-index:9999;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);text-align:center}
 #toast-pro.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* ===== Íconos propios (reemplazan emojis) ===== */
+.ic-pro{display:inline-flex;align-items:center;justify-content:center;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none;line-height:1}
+.ic-pro svg{width:100%;height:100%;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* ===== Diálogos propios ===== */
 #dlg-pro{position:fixed;inset:0;z-index:10000;display:flex;align-items:flex-end;justify-content:center;background:rgba(17,24,39,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:fondoIn .16s ease-out both}
 #dlg-pro .hoja{width:100%;max-width:28rem;background:#fff;border-radius:22px 22px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:hojaIn .26s cubic-bezier(.2,.8,.2,1) both;font-family:inherit}
@@ -6472,6 +6475,86 @@ document.addEventListener('visibilitychange', () => {
 </script>
 
 
+<script id="iconos-pro">
+(function(){
+  var D=function(x){return '<circle cx="12" cy="12" r="7" fill="'+x+'" stroke="none"/>'};
+  var I={
+   '🔍':'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+   '🗑':'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+   '➕':'<path d="M12 5v14M5 12h14"/>',
+   '💳':'<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/>',
+   '👆':'<path d="M9 11V5a2 2 0 0 1 4 0v6"/><path d="M13 10h3a2 2 0 0 1 2 2v3a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5L9 14"/>',
+   '🖨':'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+   '📦':'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+   '⚠':'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17.5v.5"/>',
+   '📅':'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+   '✏':'<path d="M4 20l1-4L16 5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="m14 7 3 3"/>',
+   '✎':'<path d="M4 20l1-4L16 5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="m14 7 3 3"/>',
+   '📳':'<rect x="8" y="3" width="8" height="18" rx="2"/><path d="M4 8v8M20 8v8"/>',
+   '🏷':'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/>',
+   '📍':'<path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+   '🔒':'<rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+   '🏪':'<path d="M3 9l2-5h14l2 5"/><path d="M4 9v11h16V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>',
+   '🏠':'<path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/>',
+   '🔲':'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+   '📋':'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+   '🖼':'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/>',
+   '📞':'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+   '🟢':D('#22c55e'),'🟡':D('#f59e0b'),'🔴':D('#ef4444'),'⚪':'<circle cx="12" cy="12" r="6"/>',
+   '📷':'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+   '💰':'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+   '💵':'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+   '🛒':'<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/>',
+   '🗄':'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+   '📂':'<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+   '🗂':'<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+   '📥':'<path d="M12 4v11M7 11l5 5 5-5M4 20h16"/>',
+   '🚪':'<path d="M9 4H5v16h4M15 8l5 4-5 4M20 12H9"/>',
+   '🩺':'<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+   '💾':'<path d="M5 3h12l4 4v14H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/>',
+   '🔗':'<path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/>',
+   '⚡':'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+   '👥':'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a6 6 0 0 1 6 6"/>',
+   '⚙':'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+   '🕐':'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+   '✓':'<path d="m5 12 5 5 9-10"/>',
+   '✕':'<path d="M6 6l12 12M18 6 6 18"/>'
+  };
+  var keys=Object.keys(I).sort(function(a,b){return b.length-a.length});
+  var RX=new RegExp('('+keys.join('|')+')\\uFE0F?','g');
+  var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,OPTION:1,SELECT:1,TITLE:1,NOSCRIPT:1};
+  function nodo(n){
+    var p=n.parentNode;if(!p||SKIP[p.nodeName]||(p.classList&&p.classList.contains('ic-pro')))return;
+    var t=n.nodeValue;if(!t||t.search(RX)<0)return;
+    RX.lastIndex=0;var f=document.createDocumentFragment(),u=0,m;
+    while((m=RX.exec(t))){
+      if(m.index>u)f.appendChild(document.createTextNode(t.slice(u,m.index)));
+      var sp=document.createElement('span');sp.className='ic-pro';sp.setAttribute('aria-hidden','true');
+      sp.innerHTML='<svg viewBox="0 0 24 24">'+I[m[1]]+'</svg>';f.appendChild(sp);u=m.index+m[0].length;
+    }
+    if(u<t.length)f.appendChild(document.createTextNode(t.slice(u)));
+    p.replaceChild(f,n);
+  }
+  function barrer(r){
+    if(!r)return;
+    if(r.nodeType===3){nodo(r);return}
+    if(r.nodeType!==1||SKIP[r.nodeName])return;
+    var w=document.createTreeWalker(r,4,null),a=[],x;
+    while((x=w.nextNode()))a.push(x);
+    a.forEach(nodo);
+  }
+  var cola=[],prog=false;
+  function proc(){prog=false;var c=cola;cola=[];c.forEach(barrer)}
+  new MutationObserver(function(ms){
+    ms.forEach(function(m){
+      if(m.type==='characterData')cola.push(m.target);
+      else m.addedNodes.forEach(function(n){if(!(n.classList&&n.classList.contains('ic-pro')))cola.push(n)});
+    });
+    if(!prog){prog=true;(window.requestAnimationFrame||setTimeout)(proc)}
+  }).observe(document.body,{childList:true,subtree:true,characterData:true});
+  barrer(document.body);
+})();
+</script>
 <script id="dialogos-pro">
 (function(){
   var abierto=null;

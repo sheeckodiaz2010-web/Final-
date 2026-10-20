@@ -63,7 +63,7 @@
 </style>
 <style id="pulido-pro">
 /* ===== Capa de fluidez / acabado tipo app nativa ===== */
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+html{-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 button,a,[onclick],input,select,textarea,label{touch-action:manipulation}
 body{background:#f3f4f6}
 /* Respuesta táctil inmediata en todo lo tocable */
@@ -71,14 +71,14 @@ button,[onclick]{transition:transform .12s cubic-bezier(.2,.8,.2,1),opacity .12s
 button:active,[onclick]:not(.fixed):active{transform:scale(.97);opacity:.92}
 /* Cambio de pestaña: entrada suave */
 @keyframes vistaIn{from{opacity:0}to{opacity:1}}
-[id^="vista-"]:not(.hidden){animation:vistaIn .2s ease-out}
+/* vistaIn desactivado: repintaba la vista completa en cada cambio */
 /* Modales: fondo con fade y hoja que sube */
 @keyframes fondoIn{from{opacity:0}to{opacity:1}}
 @keyframes hojaIn{from{transform:translateY(32px);opacity:.6}to{transform:none;opacity:1}}
-.fixed.inset-0.z-50:not(.hidden),[id^="modal-"].fixed:not(.hidden){animation:fondoIn .18s ease-out both;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.fixed.inset-0.z-50:not(.hidden),[id^="modal-"].fixed:not(.hidden){animation:fondoIn .18s ease-out both;}
 .fixed.inset-0.z-50:not(.hidden)>*,[id^="modal-"].fixed:not(.hidden)>*{animation:hojaIn .26s cubic-bezier(.2,.8,.2,1) both}
 /* Barra inferior con acabado de vidrio y botón activo con indicador */
-nav.fixed.bottom-0{background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(180%) blur(14px);backdrop-filter:saturate(180%) blur(14px);box-shadow:0 -1px 12px rgba(0,0,0,.05)}
+nav.fixed.bottom-0{background:#fff;box-shadow:0 -1px 12px rgba(0,0,0,.05)}
 nav.fixed.bottom-0 button{position:relative}
 nav.fixed.bottom-0 button.text-blue-600::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 4px 4px;background:#2563eb}
 nav.fixed.bottom-0 button svg{transition:transform .2s cubic-bezier(.2,.8,.2,1)}
@@ -88,6 +88,8 @@ nav.fixed.bottom-0 button.text-blue-600 svg{transform:translateY(-1px) scale(1.1
 /* Tarjetas e inputs más finos */
 .shadow-sm{box-shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08)!important}
 input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.18);border-color:#2563eb!important;transition:box-shadow .15s}
+#grid-venta>*,#lista-inventario>*{content-visibility:auto;contain-intrinsic-size:auto 112px}
+#grid-venta,#lista-inventario{contain:layout style}
 img{content-visibility:auto}
 /* Toast profesional (reemplaza alert) */
 #toast-pro{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:88%;padding:11px 16px;border-radius:14px;background:#111827;color:#fff;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;z-index:9999;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);text-align:center}
@@ -104,7 +106,7 @@ html:has([id^="modal-"].fixed:not(.hidden)),body:has([id^="modal-"].fixed:not(.h
 .ic-pro{display:inline-flex;align-items:center;justify-content:center;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none;line-height:1}
 .ic-pro svg{width:100%;height:100%;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* ===== Diálogos propios ===== */
-#dlg-pro{position:fixed;inset:0;z-index:10000;display:flex;align-items:flex-end;justify-content:center;background:rgba(17,24,39,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:fondoIn .16s ease-out both}
+#dlg-pro{position:fixed;inset:0;z-index:10000;display:flex;align-items:flex-end;justify-content:center;background:rgba(17,24,39,.5);animation:fondoIn .16s ease-out both}
 #dlg-pro .hoja{width:100%;max-width:28rem;background:#fff;border-radius:22px 22px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:hojaIn .26s cubic-bezier(.2,.8,.2,1) both;font-family:inherit}
 #dlg-pro .msg{font-size:15px;font-weight:600;line-height:1.4;color:#111827;white-space:pre-line;margin-bottom:14px;word-break:break-word}
 #dlg-pro .campo{width:100%;box-sizing:border-box;border:1.5px solid #d1d5db;border-radius:12px;padding:12px;font-size:16px;margin-bottom:14px;background:#f9fafb;color:#111827}
@@ -400,10 +402,6 @@ input,select,textarea{font-size:16px}
                 <button onclick="abrirMenuCatalogo()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></span>
                     <span style="display:block;min-width:0;"><span class="ajuste-label">Catálogo</span></span>
-                </button>
-                <button onclick="abrirDiagnostico()" class="ajuste-card">
-                    <span class="ajuste-icono"><svg viewBox="0 0 24 24" style="fill:none"><path d="M3 12h4l2-6 4 12 2-6h6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                    <span style="display:block;min-width:0;"><span class="ajuste-label">Diagnóstico</span><span class="ajuste-sub">Si se traba</span></span>
                 </button>
                 <button onclick="actualizarApp()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span>
@@ -863,22 +861,6 @@ input,select,textarea{font-size:16px}
                 <div class="font-bold text-sm">🖼️ Actualizar fotos del catálogo</div>
                 <div style="font-size:11px;color:#6b7280;margin-top:2px;">Descarga las fotos nuevas para la vista Catálogo de la venta.</div>
             </button>
-        </div>
-    </div>
-
-    <!-- Modal diagnóstico -->
-    <div id="modal-diagnostico" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
-        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-base">🩺 Diagnóstico</h3>
-                <button onclick="cerrarModal('modal-diagnostico')" class="text-gray-400 font-bold text-xl">×</button>
-            </div>
-            <p class="text-[11px] text-gray-500">Si la app se traba: bloquea y desbloquea el teléfono, entra aquí y mándame una captura de esta pantalla.</p>
-            <pre id="diag-texto" style="flex:1;overflow:auto;font-size:10px;line-height:1.35;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:8px;white-space:pre-wrap;word-break:break-all;margin:0;"></pre>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="copiarDiagnostico()" class="py-3 rounded-xl text-sm font-bold bg-blue-600 text-white">Copiar</button>
-                <button onclick="borrarDiagnostico()" class="py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700">Borrar</button>
-            </div>
         </div>
     </div>
 
@@ -1469,30 +1451,6 @@ let compraIdxPrecio = 0;
 let compraPreciosDecididos = []; // { id, precioVenta }
 let ventaSeleccionadaId = null;
 let indexItemConfigActivo = null;
-// -------------------- DIAGNÓSTICO (bitácora para encontrar por qué se traba) --------------------
-var bitacoraDiag = [];
-var diagGuardadoPendiente = false;
-function diag(tipo, detalle) {
-    try {
-        const d = new Date();
-        const hms = d.toLocaleTimeString('es-MX', { hour12: false });
-        bitacoraDiag.push(`${hms}.${String(d.getMilliseconds()).padStart(3, '0')} ${tipo}${detalle ? ' · ' + detalle : ''}`);
-        if (bitacoraDiag.length > 120) bitacoraDiag.shift();
-        if (tipo !== 'toque' && tipo !== 'click' && !diagGuardadoPendiente) {
-            diagGuardadoPendiente = true;
-            setTimeout(() => { diagGuardadoPendiente = false; try { localStorage.setItem('digar_diag', JSON.stringify(bitacoraDiag)); } catch (e) {} }, 800);
-        }
-    } catch (e) {}
-}
-function descripcionElemento(el) {
-    if (!el || !el.tagName) return 'nada';
-    const cls = (typeof el.className === 'string' && el.className.trim()) ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
-    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + cls;
-}
-try { bitacoraDiag = JSON.parse(localStorage.getItem('digar_diag')) || []; bitacoraDiag.push('--- app abierta ---'); } catch (e) { bitacoraDiag = []; }
-window.addEventListener('error', e => diag('ERROR', `${e.message} (línea ${e.lineno})`));
-window.addEventListener('unhandledrejection', e => diag('PROMESA', String((e.reason && e.reason.message) || e.reason).slice(0, 120)));
-document.addEventListener('visibilitychange', () => { diag('visibilidad', document.visibilityState); if (document.visibilityState === 'visible') { desenfocarCampos(); if (typeof actualizarAvisoPendiente === 'function') actualizarAvisoPendiente(); } });
 // Quita el foco de cualquier campo de texto (evita que el teclado/campo quede "pegado" y se coma los toques)
 function desenfocarCampos() {
     try {
@@ -1500,62 +1458,18 @@ function desenfocarCampos() {
         if (a && a !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur();
     } catch (e) {}
 }
-var toqueActual = null;
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { desenfocarCampos(); if (typeof actualizarAvisoPendiente === 'function') actualizarAvisoPendiente(); }
+});
+// Tocar fuera de un campo de texto lo suelta
 document.addEventListener('touchstart', e => {
     const t = e.touches && e.touches[0];
     if (!t) return;
-    const objetivo = document.elementFromPoint(t.clientX, t.clientY);
     const foco = document.activeElement;
-    const campoEnfocado = foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName);
-    diag('toque', `${t.clientX | 0},${t.clientY | 0} → ${descripcionElemento(objetivo)}${campoEnfocado ? ' [foco en ' + descripcionElemento(foco) + ']' : ''}`);
-    // Tocar fuera de un campo de texto lo suelta
-    if (campoEnfocado && objetivo && !objetivo.closest('input,textarea,select,label')) desenfocarCampos();
-    // Vigila que un toque sobre algo "tocable" termine en click; si no, lo anota
-    const tocable = objetivo && objetivo.closest('button,a,[onclick],input,select,label');
-    if (tocable && !objetivo.closest('#grid-venta')) {
-        const mio = { x: t.clientX, y: t.clientY, movido: false, terminado: false, cancelado: false, desc: descripcionElemento(objetivo) };
-        toqueActual = mio;
-        setTimeout(() => {
-            if (toqueActual === mio && !mio.movido) {
-                diag('SIN-CLICK', `${mio.desc} (${mio.cancelado ? 'toque cancelado' : mio.terminado ? 'terminó sin click' : 'sigue presionado'}) foco: ${descripcionElemento(document.activeElement)} · documento con foco: ${document.hasFocus()}`);
-            }
-        }, 700);
-    }
+    if (!(foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName))) return;
+    const objetivo = document.elementFromPoint(t.clientX, t.clientY);
+    if (objetivo && !objetivo.closest('input,textarea,select,label')) desenfocarCampos();
 }, { capture: true, passive: true });
-document.addEventListener('touchmove', e => {
-    const t = e.touches && e.touches[0];
-    if (toqueActual && t && (Math.abs(t.clientX - toqueActual.x) > 10 || Math.abs(t.clientY - toqueActual.y) > 10)) toqueActual.movido = true;
-}, { capture: true, passive: true });
-document.addEventListener('touchend', () => { if (toqueActual) toqueActual.terminado = true; }, { capture: true, passive: true });
-document.addEventListener('touchcancel', () => { diag('TOUCHCANCEL'); if (toqueActual) toqueActual.cancelado = true; }, { capture: true, passive: true });
-document.addEventListener('click', e => { toqueActual = null; diag('click', descripcionElemento(e.target)); }, true);
-(function () {
-    let marcas = [];
-    window.addEventListener('resize', () => {
-        const ahora = Date.now();
-        marcas = marcas.filter(t => ahora - t < 2000);
-        marcas.push(ahora);
-        if (marcas.length === 6) diag('RESIZE-TORMENTA', `${window.innerWidth}x${window.innerHeight}`);
-        else if (marcas.length === 1) diag('resize', `${window.innerWidth}x${window.innerHeight}`);
-    });
-    ['alert', 'confirm', 'prompt'].forEach(nombre => {
-        const original = window[nombre].bind(window);
-        window[nombre] = function (msg, def) {
-            diag('DIÁLOGO ' + nombre, String(msg).replace(/\s+/g, ' ').slice(0, 70));
-            const r = original(msg, def);
-            diag('diálogo cerrado', nombre);
-            return r;
-        };
-    });
-    // Latido: si la app deja de responder más de 2.5 s estando abierta, lo anota
-    let ultimo = Date.now();
-    setInterval(() => {
-        const ahora = Date.now();
-        const hueco = ahora - ultimo;
-        ultimo = ahora;
-        if (hueco > 2500 && document.visibilityState === 'visible') diag('PAUSA', `la app se quedó ${(hueco / 1000).toFixed(1)} s sin responder`);
-    }, 500);
-})();
 
 let modoVistaGrid = true;
 let modoVistaCatalogo = false; // vista con fotos (2 por fila)
@@ -2292,7 +2206,6 @@ function crearBotonAgregar(p, enCarrito, forma) {
         e.stopPropagation();
         e.preventDefault();
         if (agotado) return;
-        diag('agrega', `producto ${p.id} (botón)`);
         agregarAlCarrito(p.id, 1);
     });
     return b;
@@ -2335,7 +2248,6 @@ function bindProductoToque(el, prodId) {
         parar();
         if (e.cancelable) e.preventDefault();
         if (activo && !largo) {
-            diag('selecciona', `producto ${prodId} (${e.type})`);
             seleccionarProducto(prodId);
         }
         activo = false;
@@ -2530,8 +2442,6 @@ function renderVenta(filtro = '') {
     grid.replaceChildren(frag);
     if (conservar && yAntes > 120) {
         const restaurar = () => { if (Math.abs(window.scrollY - yAntes) > 2) window.scrollTo(0, yAntes); };
-        const ahora = window.scrollY;
-        if (Math.abs(ahora - yAntes) > 40) diag('scroll', `la lista saltó de ${Math.round(yAntes)} a ${Math.round(ahora)}; se regresó a su lugar`);
         restaurar();
         requestAnimationFrame(restaurar);
         setTimeout(() => { if (window.scrollY < 5) window.scrollTo(0, yAntes); }, 150); // solo corrige si se fue hasta arriba
@@ -4355,22 +4265,6 @@ function irACatalogo(op) {
     else sincronizarFotosCatalogo(true);
 }
 
-function abrirDiagnostico() {
-    const pre = $('diag-texto');
-    // Lo más reciente primero, para verlo sin desplazarte
-    pre.textContent = bitacoraDiag.length ? bitacoraDiag.slice().reverse().join('\n') : 'Sin eventos todavía.';
-    $('modal-diagnostico').classList.remove('hidden');
-}
-function copiarDiagnostico() {
-    const t = bitacoraDiag.slice().reverse().join('\n');
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => alert('Copiado.')).catch(() => alert('No se pudo copiar. Mándame una captura.'));
-    else alert('No se pudo copiar. Mándame una captura.');
-}
-function borrarDiagnostico() {
-    bitacoraDiag = [];
-    try { localStorage.removeItem('digar_diag'); } catch (e) {}
-    abrirDiagnostico();
-}
 
 // -------------------- CALCULADORA --------------------
 let calcExpr = '';
@@ -5053,7 +4947,6 @@ function registrarDesconexionImpresora(device) {
     dispositivosConListener.add(device);
     device.addEventListener('gattserverdisconnected', () => {
         bluetoothCharacteristic = null;
-        diag('BT impresora desconectada');
         actualizarEstadoImpresora(false);
     });
 }
@@ -5063,7 +4956,6 @@ function reconectarImpresora(intentos = 3) {
     if (!bluetoothDevice) return Promise.resolve(false);
     if (reconexionEnCurso) return reconexionEnCurso;
     reconexionEnCurso = (async () => {
-        diag('BT reconectando');
         for (let i = 0; i < intentos; i++) {
             try {
                 await conTiempoLimite(conectarCaracteristicaImpresora(bluetoothDevice), 8000, 'tiempo_conexion');
@@ -5187,7 +5079,7 @@ let impresionPendiente = null; // { paquetes, desde }: lo que faltó por imprimi
 
 function avisoImpresion(msg, silencioso) {
     // Con la pantalla bloqueada un alert se queda esperando: mejor solo dejar el aviso en la bitácora
-    if (document.visibilityState !== 'visible') { diag('aviso sin mostrar (pantalla bloqueada)', msg); return; }
+    if (document.visibilityState !== 'visible') return;
     if (!silencioso) { alert(msg); return; }
     // Modo silencioso (al cobrar): avisa en la pantalla de venta exitosa sin bloquear nada
     const el = $('exito-alerta');
@@ -5204,7 +5096,7 @@ async function tomarPantallaActiva() {
             const lock = await navigator.wakeLock.request('screen');
             return () => { try { lock.release(); } catch (e) {} };
         }
-    } catch (e) { diag('pantalla activa no disponible', e.message); }
+    } catch (e) {}
     return () => {};
 }
 
@@ -5264,7 +5156,6 @@ async function enviarPaquetesImpresora(paquetes, desde, opciones) {
     }
     let enviados = desde;
     const liberarPantalla = await tomarPantallaActiva();
-    diag('impresión inicia', `${paquetes.length - desde} paquetes`);
     const enviar = async () => {
         for (let i = enviados; i < paquetes.length; i++) {
             await conTiempoLimite(bluetoothCharacteristic.writeValue(paquetes[i]), 5000, 'tiempo_escritura');
@@ -5276,16 +5167,14 @@ async function enviarPaquetesImpresora(paquetes, desde, opciones) {
     };
     try {
         await enviar();
-        diag('impresión termina');
         return true;
     } catch (e) {
         console.error(e);
-        diag('impresión interrumpida', `${enviados} de ${paquetes.length} paquetes · ${e.message}`);
         bluetoothCharacteristic = null;
         try { bluetoothDevice.gatt.disconnect(); } catch (x) {}
         // Reconecta y sigue justo donde se quedó (sin repetir lo que ya se imprimió)
         if (await reconectarImpresora(2)) {
-            try { await enviar(); diag('impresión termina tras reconectar'); return true; } catch (e2) { console.error(e2); }
+            try { await enviar(); return true; } catch (e2) { console.error(e2); }
         }
         if (enviados > desde) { impresionPendiente = { paquetes, desde: enviados }; actualizarAvisoPendiente(); }
         actualizarEstadoImpresora(false);
@@ -6204,7 +6093,7 @@ async function initHuellaLogin() {
 
 // -------------------- INICIALIZACIÓN --------------------
 // -------------------- BARRA INFERIOR: responde al tocar --------------------
-// En el diagnóstico se vio que a veces el teléfono avisa del toque pero nunca "suelta" el dedo (zona de gestos del borde),
+// A veces el teléfono avisa del toque pero nunca "suelta" el dedo (zona de gestos del borde),
 // y entonces no llegaba el click. Por eso aquí se cambia de pantalla en cuanto se toca, y el click que llegue después se ignora.
 let ignorarClickNavHasta = 0;
 (function () {
@@ -6215,7 +6104,6 @@ let ignorarClickNavHasta = 0;
         if (!b) return;
         const v = b.id.replace('nav-', '');
         ignorarClickNavHasta = Date.now() + 700;
-        diag('nav', 'abre ' + v + ' al tocar');
         cambiarVista(v);
     }, { passive: true });
     nav.addEventListener('click', e => {

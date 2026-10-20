@@ -999,7 +999,7 @@ input,select,textarea{font-size:16px}
                 <p class="text-xs font-semibold text-gray-500 mb-2">¿Cuántas piezas?</p>
                 <div class="flex items-center justify-center gap-4">
                     <button type="button" onclick="cambiarCantModal(-1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl">−</button>
-                    <input type="number" id="cant-prod-input" min="1" value="1" class="w-20 text-center text-3xl font-black border rounded-xl py-2 focus:outline-none focus:border-blue-600" onfocus="this.select()">
+                    <input type="number" id="cant-prod-input" min="1" value="1" class="w-20 text-center text-3xl font-black border rounded-xl py-2 focus:outline-none focus:border-blue-600">
                     <button type="button" onclick="cambiarCantModal(1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl">+</button>
                 </div>
             </div>
@@ -1080,7 +1080,7 @@ input,select,textarea{font-size:16px}
                 <label class="text-xs font-semibold text-gray-500">Cantidad</label>
                 <div class="flex items-center justify-between bg-gray-50 p-3 rounded-2xl border border-gray-200">
                     <button onclick="cambiarCantConfigItem(-1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">-</button>
-                    <input id="cfg-item-cant" type="text" inputmode="numeric" pattern="[0-9]*" value="1" onfocus="this.select()" onchange="fijarCantConfigItem(this.value)" style="width:110px;text-align:center;font-size:30px;font-weight:900;border:1px solid #e5e7eb;border-radius:12px;padding:4px 0;background:#fff;color:#111827;">
+                    <input id="cfg-item-cant" type="text" inputmode="numeric" pattern="[0-9]*" value="1" onchange="fijarCantConfigItem(this.value)" style="width:110px;text-align:center;font-size:30px;font-weight:900;border:1px solid #e5e7eb;border-radius:12px;padding:4px 0;background:#fff;color:#111827;">
                     <button onclick="cambiarCantConfigItem(1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">+</button>
                 </div>
             </div>
@@ -1452,6 +1452,13 @@ let compraPreciosDecididos = []; // { id, precioVenta }
 let ventaSeleccionadaId = null;
 let indexItemConfigActivo = null;
 // Quita el foco de cualquier campo de texto (evita que el teclado/campo quede "pegado" y se coma los toques)
+// Campos de cantidad: al tocarlos se vacían (sin seleccionar texto, así no sale el menú de Google/Copiar/Cortar).
+// Si no escribes nada, al salir regresa el número que tenía.
+function campoCantidadLimpio(inp) {
+    inp.addEventListener('focus', () => { inp.dataset.prev = inp.value; inp.value = ''; });
+    inp.addEventListener('blur', () => { if (inp.value === '') inp.value = inp.dataset.prev || ''; });
+    inp.addEventListener('contextmenu', e => e.preventDefault());
+}
 function desenfocarCampos() {
     try {
         const a = document.activeElement;
@@ -2627,7 +2634,7 @@ function abrirCarrito() {
             inp.pattern = '[0-9]*';
             inp.setAttribute('aria-label', 'Piezas');
             inp.style.cssText = 'width:68px;height:42px;text-align:center;font-weight:900;font-size:18px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#111827;';
-            inp.addEventListener('focus', () => inp.select());
+            campoCantidadLimpio(inp);
             inp.addEventListener('click', e => e.stopPropagation());
             inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
 
@@ -6128,6 +6135,7 @@ function programarReloj() {
 programarReloj();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pintarReloj(); });
 
+['cant-prod-input', 'cfg-item-cant'].forEach(id => { const el = $(id); if (el) campoCantidadLimpio(el); });
 $('buscador-venta').addEventListener('input', e => filtrarVenta(e.target.value));
 $('buscador-inventario').addEventListener('input', e => filtrarInventario(e.target.value));
 $('buscador-clientes').addEventListener('input', e => renderListaClientesInicio(e.target.value));

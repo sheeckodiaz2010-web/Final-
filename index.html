@@ -1024,10 +1024,10 @@ input,select,textarea{font-size:16px}
 
     <!-- Modal Carrito -->
     <!-- Modal Escáner QR pedido catálogo -->
-    <div id="modal-escaner-qr" class="fixed inset-0 bg-black z-[70] hidden flex flex-col max-w-md mx-auto">
+    <div id="modal-escaner-qr" class="fixed inset-0 bg-black hidden flex flex-col max-w-md mx-auto" style="z-index:9990">
         <div class="flex justify-between items-center p-4 text-white">
             <h3 class="font-bold text-base">Escanear pedido QR</h3>
-            <button onclick="cerrarEscanerQR()" class="text-2xl font-bold px-2">×</button>
+            <button onclick="cerrarEscanerQR()" class="text-2xl font-bold px-4 py-2" style="min-width:56px;min-height:48px">×</button>
         </div>
         <div class="flex-1 relative bg-black overflow-hidden">
             <video id="video-escaner-qr" class="w-full h-full object-cover" playsinline></video>
@@ -1036,7 +1036,7 @@ input,select,textarea{font-size:16px}
             </div>
         </div>
         <p class="text-white text-center text-xs p-4 opacity-80">Apunta al código QR del pedido del catálogo</p>
-        <button onclick="cerrarEscanerQR()" class="m-4 bg-white text-gray-800 font-bold py-3 rounded-xl">Cancelar</button>
+        <button onclick="cerrarEscanerQR()" class="m-4 bg-white text-gray-800 font-bold py-3.5 rounded-xl" style="margin-bottom:calc(16px + env(safe-area-inset-bottom,0px))">Cancelar</button>
     </div>
 
     <div id="modal-carrito" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">

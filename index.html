@@ -126,6 +126,18 @@ input,select,textarea{font-size:16px}
 .font-black,.font-extrabold{letter-spacing:-.01em}
 #banner-offline{position:fixed;top:0;left:0;right:0;z-index:9998;padding:calc(6px + env(safe-area-inset-top,0px)) 12px 6px;background:#b45309;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-align:center;transform:translateY(-110%);transition:transform .25s}
 #banner-offline.on{transform:none}
+.mapd{position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;border:1px solid #d1d5db;border-radius:16px;-webkit-user-select:none;user-select:none}
+.mapd-grid{position:absolute;inset:0;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:48px 48px;opacity:.55}
+.mapd-tl,.mapd-pl{position:absolute;inset:0;overflow:hidden}
+.mapd-t{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none;-webkit-user-drag:none;transition:opacity .15s}
+.mapd-pin{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 12px/1 system-ui,sans-serif;cursor:pointer;z-index:2}
+.mapd-pin.sel{width:38px;height:38px;margin:-19px 0 0 -19px;border-color:#111827;z-index:3;font-size:14px}
+.mapd-yo{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25);z-index:1;pointer-events:none}
+.mapd-ctl{position:absolute;right:8px;top:8px;z-index:6;display:flex;flex-direction:column;gap:6px}
+.mapd-ctl button{width:40px;height:40px;border-radius:12px;background:#fff;color:#111827;font-size:20px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);line-height:1}
+.mapd-attr{position:absolute;left:6px;bottom:4px;z-index:6;font:10px system-ui,sans-serif;color:#374151;background:rgba(255,255,255,.8);padding:1px 5px;border-radius:5px;pointer-events:none}
+.mapd-msg{display:none;position:absolute;left:10px;right:60px;top:10px;z-index:6;font:700 11px/1.3 system-ui,sans-serif;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:6px 8px;border-radius:10px;pointer-events:none}
+.mapd.sin-tiles .mapd-msg{display:block}
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
@@ -185,7 +197,13 @@ input,select,textarea{font-size:16px}
         <div id="vista-clientes" class="space-y-3">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-bold">Mis Clientes</h2>
-                <button onclick="abrirModalFormCliente()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <div style="display:flex;background:#e5e7eb;border-radius:12px;padding:3px">
+                        <button type="button" id="vc-lista" onclick="setVistaClientes('lista')" style="padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800">Lista</button>
+                        <button type="button" id="vc-mapa" onclick="setVistaClientes('mapa')" style="padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800">Mapa</button>
+                    </div>
+                    <button onclick="abrirModalFormCliente()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
+                </div>
             </div>
             <button onclick="abrirModalFormCliente()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">
                 + Agregar nuevo cliente
@@ -197,6 +215,18 @@ input,select,textarea{font-size:16px}
                 <div id="chips-dias-clientes" style="display:flex;gap:6px;overflow-x:auto;padding-top:8px;padding-bottom:2px"></div>
             </div>
             <div id="lista-clientes-inicio" class="space-y-2"></div>
+            <div id="mapa-clientes-wrap" class="hidden space-y-2">
+                <div style="position:relative">
+                    <div id="mapa-clientes" style="height:calc(100dvh - 400px);min-height:320px"></div>
+                    <div id="mapa-popup" class="hidden" style="position:absolute;left:8px;right:8px;bottom:8px;z-index:20;background:#fff;border-radius:16px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
+                </div>
+                <div id="mapa-resumen" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;font-weight:800"></div>
+                <div id="mapa-sin-ubic" style="display:flex;flex-direction:column;gap:6px"></div>
+                <div class="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+                    <button type="button" id="btn-mapa-offline" onclick="descargarMapaOffline()" class="w-full py-2.5 rounded-xl text-xs font-bold bg-gray-900 text-white">⬇️ Descargar mapa para usar sin internet</button>
+                    <p id="mapa-offline-txt" class="text-[11px] text-gray-500"></p>
+                </div>
+            </div>
         </div>
 
         <!-- VISTA ESTADÍSTICAS -->
@@ -461,6 +491,15 @@ input,select,textarea{font-size:16px}
             <button type="button" onclick="menuClienteAccion('dias')" class="w-full text-left p-3.5 rounded-xl hover:bg-blue-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
                 <span>📅</span> Cambiar día / visitas
             </button>
+            <button type="button" onclick="menuClienteAccion('nocompro')" class="w-full text-left p-3.5 rounded-xl hover:bg-red-50 flex items-center gap-3 text-sm font-semibold text-red-600">
+                <span class="text-lg">✕</span> <span id="menu-cliente-sc">No compró hoy</span>
+            </button>
+            <button type="button" onclick="menuClienteAccion('ubicar')" class="w-full text-left p-3.5 rounded-xl hover:bg-blue-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
+                <span class="text-lg">📍</span> Guardar ubicación (estoy aquí)
+            </button>
+            <button type="button" onclick="menuClienteAccion('ruta')" class="w-full text-left p-3.5 rounded-xl hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
+                <span class="text-lg">🧭</span> Cómo llegar
+            </button>
             <button type="button" onclick="menuClienteAccion('modificar')" class="w-full text-left p-3.5 rounded-xl hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
                 <span class="text-lg">✏️</span> Modificar
             </button>
@@ -523,6 +562,14 @@ input,select,textarea{font-size:16px}
                 <input type="text" id="form-cliente-dir" placeholder="Ej. Av. Benito Juárez #123" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
+                <label class="text-xs font-semibold text-gray-500">Ubicación en el mapa</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <button type="button" onclick="ubicFormAqui()" class="py-3 rounded-xl text-xs font-bold bg-blue-600 text-white">📍 Estoy aquí</button>
+                    <button type="button" onclick="abrirPickerUbic()" class="py-3 rounded-xl text-xs font-bold bg-gray-100 text-gray-700">🗺️ Elegir en el mapa</button>
+                </div>
+                <p id="form-cliente-ubic-txt" class="text-[11px] text-gray-500">Sin ubicación</p>
+            </div>
+            <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Teléfono</label>
                 <input type="text" id="form-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
             </div>
@@ -567,14 +614,14 @@ input,select,textarea{font-size:16px}
 
     <!-- Modal Seleccionar Cliente -->
     <div id="modal-seleccionar-cliente" class="fixed inset-0 bg-black/50 hidden flex flex-col justify-end max-w-md mx-auto" style="z-index:70">
-        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-t-3xl p-5 flex flex-col overflow-hidden" style="height:88vh;height:88dvh;gap:12px">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">¿A qué cliente es la venta?</h3>
                 <button onclick="cerrarSelectorCliente()" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <button onclick="abrirClienteRapido()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">➕ Agregar cliente rápido</button>
             <input type="text" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
-            <div id="lista-clientes-seleccion" class="space-y-2"></div>
+            <div id="lista-clientes-seleccion" class="space-y-2 overflow-y-auto" style="flex:1;min-height:0"></div>
         </div>
     </div>
 
@@ -598,6 +645,22 @@ input,select,textarea{font-size:16px}
                 <input type="text" id="rapido-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
             </div>
             <button onclick="guardarClienteRapido()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md mt-2">Guardar y usar en esta venta</button>
+        </div>
+    </div>
+
+    <!-- Modal elegir ubicación del cliente en el mapa -->
+    <div id="modal-ubic-picker" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">Ubicación del cliente</h3>
+                <button onclick="cerrarModal('modal-ubic-picker')" class="text-gray-400 font-bold text-xl">×</button>
+            </div>
+            <p class="text-xs text-gray-500">Toca el mapa para poner el pin. Arrastra para moverte; acerca con dos dedos o con +.</p>
+            <div id="mapa-picker" style="height:46dvh;min-height:260px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <button type="button" onclick="pickerAqui()" class="py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700">📍 Mi ubicación</button>
+                <button type="button" onclick="confirmarUbicPicker()" class="py-3 rounded-xl text-sm font-bold bg-blue-600 text-white">Guardar ubicación</button>
+            </div>
         </div>
     </div>
 
@@ -1640,6 +1703,447 @@ function subirDatosNube() {
 }
 const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
 
+// ==================== MAPA DE CLIENTES (propio, sin librerías: funciona sin internet) ====================
+const MAPA_BASE = { lat: 27.85, lng: -101.117 };
+const MAPA_CIUDAD = 'Sabinas, Coahuila';
+const MAPA_TILE_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
+const mapaLngX = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * 256;
+const mapaLatY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * Math.pow(2, z) * 256; };
+const mapaXLng = (x, z) => x / (Math.pow(2, z) * 256) * 360 - 180;
+const mapaYLat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / (Math.pow(2, z) * 256); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
+const mapaR6 = n => Math.round(n * 1e6) / 1e6;
+const mapaTieneUbic = c => Number.isFinite(c.lat) && Number.isFinite(c.lng);
+function noComproHoy(c) { return !!c.sinCompra && c.sinCompra === hoy(); }
+
+// ---- Mapas guardados en el teléfono (IndexedDB) ----
+let _mapaDBp = null;
+function mapaDB() {
+    if (!_mapaDBp) _mapaDBp = new Promise((res, rej) => {
+        const r = indexedDB.open('digar-mapa', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('tiles');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+    });
+    return _mapaDBp;
+}
+function mapaTileGet(key) {
+    return mapaDB().then(db => new Promise(res => {
+        try { const rq = db.transaction('tiles').objectStore('tiles').get(key); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); } catch (e) { res(null); }
+    })).catch(() => null);
+}
+function mapaTilePut(key, blob) {
+    return mapaDB().then(db => new Promise(res => {
+        try { const tx = db.transaction('tiles', 'readwrite'); tx.objectStore('tiles').put(blob, key); tx.oncomplete = () => res(true); tx.onerror = () => res(false); } catch (e) { res(false); }
+    })).catch(() => false);
+}
+function mapaTileCount() {
+    return mapaDB().then(db => new Promise(res => {
+        try { const rq = db.transaction('tiles').objectStore('tiles').count(); rq.onsuccess = () => res(rq.result || 0); rq.onerror = () => res(0); } catch (e) { res(0); }
+    })).catch(() => 0);
+}
+async function mapaTileBlob(z, x, y) {
+    const key = z + '/' + x + '/' + y;
+    const g = await mapaTileGet(key);
+    if (g) return g;
+    if (navigator.onLine === false) return null;
+    try {
+        const r = await fetch(MAPA_TILE_URL(z, x, y));
+        if (!r.ok) return null;
+        const b = await r.blob();
+        mapaTilePut(key, b);
+        return b;
+    } catch (e) { return null; }
+}
+
+// ---- GPS ----
+function gpsActual() {
+    return new Promise((res, rej) => {
+        if (!navigator.geolocation) return rej({ code: 0 });
+        navigator.geolocation.getCurrentPosition(
+            p => res({ lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy }),
+            e => rej(e),
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 });
+    });
+}
+function gpsError(e) {
+    if (e && e.code === 1) return 'No tengo permiso para ver tu ubicación. Actívalo en los ajustes del teléfono para esta app o para el navegador.';
+    return 'No pude obtener tu ubicación. Revisa que el GPS esté encendido y vuelve a intentar.';
+}
+
+// ---- Mapa ----
+class MapaDigar {
+    constructor(el) {
+        this.el = el; this.z = 15; this.c = { lat: MAPA_BASE.lat, lng: MAPA_BASE.lng };
+        this.tiles = new Map(); this.pins = []; this.pinEls = []; this.sel = null; this.yo = null; this.yoEl = null;
+        this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0;
+        el.classList.add('mapd');
+        el.innerHTML = '<div class="mapd-grid"></div><div class="mapd-tl"></div><div class="mapd-pl"></div>' +
+            '<div class="mapd-msg">Sin mapa guardado en esta zona. Se ven solo los pines.</div>' +
+            '<div class="mapd-ctl"><button type="button" data-a="in" aria-label="Acercar">+</button><button type="button" data-a="out" aria-label="Alejar">−</button><button type="button" data-a="yo" aria-label="Mi ubicación">◎</button></div>' +
+            '<div class="mapd-attr">© OpenStreetMap</div>';
+        this.tl = el.querySelector('.mapd-tl'); this.pl = el.querySelector('.mapd-pl');
+        el.querySelectorAll('.mapd-ctl button').forEach(b => b.addEventListener('click', () => {
+            const a = b.dataset.a;
+            if (a === 'in') this.zoomBy(1); else if (a === 'out') this.zoomBy(-1); else this.locate();
+        }));
+        el.addEventListener('pointerdown', e => this._down(e));
+        el.addEventListener('pointermove', e => this._move(e));
+        el.addEventListener('pointerup', e => this._up(e, false));
+        el.addEventListener('pointercancel', e => this._up(e, true));
+        el.addEventListener('wheel', e => { e.preventDefault(); this.zoomBy(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+        if (window.ResizeObserver) new ResizeObserver(() => this._sched()).observe(el);
+        this._sched();
+    }
+    _sched() { if (this._raf) return; this._raf = requestAnimationFrame(() => { this._raf = 0; this.render(); }); }
+    _ll(px, py) {
+        const w = this.el.clientWidth, h = this.el.clientHeight, z = this.z;
+        const ox = mapaLngX(this.c.lng, z) - w / 2, oy = mapaLatY(this.c.lat, z) - h / 2;
+        return { lat: mapaYLat(oy + py, z), lng: mapaXLng(ox + px, z) };
+    }
+    _down(e) {
+        if (e.target.closest && e.target.closest('.mapd-ctl')) return;
+        this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        try { this.el.setPointerCapture(e.pointerId); } catch (err) {}
+        if (this.ptrs.size === 1) { this.tap = { x0: e.clientX, y0: e.clientY, target: e.target, moved: false }; this.pinched = false; }
+        else if (this.ptrs.size === 2) { this.pinched = true; this.pd = this._dist(); }
+    }
+    _dist() { const p = [...this.ptrs.values()]; return p.length < 2 ? 0 : Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); }
+    _move(e) {
+        const prev = this.ptrs.get(e.pointerId); if (!prev) return;
+        const cur = { x: e.clientX, y: e.clientY };
+        this.ptrs.set(e.pointerId, cur);
+        if (this.ptrs.size === 1) {
+            if (this.tap && Math.hypot(cur.x - this.tap.x0, cur.y - this.tap.y0) > 6) this.tap.moved = true;
+            if (this.tap && this.tap.moved) this._pan(-(cur.x - prev.x), -(cur.y - prev.y));
+        } else if (this.ptrs.size === 2 && this.pd) {
+            const d = this._dist(), r = d / this.pd;
+            if (r > 1.5) { this.zoomBy(1); this.pd = d; } else if (r < 0.67) { this.zoomBy(-1); this.pd = d; }
+        }
+    }
+    _up(e, cancel) {
+        if (!this.ptrs.has(e.pointerId)) return;
+        this.ptrs.delete(e.pointerId);
+        const t = this.tap;
+        if (!cancel && t && !t.moved && !this.pinched && this.ptrs.size === 0) {
+            const pinEl = t.target && t.target.closest ? t.target.closest('.mapd-pin') : null;
+            if (pinEl && this.onPin) this.onPin(this.pins[Number(pinEl.dataset.i)]);
+            else if (this.onTap) { const r = this.el.getBoundingClientRect(); this.onTap(this._ll(t.x0 - r.left, t.y0 - r.top)); }
+        }
+        if (this.ptrs.size === 0) { this.tap = null; this.pinched = false; }
+    }
+    _pan(dx, dy) {
+        const z = this.z;
+        const x = mapaLngX(this.c.lng, z) + dx, y = mapaLatY(this.c.lat, z) + dy;
+        this.c = { lat: Math.max(-84, Math.min(84, mapaYLat(y, z))), lng: mapaXLng(x, z) };
+        this._sched();
+    }
+    zoomBy(n) { this.z = Math.max(11, Math.min(18, this.z + n)); this._sched(); }
+    setView(lat, lng, z) { this.c = { lat, lng }; if (z) this.z = Math.max(11, Math.min(18, z)); this._sched(); }
+    setYo(lat, lng) { this.yo = { lat, lng }; this._sched(); }
+    locate(cb) {
+        gpsActual().then(p => { this.setYo(p.lat, p.lng); this.setView(p.lat, p.lng, Math.max(this.z, 16)); if (cb) cb(p); })
+            .catch(e => alert(gpsError(e)));
+    }
+    setPins(arr) {
+        this.pins = arr; this.pl.innerHTML = ''; this.pinEls = [];
+        arr.forEach((p, i) => {
+            const d = document.createElement('div');
+            d.className = 'mapd-pin'; d.dataset.i = i;
+            d.style.background = p.color; d.style.color = p.txt || '#fff'; d.textContent = p.label || '';
+            this.pl.appendChild(d); this.pinEls.push(d);
+        });
+        this._sched();
+    }
+    fit() {
+        const w = this.el.clientWidth || 320, h = this.el.clientHeight || 320, ps = this.pins;
+        if (!ps.length) { this.setView(MAPA_BASE.lat, MAPA_BASE.lng, 14); return; }
+        if (ps.length === 1) { this.setView(ps[0].lat, ps[0].lng, 16); return; }
+        let n = -90, s = 90, e = -180, o = 180;
+        ps.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lng); o = Math.min(o, p.lng); });
+        let z = 11;
+        for (let k = 18; k >= 11; k--) {
+            if (mapaLngX(e, k) - mapaLngX(o, k) <= w - 90 && mapaLatY(s, k) - mapaLatY(n, k) <= h - 90) { z = k; break; }
+        }
+        const cx = (mapaLngX(e, z) + mapaLngX(o, z)) / 2, cy = (mapaLatY(n, z) + mapaLatY(s, z)) / 2;
+        this.setView(mapaYLat(cy, z), mapaXLng(cx, z), z);
+    }
+    reload() { this.tiles.forEach(img => img.remove()); this.tiles.clear(); this._sched(); }
+    render() {
+        const w = this.el.clientWidth, h = this.el.clientHeight;
+        if (!w || !h) return;
+        const z = this.z, max = Math.pow(2, z);
+        const cx = mapaLngX(this.c.lng, z), cy = mapaLatY(this.c.lat, z), ox = cx - w / 2, oy = cy - h / 2;
+        const x0 = Math.floor(ox / 256), x1 = Math.floor((ox + w) / 256), y0 = Math.floor(oy / 256), y1 = Math.floor((oy + h) / 256);
+        const need = new Set();
+        for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+            if (ty < 0 || ty >= max) continue;
+            const wx = ((tx % max) + max) % max, key = z + '/' + wx + '/' + ty + '@' + tx;
+            need.add(key);
+            let img = this.tiles.get(key);
+            if (!img) {
+                img = document.createElement('img'); img.className = 'mapd-t'; img.alt = ''; img.draggable = false; img.style.opacity = 0;
+                this.tl.appendChild(img); this.tiles.set(key, img);
+                const el = this.el;
+                mapaTileBlob(z, wx, ty).then(b => {
+                    if (!img.isConnected) return;
+                    if (!b) { if (this.tiles.size && ![...this.tiles.values()].some(i => i.dataset.ok)) el.classList.add('sin-tiles'); return; }
+                    img.onload = () => { img.style.opacity = 1; img.dataset.ok = '1'; el.classList.remove('sin-tiles'); };
+                    img.src = URL.createObjectURL(b);
+                });
+            }
+            img.style.transform = 'translate(' + Math.round(tx * 256 - ox) + 'px,' + Math.round(ty * 256 - oy) + 'px)';
+        }
+        this.tiles.forEach((img, k) => { if (!need.has(k)) { if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src); img.remove(); this.tiles.delete(k); } });
+        this.pins.forEach((p, i) => {
+            const d = this.pinEls[i]; if (!d) return;
+            d.style.left = Math.round(mapaLngX(p.lng, z) - ox) + 'px';
+            d.style.top = Math.round(mapaLatY(p.lat, z) - oy) + 'px';
+            d.classList.toggle('sel', this.sel !== null && String(this.sel) === String(p.id));
+        });
+        if (this.yo) {
+            if (!this.yoEl) { this.yoEl = document.createElement('div'); this.yoEl.className = 'mapd-yo'; this.pl.appendChild(this.yoEl); }
+            this.yoEl.style.left = Math.round(mapaLngX(this.yo.lng, z) - ox) + 'px';
+            this.yoEl.style.top = Math.round(mapaLatY(this.yo.lat, z) - oy) + 'px';
+        }
+    }
+}
+window.addEventListener('online', () => { [mapaClientes, mapaPicker].forEach(m => { if (m) m.reload(); }); });
+
+// ---- Vista de clientes: lista o mapa ----
+let vistaClientes = (function () { try { return localStorage.getItem('digar-vista-clientes') === 'mapa' ? 'mapa' : 'lista'; } catch (e) { return 'lista'; } })();
+let mapaClientes = null, mapaPicker = null, mapaSelId = null, _mapaTimer = 0, _mapaFirma = '';
+function pintarToggleVista() {
+    ['lista', 'mapa'].forEach(k => {
+        const b = $('vc-' + k); if (!b) return;
+        const on = vistaClientes === k;
+        b.style.background = on ? '#2563eb' : 'transparent';
+        b.style.color = on ? '#fff' : '#4b5563';
+    });
+}
+function setVistaClientes(v) {
+    vistaClientes = v === 'mapa' ? 'mapa' : 'lista';
+    try { localStorage.setItem('digar-vista-clientes', vistaClientes); } catch (e) {}
+    pintarToggleVista();
+    const esMapa = vistaClientes === 'mapa';
+    const l = $('lista-clientes-inicio'), m = $('mapa-clientes-wrap');
+    if (l) l.classList.toggle('hidden', esMapa);
+    if (m) m.classList.toggle('hidden', !esMapa);
+    if (esMapa) refrescarMapaClientes(true);
+}
+function programarRefrescoMapa() {
+    if (vistaClientes !== 'mapa') return;
+    clearTimeout(_mapaTimer);
+    _mapaTimer = setTimeout(() => refrescarMapaClientes(false), 30);
+}
+function mapaClientesFiltrados() {
+    const inp = $('buscador-clientes');
+    const term = quitarAcentos(inp ? inp.value : '').trim();
+    let lista = [...clientes];
+    if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
+    else if (diaFiltroClientes === 'sin') lista = lista.filter(c => !c.dias || c.dias.length === 0);
+    else if (diaFiltroClientes !== 'todos') lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes) && tocaEstaSemana(c));
+    return lista;
+}
+function estadoClienteHoy(c) { return clienteVisitadoHoy(c) ? 'venta' : (noComproHoy(c) ? 'nocompro' : 'pend'); }
+const MAPA_COL = { venta: '#16a34a', nocompro: '#dc2626', pend: '#eab308' };
+const MAPA_TXT = { venta: ['Con venta hoy', '#15803d'], nocompro: ['No compró hoy', '#b91c1c'], pend: ['Sin venta hoy', '#a16207'] };
+function mapaIdAttr(id) { return String(id).replace(/[^A-Za-z0-9_-]/g, ''); }
+function buscarClientePorId(id) { const n = normalizarId(id); return clientes.find(x => normalizarId(x.id) === n); }
+
+function refrescarMapaClientes(forzarFit) {
+    const el = $('mapa-clientes'); if (!el) return;
+    if (!mapaClientes) {
+        mapaClientes = new MapaDigar(el);
+        mapaClientes.onPin = p => abrirPopupMapa(p.id);
+        mapaClientes.onTap = () => cerrarPopupMapa();
+    }
+    const lista = mapaClientesFiltrados();
+    const con = lista.filter(mapaTieneUbic), sin = lista.filter(c => !mapaTieneUbic(c));
+    mapaClientes.setPins(con.map(c => {
+        const e = estadoClienteHoy(c);
+        return { id: c.id, lat: c.lat, lng: c.lng, color: MAPA_COL[e], txt: e === 'pend' ? '#1f2937' : '#fff', label: (c.nombre || '?').trim().charAt(0).toUpperCase() };
+    }));
+    const inp = $('buscador-clientes');
+    const firma = diaFiltroClientes + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
+    if (forzarFit || firma !== _mapaFirma) { _mapaFirma = firma; mapaClientes.fit(); }
+    const n = { venta: 0, nocompro: 0, pend: 0 };
+    lista.forEach(c => n[estadoClienteHoy(c)]++);
+    $('mapa-resumen').innerHTML =
+        `<span style="color:#a16207">● ${n.pend} sin venta</span><span style="color:#15803d">● ${n.venta} con venta</span><span style="color:#b91c1c">● ${n.nocompro} no compró</span>`;
+    const box = $('mapa-sin-ubic');
+    box.innerHTML = sin.length ? `<p style="font-size:11px;font-weight:800;color:#6b7280;margin:6px 0 2px">SIN UBICACIÓN (${sin.length}). Estando con el cliente toca "Estoy aquí".</p>` +
+        sin.map(c => {
+            const e = estadoClienteHoy(c), id = mapaIdAttr(c.id);
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px 10px">
+                <div style="min-width:0"><div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.nombre)}</div>
+                <div style="font-size:11px;font-weight:700;color:${MAPA_TXT[e][1]}">● ${MAPA_TXT[e][0]}</div></div>
+                <div style="display:flex;gap:6px;flex:none">
+                <button type="button" onclick="toggleSinCompra('${id}')" style="background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:800;padding:8px 9px;border-radius:10px">${e === 'nocompro' ? 'Quitar' : '✕ No compró'}</button>
+                <button type="button" onclick="guardarUbicacionAqui('${id}')" style="background:#2563eb;color:#fff;font-size:11px;font-weight:800;padding:8px 9px;border-radius:10px">📍 Estoy aquí</button></div></div>`;
+        }).join('') : '';
+    if (mapaSelId !== null) abrirPopupMapa(mapaSelId, true);
+    actualizarTxtMapaOffline();
+}
+function cerrarPopupMapa() {
+    mapaSelId = null;
+    const b = $('mapa-popup'); if (b) b.classList.add('hidden');
+    if (mapaClientes) { mapaClientes.sel = null; mapaClientes._sched(); }
+}
+function abrirPopupMapa(id, silencioso) {
+    const c = buscarClientePorId(id), box = $('mapa-popup');
+    if (!c || !box) { cerrarPopupMapa(); return; }
+    mapaSelId = c.id;
+    if (mapaClientes) { mapaClientes.sel = c.id; mapaClientes._sched(); }
+    const e = estadoClienteHoy(c), idA = mapaIdAttr(c.id);
+    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0"><div style="font-size:15px;font-weight:800;color:#111827">${escHtml(c.nombre)}</div>
+        <div style="font-size:12px;color:#6b7280">${escHtml(c.direccion || 'Sin dirección')}</div>
+        <div style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]};margin-top:2px">● ${MAPA_TXT[e][0]}</div></div>
+        <button type="button" onclick="cerrarPopupMapa()" style="font-size:22px;line-height:1;color:#9ca3af;padding:0 4px">×</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+        <button type="button" onclick="mapaAccion('venta','${idA}')" style="background:#16a34a;color:#fff;font-size:12px;font-weight:800;padding:10px;border-radius:12px">🛒 Venta</button>
+        <button type="button" onclick="mapaAccion('nocompro','${idA}')" style="background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:800;padding:10px;border-radius:12px">${e === 'nocompro' ? 'Quitar "No compró"' : '✕ No compró'}</button>
+        <button type="button" onclick="mapaAccion('ruta','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">🧭 Cómo llegar</button>
+        <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
+    box.classList.remove('hidden');
+}
+function mapaAccion(a, id) {
+    if (a === 'venta') { seleccionarClienteVentaDesdeInicio(id); cambiarVista('venta'); }
+    else if (a === 'nocompro') toggleSinCompra(id);
+    else if (a === 'ruta') abrirRutaCliente(id);
+    else if (a === 'ubicar') guardarUbicacionAqui(id);
+}
+function toggleSinCompra(id) {
+    const c = buscarClientePorId(id); if (!c) return;
+    if (clienteVisitadoHoy(c)) { alert('Ya tiene venta hoy'); return; }
+    if (noComproHoy(c)) { delete c.sinCompra; mapaAviso('Marca quitada'); }
+    else { c.sinCompra = hoy(); mapaAviso('Marcado: no compró hoy'); }
+    guardarTodo();
+    renderListaClientesInicio();
+    refrescarMapaClientes(false);
+}
+function abrirRutaCliente(id) {
+    const c = buscarClientePorId(id); if (!c) return;
+    let url;
+    if (mapaTieneUbic(c)) url = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
+    else if (c.direccion) url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.direccion + ', ' + MAPA_CIUDAD)}`;
+    else { alert('Este cliente no tiene ubicación ni dirección'); return; }
+    window.open(url, '_blank');
+}
+let _gpsOcupado = false;
+async function guardarUbicacionAqui(id) {
+    if (_gpsOcupado) return;
+    const c = buscarClientePorId(id); if (!c) return;
+    _gpsOcupado = true; mapaAviso('Buscando tu ubicación…');
+    try {
+        const p = await gpsActual();
+        c.lat = mapaR6(p.lat); c.lng = mapaR6(p.lng);
+        guardarTodo();
+        mapaAviso('Ubicación guardada' + (p.prec > 60 ? ' (aprox. ±' + Math.round(p.prec) + ' m)' : ''));
+        renderListaClientesInicio();
+        refrescarMapaClientes(false);
+        if (vistaClientes === 'mapa' && mapaClientes) mapaClientes.setView(c.lat, c.lng, Math.max(mapaClientes.z, 16));
+    } catch (e) { alert(gpsError(e)); }
+    _gpsOcupado = false;
+}
+
+// ---- Ubicación dentro del formulario del cliente ----
+let ubicForm = null, pickerSel = null;
+function pintarUbicForm() {
+    const t = $('form-cliente-ubic-txt'); if (!t) return;
+    t.innerHTML = ubicForm
+        ? '<span style="color:#15803d;font-weight:700">✓ Ubicación lista</span> <button type="button" onclick="quitarUbicForm()" style="color:#dc2626;font-weight:700;text-decoration:underline;margin-left:6px">Quitar</button>'
+        : 'Sin ubicación';
+}
+function quitarUbicForm() { ubicForm = null; pintarUbicForm(); }
+async function ubicFormAqui() {
+    mapaAviso('Buscando tu ubicación…');
+    try { const p = await gpsActual(); ubicForm = { lat: mapaR6(p.lat), lng: mapaR6(p.lng) }; pintarUbicForm(); mapaAviso('Ubicación lista. Toca Guardar Cliente'); }
+    catch (e) { alert(gpsError(e)); }
+}
+function pickerPonerPin(ll) {
+    pickerSel = { lat: ll.lat, lng: ll.lng };
+    mapaPicker.setPins([{ id: 'pick', lat: ll.lat, lng: ll.lng, color: '#2563eb', txt: '#fff', label: '●' }]);
+}
+function abrirPickerUbic() {
+    $('modal-ubic-picker').classList.remove('hidden');
+    if (!mapaPicker) { mapaPicker = new MapaDigar($('mapa-picker')); mapaPicker.onTap = pickerPonerPin; }
+    pickerSel = null; mapaPicker.setPins([]);
+    const ref = ubicForm || clientes.find(mapaTieneUbic) || null;
+    mapaPicker.setView(ref ? ref.lat : MAPA_BASE.lat, ref ? ref.lng : MAPA_BASE.lng, ubicForm ? 17 : (ref ? 16 : 15));
+    if (ubicForm) pickerPonerPin(ubicForm);
+    setTimeout(() => mapaPicker.render(), 80);
+}
+function pickerAqui() { if (mapaPicker) mapaPicker.locate(p => pickerPonerPin({ lat: p.lat, lng: p.lng })); }
+function confirmarUbicPicker() {
+    if (!pickerSel) return alert('Toca el mapa para poner el pin');
+    ubicForm = { lat: mapaR6(pickerSel.lat), lng: mapaR6(pickerSel.lng) };
+    pintarUbicForm();
+    cerrarModal('modal-ubic-picker');
+}
+
+// ---- Descargar mapa para usar sin internet ----
+let _mapaDescargando = false, _mapaCancelar = false;
+function mapaCajaDescarga() {
+    const pts = clientes.filter(mapaTieneUbic).map(c => ({ lat: c.lat, lng: c.lng }));
+    if (!pts.length && mapaClientes) pts.push({ lat: mapaClientes.c.lat, lng: mapaClientes.c.lng });
+    if (!pts.length) pts.push({ lat: MAPA_BASE.lat, lng: MAPA_BASE.lng });
+    let n = -90, s = 90, e = -180, o = 180;
+    pts.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lng); o = Math.min(o, p.lng); });
+    return { n: n + 0.025, s: s - 0.025, e: e + 0.03, o: o - 0.03 };
+}
+function mapaListaTiles(b, zmax) {
+    const out = [];
+    for (let z = 12; z <= zmax; z++) {
+        const max = Math.pow(2, z) - 1;
+        const x0 = Math.max(0, Math.floor(mapaLngX(b.o, z) / 256)), x1 = Math.min(max, Math.floor(mapaLngX(b.e, z) / 256));
+        const y0 = Math.max(0, Math.floor(mapaLatY(b.n, z) / 256)), y1 = Math.min(max, Math.floor(mapaLatY(b.s, z) / 256));
+        for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push([z, x, y]);
+    }
+    return out;
+}
+async function actualizarTxtMapaOffline() {
+    const t = $('mapa-offline-txt'); if (!t) return;
+    const n = await mapaTileCount();
+    t.innerText = n > 0
+        ? `Guardado en el teléfono: ${n} mapas. Sin internet se ve el mapa de esa zona; fuera de ella solo los pines.`
+        : 'Aún no hay mapa guardado. Sin internet verías solo los pines.';
+}
+async function descargarMapaOffline() {
+    const btn = $('btn-mapa-offline');
+    if (_mapaDescargando) { _mapaCancelar = true; return; }
+    if (navigator.onLine === false) { alert('Necesitas internet para descargar el mapa.'); return; }
+    const b = mapaCajaDescarga();
+    let zmax = 17, tiles = mapaListaTiles(b, zmax);
+    while (tiles.length > 1800 && zmax > 15) { zmax--; tiles = mapaListaTiles(b, zmax); }
+    if (tiles.length > 1800) { alert('La zona de tus clientes es muy grande para descargarla.'); return; }
+    const mb = Math.max(1, Math.round(tiles.length * 0.02));
+    if (!(await confirmarPro(`Se descargarán ${tiles.length} piezas del mapa (unos ${mb} MB) de la zona de tus clientes para verlo sin internet. Mejor con WiFi. ¿Continuar?`))) return;
+    _mapaDescargando = true; _mapaCancelar = false;
+    let hechos = 0, fallos = 0, i = 0;
+    async function worker() {
+        while (!_mapaCancelar && i < tiles.length) {
+            const t = tiles[i++], key = t[0] + '/' + t[1] + '/' + t[2];
+            if (!(await mapaTileGet(key))) {
+                try {
+                    const r = await fetch(MAPA_TILE_URL(t[0], t[1], t[2]));
+                    if (r.ok) await mapaTilePut(key, await r.blob()); else fallos++;
+                } catch (e) { fallos++; if (navigator.onLine === false) _mapaCancelar = true; }
+            }
+            hechos++;
+            if (btn && hechos % 4 === 0) btn.innerText = `Descargando ${hechos}/${tiles.length} · toca para cancelar`;
+        }
+    }
+    await Promise.all([worker(), worker(), worker()]);
+    _mapaDescargando = false;
+    if (btn) btn.innerText = '⬇️ Descargar mapa para usar sin internet';
+    mapaAviso(_mapaCancelar ? 'Descarga cancelada' : (fallos > tiles.length / 2 ? 'No se pudo descargar bien. Revisa tu internet' : 'Mapa guardado en el teléfono'));
+    _mapaCancelar = false;
+    if (mapaClientes) mapaClientes.reload();
+    actualizarTxtMapaOffline();
+}
+
 // -------------------- UI GENÉRICA --------------------
 function cerrarModal(id) {
     desenfocarCampos();
@@ -1778,6 +2282,7 @@ function renderListaClientesInicio(filtro) {
     if (!container) return;
     if (filtro === undefined) { const inp = $('buscador-clientes'); filtro = inp ? inp.value : ''; }
     renderChipsDiasClientes();
+    programarRefrescoMapa();
     if (clientes.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-400 text-sm py-8">No hay clientes. Toca + para agregar.</p>';
         return;
@@ -1793,8 +2298,9 @@ function renderListaClientesInicio(filtro) {
         lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes) && tocaEstaSemana(c));
     }
     const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
+    const hechos = new Set(lista.filter(c => clienteVisitadoHoy(c) || noComproHoy(c)).map(c => c.id));
     // Pendientes primero, visitados al final; alfabético dentro de cada grupo
-    lista.sort((a, b) => (visitados.has(a.id) - visitados.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    lista.sort((a, b) => (hechos.has(a.id) - hechos.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     if (lista.length === 0) {
         container.innerHTML = term
             ? '<p class="text-center text-gray-400 text-sm py-8">Sin resultados.</p>'
@@ -1807,14 +2313,16 @@ function renderListaClientesInicio(filtro) {
         const diasTxt = textoDiasCliente(c);
         const visitado = visitados.has(c.id);
         const div = document.createElement('div');
-        div.className = `p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition ${activo ? 'bg-blue-50 border-blue-600' : (visitado ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100')}`;
+        div.className = `p-3.5 rounded-xl border shadow-sm cursor-pointer active:scale-[0.99] transition ${activo ? 'bg-blue-50 border-blue-600' : (visitado ? 'bg-emerald-50 border-emerald-200' : (noComproHoy(c) ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'))}`;
         div.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
                     <p class="font-bold text-sm text-gray-900">${c.nombre}</p>
                     ${visitado
                         ? '<p class="text-[10px] font-bold text-emerald-600 mt-0.5">✓ Visitado hoy</p>'
-                        : '<p class="text-[10px] text-gray-400 mt-0.5">Sin venta hoy</p>'}
+                        : (noComproHoy(c)
+                            ? '<p class="text-[10px] font-bold text-red-600 mt-0.5">✕ No compró hoy</p>'
+                            : '<p class="text-[10px] font-bold mt-0.5" style="color:#a16207">● Sin venta hoy</p>')}
                     <p class="text-xs text-blue-600 mt-0.5">📍 ${c.direccion || 'Sin dirección'}</p>
                     <p class="text-[11px] text-gray-400 mt-0.5">📞 ${c.telefono || 'Sin teléfono'}</p>
                     ${diasTxt ? `<p class="text-[11px] text-gray-500 mt-0.5">📅 ${diasTxt}</p>` : ''}
@@ -1867,6 +2375,7 @@ function abrirMenuCliente(id) {
     clienteMenuActivoId = c.id;
     $('menu-cliente-nombre').innerText = c.nombre;
     $('menu-cliente-dir').innerText = c.direccion || 'Sin dirección';
+    const scTxt = $('menu-cliente-sc'); if (scTxt) scTxt.innerText = noComproHoy(c) ? 'Quitar "No compró"' : 'No compró hoy';
     $('modal-menu-cliente').classList.remove('hidden');
 }
 
@@ -1882,6 +2391,12 @@ async function menuClienteAccion(accion) {
         abrirHistorialCliente(id);
     } else if (accion === 'dias') {
         abrirModalDiasCliente(id);
+    } else if (accion === 'nocompro') {
+        toggleSinCompra(id);
+    } else if (accion === 'ubicar') {
+        guardarUbicacionAqui(id);
+    } else if (accion === 'ruta') {
+        abrirRutaCliente(id);
     } else if (accion === 'modificar') {
         editarCliente(id);
     } else if (accion === 'eliminar') {
@@ -1988,6 +2503,7 @@ function abrirModalFormCliente() {
     renderSelectorDias('form-cliente-dias', (typeof diaHoy() === 'number') ? [diaHoy()] : []);
     $('form-cliente-frecuencia').value = 'semanal';
     $('titulo-form-cliente').innerText = 'Nueva Tienda / Cliente';
+    ubicForm = null; pintarUbicForm();
     $('btn-eliminar-cliente').classList.add('hidden');
     $('modal-form-cliente').classList.remove('hidden');
 }
@@ -2003,6 +2519,7 @@ function editarCliente(id) {
     renderSelectorDias('form-cliente-dias', c.dias || []);
     $('form-cliente-frecuencia').value = c.frecuencia === 'quincenal' ? (tocaEstaSemana(c) ? 'quincenal_esta' : 'quincenal_prox') : 'semanal';
     $('titulo-form-cliente').innerText = 'Editar Tienda / Cliente';
+    ubicForm = mapaTieneUbic(c) ? { lat: c.lat, lng: c.lng } : null; pintarUbicForm();
     $('btn-eliminar-cliente').classList.remove('hidden');
     $('modal-form-cliente').classList.remove('hidden');
 }
@@ -2019,14 +2536,14 @@ function guardarClienteForm() {
     if (id) {
         const idNum = normalizarId(id);
         const c = clientes.find(x => normalizarId(x.id) === idNum);
-        if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; c.dias = dias; c.frecuencia = frec.frecuencia; c.semanaBase = frec.semanaBase; }
+        if (c) { c.nombre = nombre; c.direccion = dir; c.telefono = tel; c.dias = dias; c.frecuencia = frec.frecuencia; c.semanaBase = frec.semanaBase; if (ubicForm) { c.lat = ubicForm.lat; c.lng = ubicForm.lng; } else { delete c.lat; delete c.lng; } }
         // Si el cliente editado es el seleccionado, actualizar nombre en UI
         if (c && clienteSeleccionado && normalizarId(clienteSeleccionado.id) === idNum) {
             clienteSeleccionado = c;
             actualizarEtiquetaCliente();
         }
     } else {
-        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias, frecuencia: frec.frecuencia, semanaBase: frec.semanaBase });
+        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias, frecuencia: frec.frecuencia, semanaBase: frec.semanaBase, ...(ubicForm ? { lat: ubicForm.lat, lng: ubicForm.lng } : {}) });
     }
     guardarTodo();
     cerrarModal('modal-form-cliente');
@@ -2073,7 +2590,8 @@ function renderSeleccionClientes(filtro) {
     if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
     else if (soloHoy) lista = lista.filter(c => (c.dias || []).includes(dia) && tocaEstaSemana(c));
     const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
-    lista.sort((a, b) => (visitados.has(a.id) - visitados.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+    const hechos = new Set(lista.filter(c => clienteVisitadoHoy(c) || noComproHoy(c)).map(c => c.id));
+    lista.sort((a, b) => (hechos.has(a.id) - hechos.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 
     // Encabezado: qué lista se está viendo + cambiar entre "de hoy" y "todos"
     if (!term && typeof dia === 'number') {
@@ -2113,7 +2631,7 @@ function renderSeleccionClientes(filtro) {
             <div>
                 <span class="font-bold block">${c.nombre}</span>
                 <span class="text-xs opacity-80">📍 ${c.direccion || 'Sin dirección'}</span>
-                ${visitados.has(c.id) ? '<span class="text-[10px] font-bold text-emerald-600 block">✓ Visitado hoy</span>' : ''}
+                ${visitados.has(c.id) ? '<span class="text-[10px] font-bold text-emerald-600 block">✓ Visitado hoy</span>' : (noComproHoy(c) ? '<span class="text-[10px] font-bold text-red-600 block">✕ No compró hoy</span>' : '')}
             </div>
             ${activo ? '<span class="font-bold text-xs text-blue-600">✓ Seleccionado</span>' : '<span class="text-xs text-gray-400">Tocar para elegir</span>'}
         `;
@@ -6197,6 +6715,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 $('buscador-venta').addEventListener('input', e => filtrarVenta(e.target.value));
 $('buscador-inventario').addEventListener('input', e => filtrarInventario(e.target.value));
 $('buscador-clientes').addEventListener('input', e => renderListaClientesInicio(e.target.value));
+setVistaClientes(vistaClientes);
 
 actualizarContadorClientesUI();
 renderVenta();

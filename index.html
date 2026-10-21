@@ -133,6 +133,7 @@ input,select,textarea{font-size:16px}
 .mapd-pin{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 12px/1 system-ui,sans-serif;cursor:pointer;z-index:2}
 .mapd-pin.sel{width:38px;height:38px;margin:-19px 0 0 -19px;border-color:#111827;z-index:3;font-size:14px}
 .mapd-yo{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25);z-index:1;pointer-events:none}
+.mapd-yoacc{position:absolute;border-radius:50%;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.35);pointer-events:none;z-index:1}
 .mapd-ctl{position:absolute;right:8px;top:8px;z-index:6;display:flex;flex-direction:column;gap:6px}
 .mapd-ctl button{width:40px;height:40px;border-radius:12px;background:#fff;color:#111827;font-size:20px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);line-height:1}
 .mapd-attr{position:absolute;left:6px;bottom:4px;z-index:6;font:10px system-ui,sans-serif;color:#374151;background:rgba(255,255,255,.8);padding:1px 5px;border-radius:5px;pointer-events:none}
@@ -496,9 +497,6 @@ input,select,textarea{font-size:16px}
             </button>
             <button type="button" onclick="menuClienteAccion('ubicar')" class="w-full text-left p-3.5 rounded-xl hover:bg-blue-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
                 <span class="text-lg">📍</span> Guardar ubicación (estoy aquí)
-            </button>
-            <button type="button" onclick="menuClienteAccion('ruta')" class="w-full text-left p-3.5 rounded-xl hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
-                <span class="text-lg">🧭</span> Cómo llegar
             </button>
             <button type="button" onclick="menuClienteAccion('modificar')" class="w-full text-left p-3.5 rounded-xl hover:bg-gray-50 flex items-center gap-3 text-sm font-semibold text-gray-800">
                 <span class="text-lg">✏️</span> Modificar
@@ -1705,7 +1703,6 @@ const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
 
 // ==================== MAPA DE CLIENTES (propio, sin librerías: funciona sin internet) ====================
 const MAPA_BASE = { lat: 27.85, lng: -101.117 };
-const MAPA_CIUDAD = 'Sabinas, Coahuila';
 const MAPA_TILE_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
 const mapaLngX = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * 256;
@@ -1776,7 +1773,7 @@ class MapaDigar {
     constructor(el) {
         this.el = el; this.z = 15; this.c = { lat: MAPA_BASE.lat, lng: MAPA_BASE.lng };
         this.tiles = new Map(); this.pins = []; this.pinEls = []; this.sel = null; this.yo = null; this.yoEl = null;
-        this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0;
+        this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0; this.tocado = false; this.yoAcc = 0; this.yoAccEl = null;
         el.classList.add('mapd');
         el.innerHTML = '<div class="mapd-grid"></div><div class="mapd-tl"></div><div class="mapd-pl"></div>' +
             '<div class="mapd-msg">Sin mapa guardado en esta zona. Se ven solo los pines.</div>' +
@@ -1833,16 +1830,17 @@ class MapaDigar {
         if (this.ptrs.size === 0) { this.tap = null; this.pinched = false; }
     }
     _pan(dx, dy) {
+        this.tocado = true;
         const z = this.z;
         const x = mapaLngX(this.c.lng, z) + dx, y = mapaLatY(this.c.lat, z) + dy;
         this.c = { lat: Math.max(-84, Math.min(84, mapaYLat(y, z))), lng: mapaXLng(x, z) };
         this._sched();
     }
-    zoomBy(n) { this.z = Math.max(11, Math.min(18, this.z + n)); this._sched(); }
+    zoomBy(n) { this.tocado = true; this.z = Math.max(11, Math.min(18, this.z + n)); this._sched(); }
     setView(lat, lng, z) { this.c = { lat, lng }; if (z) this.z = Math.max(11, Math.min(18, z)); this._sched(); }
-    setYo(lat, lng) { this.yo = { lat, lng }; this._sched(); }
+    setYo(lat, lng, prec) { this.yo = { lat, lng }; this.yoAcc = prec || 0; this._sched(); }
     locate(cb) {
-        gpsActual().then(p => { this.setYo(p.lat, p.lng); this.setView(p.lat, p.lng, Math.max(this.z, 16)); if (cb) cb(p); })
+        gpsActual().then(p => { this.setYo(p.lat, p.lng, p.prec); this.setView(p.lat, p.lng, Math.max(this.z, 16)); if (cb) cb(p); })
             .catch(e => alert(gpsError(e)));
     }
     setPins(arr) {
@@ -1857,16 +1855,21 @@ class MapaDigar {
     }
     fit() {
         const w = this.el.clientWidth || 320, h = this.el.clientHeight || 320, ps = this.pins;
-        if (!ps.length) { this.setView(MAPA_BASE.lat, MAPA_BASE.lng, 14); return; }
+        if (!ps.length) { if (this.yo) this.setView(this.yo.lat, this.yo.lng, 16); else this.setView(MAPA_BASE.lat, MAPA_BASE.lng, 14); return; }
         if (ps.length === 1) { this.setView(ps[0].lat, ps[0].lng, 16); return; }
         let n = -90, s = 90, e = -180, o = 180;
         ps.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lng); o = Math.min(o, p.lng); });
+        if (this.yo && this.yo.lat < n + 0.03 && this.yo.lat > s - 0.03 && this.yo.lng < e + 0.03 && this.yo.lng > o - 0.03) { n = Math.max(n, this.yo.lat); s = Math.min(s, this.yo.lat); e = Math.max(e, this.yo.lng); o = Math.min(o, this.yo.lng); }
         let z = 11;
         for (let k = 18; k >= 11; k--) {
             if (mapaLngX(e, k) - mapaLngX(o, k) <= w - 90 && mapaLatY(s, k) - mapaLatY(n, k) <= h - 90) { z = k; break; }
         }
         const cx = (mapaLngX(e, z) + mapaLngX(o, z)) / 2, cy = (mapaLatY(n, z) + mapaLatY(s, z)) / 2;
         this.setView(mapaYLat(cy, z), mapaXLng(cx, z), z);
+    }
+    centrarArriba(lat, lng) {
+        const h = this.el.clientHeight, z = this.z;
+        this.setView(mapaYLat(mapaLatY(lat, z) + h * 0.22, z), mapaXLng(mapaLngX(lng, z), z));
     }
     reload() { this.tiles.forEach(img => img.remove()); this.tiles.clear(); this._sched(); }
     render() {
@@ -1905,6 +1908,13 @@ class MapaDigar {
             if (!this.yoEl) { this.yoEl = document.createElement('div'); this.yoEl.className = 'mapd-yo'; this.pl.appendChild(this.yoEl); }
             this.yoEl.style.left = Math.round(mapaLngX(this.yo.lng, z) - ox) + 'px';
             this.yoEl.style.top = Math.round(mapaLatY(this.yo.lat, z) - oy) + 'px';
+            const mpp = 156543.03392 * Math.cos(this.yo.lat * Math.PI / 180) / Math.pow(2, z);
+            const d = this.yoAcc > 15 ? Math.min(2 * this.yoAcc / mpp, 600) : 0;
+            if (!this.yoAccEl) { this.yoAccEl = document.createElement('div'); this.yoAccEl.className = 'mapd-yoacc'; this.pl.insertBefore(this.yoAccEl, this.yoEl); }
+            this.yoAccEl.style.display = d > 22 ? 'block' : 'none';
+            this.yoAccEl.style.width = this.yoAccEl.style.height = d + 'px';
+            this.yoAccEl.style.margin = (-d / 2) + 'px 0 0 ' + (-d / 2) + 'px';
+            this.yoAccEl.style.left = this.yoEl.style.left; this.yoAccEl.style.top = this.yoEl.style.top;
         }
     }
 }
@@ -1957,6 +1967,9 @@ function refrescarMapaClientes(forzarFit) {
         mapaClientes = new MapaDigar(el);
         mapaClientes.onPin = p => abrirPopupMapa(p.id);
         mapaClientes.onTap = () => cerrarPopupMapa();
+        if (miPos) mapaClientes.setYo(miPos.lat, miPos.lng, miPos.prec);
+        if (window.IntersectionObserver) new IntersectionObserver(en => { _mapaVisible = en[0].isIntersecting; _gpsMapaSync(); }).observe(el);
+        else { _mapaVisible = true; _gpsMapaSync(); }
     }
     const lista = mapaClientesFiltrados();
     const con = lista.filter(mapaTieneUbic), sin = lista.filter(c => !mapaTieneUbic(c));
@@ -1966,11 +1979,11 @@ function refrescarMapaClientes(forzarFit) {
     }));
     const inp = $('buscador-clientes');
     const firma = diaFiltroClientes + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
-    if (forzarFit || firma !== _mapaFirma) { _mapaFirma = firma; mapaClientes.fit(); }
+    if (forzarFit || firma !== _mapaFirma) { _mapaFirma = firma; mapaClientes.tocado = false; mapaClientes.fit(); }
     const n = { venta: 0, nocompro: 0, pend: 0 };
     lista.forEach(c => n[estadoClienteHoy(c)]++);
     $('mapa-resumen').innerHTML =
-        `<span style="color:#a16207">● ${n.pend} sin venta</span><span style="color:#15803d">● ${n.venta} con venta</span><span style="color:#b91c1c">● ${n.nocompro} no compró</span>`;
+        `<span style="color:#a16207">● ${n.pend} sin venta</span><span style="color:#15803d">● ${n.venta} con venta</span><span style="color:#b91c1c">● ${n.nocompro} no compró</span><span style="color:#2563eb">● Tú</span>`;
     const box = $('mapa-sin-ubic');
     box.innerHTML = sin.length ? `<p style="font-size:11px;font-weight:800;color:#6b7280;margin:6px 0 2px">SIN UBICACIÓN (${sin.length}). Estando con el cliente toca "Estoy aquí".</p>` +
         sin.map(c => {
@@ -1999,19 +2012,20 @@ function abrirPopupMapa(id, silencioso) {
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="min-width:0"><div style="font-size:15px;font-weight:800;color:#111827">${escHtml(c.nombre)}</div>
         <div style="font-size:12px;color:#6b7280">${escHtml(c.direccion || 'Sin dirección')}</div>
-        <div style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]};margin-top:2px">● ${MAPA_TXT[e][0]}</div></div>
+        <div style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]};margin-top:2px">● ${MAPA_TXT[e][0]}</div>
+        <div id="mapa-popup-dist" style="font-size:12px;font-weight:800;color:#2563eb;margin-top:2px"></div></div>
         <button type="button" onclick="cerrarPopupMapa()" style="font-size:22px;line-height:1;color:#9ca3af;padding:0 4px">×</button></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
         <button type="button" onclick="mapaAccion('venta','${idA}')" style="background:#16a34a;color:#fff;font-size:12px;font-weight:800;padding:10px;border-radius:12px">🛒 Venta</button>
         <button type="button" onclick="mapaAccion('nocompro','${idA}')" style="background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:800;padding:10px;border-radius:12px">${e === 'nocompro' ? 'Quitar "No compró"' : '✕ No compró'}</button>
-        <button type="button" onclick="mapaAccion('ruta','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">🧭 Cómo llegar</button>
-        <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
+        <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="grid-column:1/-1;background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
     box.classList.remove('hidden');
+    if (!silencioso && mapaClientes && mapaTieneUbic(c)) mapaClientes.centrarArriba(c.lat, c.lng);
+    actualizarDistanciaPopup();
 }
 function mapaAccion(a, id) {
     if (a === 'venta') { seleccionarClienteVentaDesdeInicio(id); cambiarVista('venta'); }
     else if (a === 'nocompro') toggleSinCompra(id);
-    else if (a === 'ruta') abrirRutaCliente(id);
     else if (a === 'ubicar') guardarUbicacionAqui(id);
 }
 function toggleSinCompra(id) {
@@ -2023,14 +2037,35 @@ function toggleSinCompra(id) {
     renderListaClientesInicio();
     refrescarMapaClientes(false);
 }
-function abrirRutaCliente(id) {
-    const c = buscarClientePorId(id); if (!c) return;
-    let url;
-    if (mapaTieneUbic(c)) url = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
-    else if (c.direccion) url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.direccion + ', ' + MAPA_CIUDAD)}`;
-    else { alert('Este cliente no tiene ubicación ni dirección'); return; }
-    window.open(url, '_blank');
+// ---- Mi ubicación en vivo (punto azul) y distancia al cliente ----
+let miPos = null, _watchId = null, _mapaVisible = false, _gpsAvisado = false;
+function mapaDist(a, b) {
+    const R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
 }
+function mapaDistTxt(m) { return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km'; }
+function actualizarDistanciaPopup() {
+    const el = $('mapa-popup-dist'); if (!el) return;
+    const c = mapaSelId !== null ? buscarClientePorId(mapaSelId) : null;
+    if (!c || !mapaTieneUbic(c)) { el.innerText = ''; return; }
+    el.innerText = miPos ? '📏 A ' + mapaDistTxt(mapaDist(miPos, c)) + ' de ti' : 'Buscando tu ubicación…';
+}
+function iniciarGpsMapa() {
+    if (_watchId !== null || !navigator.geolocation) return;
+    _watchId = navigator.geolocation.watchPosition(p => {
+        miPos = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
+        const primera = mapaClientes && !mapaClientes.yo;
+        if (mapaClientes) { mapaClientes.setYo(miPos.lat, miPos.lng, miPos.prec); if (primera && !mapaClientes.tocado) mapaClientes.fit(); }
+        if (mapaPicker && !mapaPicker.yo) mapaPicker.setYo(miPos.lat, miPos.lng, miPos.prec);
+        actualizarDistanciaPopup();
+    }, e => {
+        if (e && e.code === 1 && !_gpsAvisado) { _gpsAvisado = true; mapaAviso('Activa el permiso de ubicación para ver tu punto en el mapa'); }
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+}
+function detenerGpsMapa() { if (_watchId !== null) { try { navigator.geolocation.clearWatch(_watchId); } catch (e) {} _watchId = null; } }
+function _gpsMapaSync() { if (_mapaVisible && !document.hidden) iniciarGpsMapa(); else detenerGpsMapa(); }
+document.addEventListener('visibilitychange', _gpsMapaSync);
 let _gpsOcupado = false;
 async function guardarUbicacionAqui(id) {
     if (_gpsOcupado) return;
@@ -2068,7 +2103,7 @@ function pickerPonerPin(ll) {
 }
 function abrirPickerUbic() {
     $('modal-ubic-picker').classList.remove('hidden');
-    if (!mapaPicker) { mapaPicker = new MapaDigar($('mapa-picker')); mapaPicker.onTap = pickerPonerPin; }
+    if (!mapaPicker) { mapaPicker = new MapaDigar($('mapa-picker')); mapaPicker.onTap = pickerPonerPin; if (miPos) mapaPicker.setYo(miPos.lat, miPos.lng, miPos.prec); }
     pickerSel = null; mapaPicker.setPins([]);
     const ref = ubicForm || clientes.find(mapaTieneUbic) || null;
     mapaPicker.setView(ref ? ref.lat : MAPA_BASE.lat, ref ? ref.lng : MAPA_BASE.lng, ubicForm ? 17 : (ref ? 16 : 15));
@@ -2395,8 +2430,6 @@ async function menuClienteAccion(accion) {
         toggleSinCompra(id);
     } else if (accion === 'ubicar') {
         guardarUbicacionAqui(id);
-    } else if (accion === 'ruta') {
-        abrirRutaCliente(id);
     } else if (accion === 'modificar') {
         editarCliente(id);
     } else if (accion === 'eliminar') {
@@ -6892,24 +6925,16 @@ function procesarCodigoQRPedido(texto) {
     if (agregados > 0) abrirCarrito();
 }
 
-// -------------------- REGISTRO SERVICE WORKER (PWA) --------------------
-if ('serviceWorker' in navigator) {
-    let recargando = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (recargando) return;
-        recargando = true;
-        location.reload();
-    });
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(reg => reg.update()).catch(err => {
-            console.warn('No se pudo registrar el service worker:', err);
-        });
-    });
-}
-
-// Borra SOLO la caché de la app (no toca ventas, inventario ni clientes) y recarga
-async function actualizarApp() {
-    if (!await confirmarPro('Se descargará la versión más reciente de la app. Tus ventas e inventario NO se borran. ¿Continuar?')) return;
+// -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
+// Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
+const APP_BUILD = '2026-10-21-c';
+let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
+const _urlApp = () => location.href.split('#')[0].split('?')[0];
+async function aplicarActualizacion() {
+    if (navigator.onLine === false) { alert('Necesitas internet para actualizar.'); return; }
+    try { const r = await fetch(_urlApp() + '?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('http'); }
+    catch (e) { alert('No pude descargar la actualización. Revisa tu internet e intenta de nuevo.'); return; }
+    _actAplicando = true;
     try {
         if ('serviceWorker' in navigator) {
             const regs = await navigator.serviceWorker.getRegistrations();
@@ -6921,6 +6946,51 @@ async function actualizarApp() {
         }
     } catch (e) { console.warn(e); }
     location.reload();
+}
+async function preguntarActualizacion() {
+    if (_actPreguntando || _actAplicando) return;
+    if (_actUltima && Date.now() - _actUltima < 2 * 60 * 60 * 1000) return;
+    _actPreguntando = true; _actUltima = Date.now();
+    const si = await confirmarPro('Hay una actualización nueva de la app. ¿Quieres actualizar ahora? Tus ventas, inventario y clientes NO se borran.');
+    _actPreguntando = false;
+    if (si) aplicarActualizacion();
+}
+async function buscarActualizacion() {
+    if (navigator.onLine === false) return;
+    _actUltimoChequeo = Date.now();
+    try {
+        const r = await fetch(_urlApp() + '?_=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return;
+        const m = (await r.text()).match(/APP_BUILD\s*=\s*'(\d{4}-\d{2}-\d{2}-[a-z0-9]+)'/);
+        if (m && m[1] !== APP_BUILD) preguntarActualizacion();
+    } catch (e) {}
+}
+if ('serviceWorker' in navigator) {
+    const habiaControlador = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (_actAplicando) return;
+        if (habiaControlador) preguntarActualizacion();
+    });
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            reg.addEventListener('updatefound', () => {
+                const nw = reg.installing; if (!nw) return;
+                nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) preguntarActualizacion(); });
+            });
+            return reg.update();
+        }).catch(err => {
+            console.warn('No se pudo registrar el service worker:', err);
+        });
+    });
+}
+window.addEventListener('load', () => { setTimeout(buscarActualizacion, 4000); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - _actUltimoChequeo > 10 * 60 * 1000) buscarActualizacion(); });
+setInterval(buscarActualizacion, 30 * 60 * 1000);
+
+// Botón manual "Actualizar app": borra SOLO la caché de la app (no toca ventas, inventario ni clientes) y recarga
+async function actualizarApp() {
+    if (!await confirmarPro('Se descargará la versión más reciente de la app. Tus ventas e inventario NO se borran. ¿Continuar?')) return;
+    aplicarActualizacion();
 }
 
 // -------------------- VIBRACION (toque haptico) --------------------

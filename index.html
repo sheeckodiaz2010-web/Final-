@@ -651,7 +651,7 @@ input,select,textarea{font-size:16px}
         <div class="bg-white rounded-t-3xl p-5 space-y-3">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">Ubicación del cliente</h3>
-                <button onclick="cerrarModal('modal-ubic-picker')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarPicker()" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <p class="text-xs text-gray-500">Toca el mapa para poner el pin. Arrastra para moverte; acerca con dos dedos o con +.</p>
             <div id="mapa-picker" style="height:46dvh;min-height:260px"></div>
@@ -1840,11 +1840,16 @@ class MapaDigar {
     setView(lat, lng, z) { this.c = { lat, lng }; if (z) this.z = Math.max(11, Math.min(18, z)); this._sched(); }
     setYo(lat, lng, prec) { this.yo = { lat, lng }; this.yoAcc = prec || 0; this._sched(); }
     locate(cb) {
+        if (typeof miPos !== 'undefined' && miPos) {
+            this.setYo(miPos.lat, miPos.lng, miPos.prec); this.setView(miPos.lat, miPos.lng, Math.max(this.z, 16));
+            if (cb) cb(miPos);
+            return;
+        }
         gpsActual().then(p => { this.setYo(p.lat, p.lng, p.prec); this.setView(p.lat, p.lng, Math.max(this.z, 16)); if (cb) cb(p); })
             .catch(e => alert(gpsError(e)));
     }
     setPins(arr) {
-        this.pins = arr; this.pl.innerHTML = ''; this.pinEls = [];
+        this.pins = arr; this.pl.innerHTML = ''; this.pinEls = []; this.yoEl = null; this.yoAccEl = null;
         arr.forEach((p, i) => {
             const d = document.createElement('div');
             d.className = 'mapd-pin'; d.dataset.i = i;
@@ -2038,7 +2043,7 @@ function toggleSinCompra(id) {
     refrescarMapaClientes(false);
 }
 // ---- Mi ubicación en vivo (punto azul) y distancia al cliente ----
-let miPos = null, _watchId = null, _mapaVisible = false, _gpsAvisado = false;
+let miPos = null, _watchId = null, _mapaVisible = false, _gpsAvisado = false, _pickerAbierto = false;
 function mapaDist(a, b) {
     const R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
@@ -2049,7 +2054,7 @@ function actualizarDistanciaPopup() {
     const el = $('mapa-popup-dist'); if (!el) return;
     const c = mapaSelId !== null ? buscarClientePorId(mapaSelId) : null;
     if (!c || !mapaTieneUbic(c)) { el.innerText = ''; return; }
-    el.innerText = miPos ? '📏 A ' + mapaDistTxt(mapaDist(miPos, c)) + ' de ti' : 'Buscando tu ubicación…';
+    el.innerText = miPos ? '📏 A ' + mapaDistTxt(mapaDist(miPos, c)) + ' de ti' + (miPos.prec > 30 ? ' (±' + Math.round(miPos.prec) + ' m)' : '') : 'Buscando tu ubicación…';
 }
 function iniciarGpsMapa() {
     if (_watchId !== null || !navigator.geolocation) return;
@@ -2057,14 +2062,14 @@ function iniciarGpsMapa() {
         miPos = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
         const primera = mapaClientes && !mapaClientes.yo;
         if (mapaClientes) { mapaClientes.setYo(miPos.lat, miPos.lng, miPos.prec); if (primera && !mapaClientes.tocado) mapaClientes.fit(); }
-        if (mapaPicker && !mapaPicker.yo) mapaPicker.setYo(miPos.lat, miPos.lng, miPos.prec);
+        if (mapaPicker) mapaPicker.setYo(miPos.lat, miPos.lng, miPos.prec);
         actualizarDistanciaPopup();
     }, e => {
-        if (e && e.code === 1 && !_gpsAvisado) { _gpsAvisado = true; mapaAviso('Activa el permiso de ubicación para ver tu punto en el mapa'); }
+        if (e && e.code === 1) { detenerGpsMapa(); if (!_gpsAvisado) { _gpsAvisado = true; mapaAviso('Activa el permiso de ubicación para ver tu punto en el mapa'); } }
     }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
 function detenerGpsMapa() { if (_watchId !== null) { try { navigator.geolocation.clearWatch(_watchId); } catch (e) {} _watchId = null; } }
-function _gpsMapaSync() { if (_mapaVisible && !document.hidden) iniciarGpsMapa(); else detenerGpsMapa(); }
+function _gpsMapaSync() { if ((_mapaVisible || _pickerAbierto) && !document.hidden) iniciarGpsMapa(); else detenerGpsMapa(); }
 document.addEventListener('visibilitychange', _gpsMapaSync);
 let _gpsOcupado = false;
 async function guardarUbicacionAqui(id) {
@@ -2101,8 +2106,10 @@ function pickerPonerPin(ll) {
     pickerSel = { lat: ll.lat, lng: ll.lng };
     mapaPicker.setPins([{ id: 'pick', lat: ll.lat, lng: ll.lng, color: '#2563eb', txt: '#fff', label: '●' }]);
 }
+function cerrarPicker() { _pickerAbierto = false; cerrarModal('modal-ubic-picker'); _gpsMapaSync(); }
 function abrirPickerUbic() {
     $('modal-ubic-picker').classList.remove('hidden');
+    _pickerAbierto = true; _gpsMapaSync();
     if (!mapaPicker) { mapaPicker = new MapaDigar($('mapa-picker')); mapaPicker.onTap = pickerPonerPin; if (miPos) mapaPicker.setYo(miPos.lat, miPos.lng, miPos.prec); }
     pickerSel = null; mapaPicker.setPins([]);
     const ref = ubicForm || clientes.find(mapaTieneUbic) || null;
@@ -2115,7 +2122,7 @@ function confirmarUbicPicker() {
     if (!pickerSel) return alert('Toca el mapa para poner el pin');
     ubicForm = { lat: mapaR6(pickerSel.lat), lng: mapaR6(pickerSel.lng) };
     pintarUbicForm();
-    cerrarModal('modal-ubic-picker');
+    cerrarPicker();
 }
 
 // ---- Descargar mapa para usar sin internet ----
@@ -6927,7 +6934,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-21-c';
+const APP_BUILD = '2026-10-21-d';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

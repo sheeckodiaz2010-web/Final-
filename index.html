@@ -453,7 +453,7 @@ input,select,textarea{font-size:16px}
     <div id="banner-respaldo" class="hidden fixed top-0 inset-x-0 z-40 bg-yellow-50 border-b border-yellow-200 px-4 py-3 flex items-center gap-2 shadow-sm">
         <span class="text-lg">⚠️</span>
         <span class="text-xs text-yellow-800 flex-1" id="banner-respaldo-texto"></span>
-        <button onclick="exportarDatos()" class="text-xs font-bold text-white px-3 py-2 rounded-lg shadow-sm bg-blue-600">Respaldar</button>
+        <button onclick="compartirRespaldo()" class="text-xs font-bold text-white px-3 py-2 rounded-lg shadow-sm bg-blue-600">Respaldar</button>
         <button onclick="cerrarBannerRespaldo()" class="text-yellow-700 text-lg px-1">✕</button>
     </div>
 
@@ -915,6 +915,7 @@ input,select,textarea{font-size:16px}
             </div>
             <p class="text-xs text-gray-400 -mt-1">Tus ventas, clientes e inventario viven solo en este celular. Respalda de vez en cuando para no perderlos.</p>
             <div class="pt-1 space-y-2">
+                <button onclick="compartirRespaldo()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs shadow-sm">📤 Compartir respaldo (Drive, WhatsApp, correo)</button>
                 <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
                 <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
                 <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
@@ -1643,17 +1644,27 @@ function cargarFirebase() {
 }
 
 let _credencialesNube = null;
+async function hashSeguro(str) {
+    try {
+        if (window.crypto && crypto.subtle) {
+            const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('digar|' + str));
+            return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+    } catch (e) {}
+    return hashSimple(str);
+}
 function iniciarFirebase(telefono, password) {
     if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith('PEGA_AQUI')) {
         console.warn('Firebase no está configurado todavía: la app seguirá funcionando solo en este dispositivo.');
         return;
     }
     _credencialesNube = { telefono, password };
-    cargarFirebase().then(() => {
+    cargarFirebase().then(async () => {
         if (firestoreDocRef) return; // ya conectado
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         dbFirestore = firebase.firestore();
-        const docId = hashSimple(telefono + '|' + password);
+        const docId = await hashSeguro(telefono + '|' + password);
+        if (firestoreDocRef) return;
         firestoreDocRef = dbFirestore.collection('pos_datos').doc(docId);
         escucharCambiosNube();
         subirDatosNube();
@@ -6457,6 +6468,23 @@ async function guardarArchivoRespaldo(data) {
     return true;
 }
 
+async function compartirRespaldo() {
+    const data = JSON.stringify({ productos, clientes, transacciones, configTicket, categorias: todasLasCategorias() });
+    const nombre = 'respaldo_digar_' + hoy() + '.json';
+    try {
+        for (const tipo of ['application/json', 'text/plain']) {
+            const file = new File([data], nombre, { type: tipo });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: 'Respaldo DIGAR' });
+                localStorage.setItem('yimi_ultimo_respaldo', new Date().toISOString());
+                cerrarBannerRespaldo();
+                return;
+            }
+        }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    exportarDatos(); // este teléfono no tiene menú de compartir: guarda el archivo normal
+}
+
 async function procesarExportarDatos() {
     const data = JSON.stringify({ productos, clientes, transacciones, configTicket, categorias: todasLasCategorias() }, null, 2);
     const ok = await guardarArchivoRespaldo(data);
@@ -6942,7 +6970,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-21-e';
+const APP_BUILD = '2026-10-21-f';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

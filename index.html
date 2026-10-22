@@ -1605,12 +1605,12 @@ function guardarTodo() {
 // 2) Dentro del proyecto, activa "Firestore Database" (modo producción)
 // 3) Ve a Configuración del proyecto > tus apps > Web (</>) y copia el objeto de config aquí abajo
 const firebaseConfig = {
-    apiKey: "PEGA_AQUI_TU_API_KEY",
-    authDomain: "PEGA_AQUI_TU_PROYECTO.firebaseapp.com",
-    projectId: "PEGA_AQUI_TU_PROYECTO",
-    storageBucket: "PEGA_AQUI_TU_PROYECTO.appspot.com",
-    messagingSenderId: "PEGA_AQUI_TU_SENDER_ID",
-    appId: "PEGA_AQUI_TU_APP_ID"
+    apiKey: "AIzaSyBgewMDUwJgixTcNP9-L-_cDi2-qUCefxc",
+    authDomain: "yimi-pos.firebaseapp.com",
+    projectId: "yimi-pos",
+    storageBucket: "yimi-pos.firebasestorage.app",
+    messagingSenderId: "424267757246",
+    appId: "1:424267757246:web:cb334f8da8d1e7488310ef"
 };
 
 const instanciaId = Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -1666,8 +1666,27 @@ function iniciarFirebase(telefono, password) {
         const docId = await hashSeguro(telefono + '|' + password);
         if (firestoreDocRef) return;
         firestoreDocRef = dbFirestore.collection('pos_datos').doc(docId);
-        escucharCambiosNube();
-        subirDatosNube();
+        // 1) Leer lo que hay en la nube ANTES de escribir nada (así un teléfono nuevo/vacío nunca borra el respaldo)
+        let snap;
+        try { snap = await firestoreDocRef.get(); }
+        catch (e) {
+            console.warn('No se pudo leer la nube (se reintenta al volver el internet):', e);
+            if (e && e.code === 'permission-denied') alert('La nube rechazó la conexión. Revisa que las reglas de Firestore estén publicadas.');
+            firestoreDocRef = null; return;
+        }
+        const nube = snap.exists ? snap.data() : null;
+        const nTransNube = nube && Array.isArray(nube.transacciones) ? nube.transacciones.length : 0;
+        const nProdNube = nube && Array.isArray(nube.productos) ? nube.productos.length : 0;
+        const nCliNube = nube && Array.isArray(nube.clientes) ? nube.clientes.length : 0;
+        const localVacio = !productos.length && !transacciones.length && !clientes.filter(c => !esClienteGeneral(c)).length;
+        // 2) Gana la nube si tiene más ventas, o si este teléfono está vacío y la nube tiene datos
+        const usarNube = !!nube && (nTransNube > transacciones.length || (localVacio && (nProdNube > 0 || nCliNube > 0)));
+        _nubeLista = true;
+        if (usarNube) { escucharCambiosNube(); return; }
+        // 3) Gana este teléfono: se sube primero y solo después se empieza a escuchar
+        const ok = await subirDatosNube();
+        if (ok) escucharCambiosNube();
+        else { _nubeLista = false; firestoreDocRef = null; firestoreListenerActivo = false; }
     }).catch(e => {
         console.error('No se pudo conectar con Firebase (se reintenta al volver el internet):', e);
     });
@@ -1702,13 +1721,29 @@ function escucharCambiosNube() {
     }, err => console.error('Error escuchando la nube:', err));
 }
 
+let _nubeLista = false, _avisoPesoNube = false;
+function avisarPesoNube() {
+    if (_avisoPesoNube) return;
+    try {
+        if (JSON.stringify({ productos, clientes, transacciones, configTicket }).length > 800000) {
+            _avisoPesoNube = true;
+            alert('La nube está casi llena (el límite es 1 MB). Haz un respaldo con el botón de compartir y pídele a Claude que parta las ventas por mes para que siga sincronizando.');
+        }
+    } catch (e) {}
+}
 function subirDatosNube() {
-    if (!firestoreDocRef || sincronizandoDesdeNube) return;
-    firestoreDocRef.set({
+    if (!firestoreDocRef || sincronizandoDesdeNube || !_nubeLista) return Promise.resolve(false);
+    avisarPesoNube();
+    return firestoreDocRef.set({
         productos, clientes, transacciones, configTicket,
         _origen: instanciaId,
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true }).catch(e => console.error('No se pudo guardar en la nube:', e));
+    }, { merge: true }).then(() => true).catch(e => {
+        console.error('No se pudo guardar en la nube:', e);
+        if (e && e.code === 'permission-denied') alert('La nube rechazó guardar. Revisa que las reglas de Firestore estén publicadas.');
+        else if (e && e.code === 'invalid-argument') alert('La nube se llenó (límite de 1 MB) y ya no puede guardar. Haz un respaldo con el botón de compartir y pídele a Claude que parta las ventas por mes.');
+        return false;
+    });
 }
 const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
 
@@ -6970,7 +7005,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-21-f';
+const APP_BUILD = '2026-10-21-g';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

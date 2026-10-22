@@ -130,7 +130,7 @@ input,select,textarea{font-size:16px}
 .mapd-grid{position:absolute;inset:0;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:48px 48px;opacity:.55}
 .mapd-tl,.mapd-pl{position:absolute;inset:0;overflow:hidden}
 .mapd-t{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none;-webkit-user-drag:none;transition:opacity .15s}
-.mapd-pin{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 12px/1 system-ui,sans-serif;cursor:pointer;z-index:2}
+.mapd-pin{position:absolute;left:0;top:0;will-change:transform;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 12px/1 system-ui,sans-serif;cursor:pointer;z-index:2}
 .mapd-pin.sel{width:38px;height:38px;margin:-19px 0 0 -19px;border-color:#111827;z-index:3;font-size:14px}
 .mapd-yo{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25);z-index:1;pointer-events:none}
 .mapd-yoacc{position:absolute;border-radius:50%;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.35);pointer-events:none;z-index:1}
@@ -1905,9 +1905,12 @@ class MapaDigar {
         this.tiles.forEach((img, k) => { if (!need.has(k)) { if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src); img.remove(); this.tiles.delete(k); } });
         this.pins.forEach((p, i) => {
             const d = this.pinEls[i]; if (!d) return;
-            d.style.left = Math.round(mapaLngX(p.lng, z) - ox) + 'px';
-            d.style.top = Math.round(mapaLatY(p.lat, z) - oy) + 'px';
-            d.classList.toggle('sel', this.sel !== null && String(this.sel) === String(p.id));
+            const px = mapaLngX(p.lng, z) - ox, py = mapaLatY(p.lat, z) - oy;
+            if (px < -40 || py < -40 || px > w + 40 || py > h + 40) { if (!d._h) { d.style.display = 'none'; d._h = true; } return; }
+            if (d._h) { d.style.display = ''; d._h = false; }
+            d.style.transform = 'translate(' + Math.round(px) + 'px,' + Math.round(py) + 'px)';
+            const esSel = this.sel !== null && String(this.sel) === String(p.id);
+            if (d._s !== esSel) { d.classList.toggle('sel', esSel); d._s = esSel; }
         });
         if (this.yo) {
             if (!this.yoEl) { this.yoEl = document.createElement('div'); this.yoEl.className = 'mapd-yo'; this.pl.appendChild(this.yoEl); }
@@ -1978,10 +1981,12 @@ function refrescarMapaClientes(forzarFit) {
     }
     const lista = mapaClientesFiltrados();
     const con = lista.filter(mapaTieneUbic), sin = lista.filter(c => !mapaTieneUbic(c));
-    mapaClientes.setPins(con.map(c => {
+    const arrPins = con.map(c => {
         const e = estadoClienteHoy(c);
         return { id: c.id, lat: c.lat, lng: c.lng, color: MAPA_COL[e], txt: e === 'pend' ? '#1f2937' : '#fff', label: (c.nombre || '?').trim().charAt(0).toUpperCase() };
-    }));
+    });
+    const sigPins = JSON.stringify(arrPins);
+    if (sigPins !== mapaClientes._sig) { mapaClientes._sig = sigPins; mapaClientes.setPins(arrPins); }
     const inp = $('buscador-clientes');
     const firma = diaFiltroClientes + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
     if (forzarFit || firma !== _mapaFirma) { _mapaFirma = firma; mapaClientes.tocado = false; mapaClientes.fit(); }
@@ -2001,7 +2006,7 @@ function refrescarMapaClientes(forzarFit) {
                 <button type="button" onclick="guardarUbicacionAqui('${id}')" style="background:#2563eb;color:#fff;font-size:11px;font-weight:800;padding:8px 9px;border-radius:10px">📍 Estoy aquí</button></div></div>`;
         }).join('') : '';
     if (mapaSelId !== null) abrirPopupMapa(mapaSelId, true);
-    actualizarTxtMapaOffline();
+    if (forzarFit) actualizarTxtMapaOffline();
 }
 function cerrarPopupMapa() {
     mapaSelId = null;
@@ -2043,7 +2048,7 @@ function toggleSinCompra(id) {
     refrescarMapaClientes(false);
 }
 // ---- Mi ubicación en vivo (punto azul) y distancia al cliente ----
-let miPos = null, _watchId = null, _mapaVisible = false, _gpsAvisado = false, _pickerAbierto = false;
+let _gpsT = 0, miPos = null, _watchId = null, _mapaVisible = false, _gpsAvisado = false, _pickerAbierto = false;
 function mapaDist(a, b) {
     const R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
@@ -2059,7 +2064,10 @@ function actualizarDistanciaPopup() {
 function iniciarGpsMapa() {
     if (_watchId !== null || !navigator.geolocation) return;
     _watchId = navigator.geolocation.watchPosition(p => {
-        miPos = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
+        const nueva = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
+        const ahora = Date.now();
+        if (miPos && ahora - _gpsT < 1500 && mapaDist(miPos, nueva) < 4) return;
+        _gpsT = ahora; miPos = nueva;
         const primera = mapaClientes && !mapaClientes.yo;
         if (mapaClientes) { mapaClientes.setYo(miPos.lat, miPos.lng, miPos.prec); if (primera && !mapaClientes.tocado) mapaClientes.fit(); }
         if (mapaPicker) mapaPicker.setYo(miPos.lat, miPos.lng, miPos.prec);
@@ -6934,7 +6942,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-21-d';
+const APP_BUILD = '2026-10-21-e';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

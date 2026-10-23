@@ -7009,7 +7009,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-23-a';
+const APP_BUILD = '2026-10-23-b';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7302,28 +7302,45 @@ document.addEventListener('visibilitychange', () => {
 </script>
 <script>
 /* Gesto/boton atras: bloqueado. No cierra el POS ni lo manda a ninguna parte.
-   Chrome ignora entradas de historial creadas sin toque real del usuario, por eso se arma en
-   touchend/pointerup/click y se rellena la pila varias veces. El gesto de quitar el fijado de
-   pantalla es del sistema Android y no se ve afectado. */
+   Chrome salta las entradas de historial creadas sin un toque real, por eso se rellena la pila
+   con cada toque (la 1a vez 6 entradas) y se repone una en cada "atras". Al bloquear un atras
+   sale un aviso "Atras bloqueado" 1 segundo: si la app se cierra SIN ese aviso, es que el
+   telefono sigue con la version vieja. El gesto de quitar el fijado es del sistema y no se toca. */
 (function () {
   var ATRAS_CIERRA_CAPAS = false; /* true = el atras solo cierra ventanas abiertas (modales/asistente) */
-  var PROFUNDIDAD = 6, armado = false, tope = 0;
+  var PROFUNDIDAD = 6, armado = false, tope = 0, ultimo = 0, aviso = null, tAviso = 0;
   function empujar(n) {
     for (var i = 0; i < n; i++) { try { history.pushState({ pos: ++tope }, '', location.href); } catch (e) {} }
   }
-  function armar() { if (armado) return; armado = true; empujar(PROFUNDIDAD); }
+  function armar() {
+    var ahora = Date.now();
+    if (!armado) { armado = true; ultimo = ahora; empujar(PROFUNDIDAD); return; }
+    if (ahora - ultimo > 800) { ultimo = ahora; empujar(1); }
+  }
   ['touchend', 'pointerup', 'click', 'keydown'].forEach(function (ev) { window.addEventListener(ev, armar, { capture: true, passive: true }); });
   try { empujar(2); } catch (e) {}
-  function rellenar() { armado = false; }
+  function avisar() {
+    try {
+      if (!aviso) {
+        aviso = document.createElement('div');
+        aviso.style.cssText = 'position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);z-index:2147483647;background:rgba(17,24,39,.92);color:#fff;font:700 13px system-ui,sans-serif;padding:8px 14px;border-radius:999px;pointer-events:none;display:none';
+        aviso.textContent = '🔒 Atrás bloqueado';
+        document.body.appendChild(aviso);
+      }
+      aviso.style.display = 'block'; clearTimeout(tAviso);
+      tAviso = setTimeout(function () { aviso.style.display = 'none'; }, 1000);
+    } catch (e) {}
+  }
   window.addEventListener('popstate', function () {
     empujar(1);
+    avisar();
     if (ATRAS_CIERRA_CAPAS) {
       var f = (window.__capas || []).pop();
       if (f) { try { f(); } catch (e) {} }
     }
   });
   window.addEventListener('pageshow', function () { empujar(2); });
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') rellenar(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') armado = false; });
   window.addEventListener('hashchange', function (e) { try { e.preventDefault(); } catch (x) {} });
 })();
 </script>

@@ -1,11 +1,11 @@
-/* Asistente DIGAR v3 - modulo independiente. Lee los datos del POS desde localStorage (yimi_*).
+/* Asistente DIGAR v4 - modulo independiente. Lee los datos del POS desde localStorage (yimi_*).
    Se activa con: <script src="asistente.js"></script> antes de </body>.
    Se abre con abrirAsistente() (opcion "Asistente" en Configuraciones). No es IA generativa:
    son reglas sobre tus datos que aprenden de tus ventas y de lo que le respondes. Gratis y sin limites. */
 (function () {
   'use strict';
   if (typeof window === 'undefined' || window.__asistenteDigar) return;
-  const VER = 'v3 2026-10-22';
+  const VER = 'v4 2026-10-22';
   const D = 864e5, MEMK = 'yimi_ia_mem';
   const LS = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const norm = s => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -26,6 +26,7 @@
   let mem = LS(MEMK) || {};
   ['precios', 'desc', 'resp', 'cajas', 'fb', 'cal', 'noSirve'].forEach(k => { mem[k] = mem[k] || {}; });
   mem.hechas = mem.hechas || 0; mem.chat = mem.chat || []; mem.sinEntender = mem.sinEntender || []; mem.pred = mem.pred || [];
+  mem.alias = mem.alias || {}; mem.aprendidas = mem.aprendidas || {}; mem.uso = mem.uso || {}; mem.ctx = mem.ctx || {};
   const save = () => { try { localStorage.setItem(MEMK, JSON.stringify(mem)); } catch (e) {} };
   const activo = (key, dias) => !(mem.desc[key] && Date.now() - mem.desc[key] < (dias || 14) * D);
   const provOk = (r, now) => { const h = mem.resp['hay:' + r.id]; return !(h && h.v === 'no' && now - h.ts < 21 * D); };
@@ -340,7 +341,8 @@
   }
 
   // ---------- CHAT ----------
-  const lista = (arr, f, n) => arr.slice(0, n || 5).map((x, i) => (i + 1) + '. ' + f(x)).join('\n');
+  let OFF = 0, LN = 5, LT = 0;
+  const lista = (arr, f, n) => { LN = n || 5; LT = arr.length; return arr.slice(OFF, OFF + LN).map((x, i) => (OFF + i + 1) + '. ' + f(x)).join('\n'); };
   const TOK = s => norm(s).split(/[^a-z0-9&]+/).filter(Boolean);
   const STOP = /^(como|cuanto|cuantos|cuantas|cual|cuales|que|vende|vendo|vendes|vendi|vendio|venden|margen|gano|gana|precio|tienda|tiendas|cuesta|cuestan|esta|estan|los|las|del|por|mas|menos|con|para|producto|productos|pedir|pido|pide|comprar|queda|quedan|stock|hay|tengo|una|uno|mis|nos|hoy|ayer|semana|mes|caja|cajas|trae|tiene|pieza|piezas|pzas|dame|dime|quiero|saber|subo|subir|bajo|bajar|ganancia|ventas|venta|cliente|clientes|debe|deuda|ruta|plan|carga|cargo|pedido|flete|reporte|el|la|un|de|en|mi|me|se|lo|es|si|no|y|o|a)$/;
   function buscarProds(A, q) {
@@ -351,7 +353,7 @@
       ws.forEach(w => {
         if (nt.indexOf(w) >= 0) s += 3;
         else if (nn.indexOf(w) >= 0 && w.length >= 4) s += 2;
-        else if (w.length >= 5 && nt.some(x => x.length >= 4 && lev(w, x) <= (w.length >= 8 ? 2 : 1))) s += 1.5;
+        else if (w.length >= 5 && nt.some(x => x.length >= 4 && fuzz(w, x))) s += 1.5;
       });
       return { r, s };
     }).filter(x => x.s > 0).sort((a, b) => b.s - a.s || b.r.u28 - a.r.u28);
@@ -359,7 +361,7 @@
   function buscarCliente(A, q) {
     const ws = TOK(q).filter(w => w.length > 2 && !STOP.test(w));
     let best = null, bs = 0;
-    A.C.forEach(c => { if (c.nombre === 'Cliente General') return; const nt = TOK(c.nombre); let s = 0; ws.forEach(w => { if (nt.indexOf(w) >= 0) s += 3; else if (w.length >= 4 && nt.some(x => lev(w, x) <= 1)) s += 1.5; }); if (s > bs) { bs = s; best = c; } });
+    A.C.forEach(c => { if (c.nombre === 'Cliente General') return; const nt = TOK(c.nombre); let s = 0; ws.forEach(w => { if (nt.indexOf(w) >= 0) s += 3; else if (w.length >= 4 && nt.some(x => x.length >= 4 && fuzz(w, x))) s += w.length >= 6 ? 3 : 1.5; }); if (s > bs) { bs = s; best = c; } });
     return bs >= 3 ? best : null;
   }
   function resumenPeriodo(A, p) {
@@ -396,15 +398,15 @@
   }
   // Patrones de preguntas que antes no sabía contestar (los usa responder y la limpieza del reporte)
   const P_MEM = /(tienes|tiene|hay|usas|guardas) (la )?memoria|te acuerdas|recuerdas|aprendes|te acuerdas de|memoria/;
-  const P_NOMINA = /nomina|sueldo|salario|empleado|trabajador|raya\b/;
+  const P_NOMINA = /nomina|sueldo|salario|empleado|trabajador|ayudante|raya\b/;
   const P_NOPREG = /(no|ni) (te )?pregunte (eso|esa|eso)|no es lo que (te )?pregunte|eso no (te )?(pregunte|es lo que)|no te (pedi|pregunte) eso|no fue lo que pregunte/;
   const P_YANO = /ya no (debo|deberia|tengo que|conviene|voy a)? ?(vender|surtir|pedir|comprar|cargar|llevar)|que (deje|dejo|debo dejar|deberia dejar) de (vender|surtir|pedir|comprar|cargar)|dejar de (vender|surtir|pedir|comprar)|que (quito|saco|elimino|descontinuo)|descontinu(ar|o)|que (productos )?no (me )?(conviene|sirve|dejan?)/;
   const P_BAJAR = /(que|cual(es)?|a que|cuales?) (le |les |lo |los )?(bajo|baje|bajarle|bajar|rebajo|rebajar)\b|\bbajo (de |el |los )?precio|bajar (de |el |los )?precio|bajarle (el )?precio|rebaj|promocion|oferta|\bmover\b/;
   mem.sinEntender = mem.sinEntender.filter(x => { const q = norm(x.q); return !(P_MEM.test(q) || P_NOMINA.test(q) || P_NOPREG.test(q) || P_YANO.test(q) || P_BAJAR.test(q)); });
   save();
   const CHIPS0 = ['¿Qué cargo hoy?', '¿Qué pido?', '¿Cómo voy hoy?', '¿Quién me debe?', '¿Qué subo de precio?', 'Ruta de hoy', 'Más vendidos', 'Menor margen'];
-  function responder(q) {
-    const A = analizar(), n = norm(q).trim(), ins = insights(A);
+  function responderBase(q, A0) {
+    const A = A0 || analizar(), n = norm(q).trim(), ins = insights(A);
     const nums = n.match(/\d+(?:[.,]\d+)?/g) || [], num = nums.length ? parseFloat(nums[nums.length - 1].replace(',', '.')) : null;
     const R = (t, chips) => ({ t, chips: chips || [] });
     const RANK = /agotad|sin stock|se acab|por acabar|poco stock|quedan pocos|parado|sobra|exceso|no compres|sobrante|inmovil|no se mueve|no se vende|muert|estanc|lento|menos (se )?(vend|mueve)|(vende|mueve)n? menos|mas vendid|mas se (vende|mueve)|top|estrella|popular|(vende|mueve)n? mas|margen|rentab|gano mas|deja mas|me deja/.test(n);
@@ -445,7 +447,7 @@
     }
 
     // --- enseñar ---
-    if (p && num != null && /tienda|cuesta|cuestan|cobran|venden|mercado|super|oxxo|walmart|competencia|bodega/.test(n) && !/caja/.test(n)) {
+    if (p && num != null && /tienda|cuesta|cuestan|cobran|venden|mercado|super|oxxo|oxo|walmart|competencia|bodega|aurrera|soriana|chedraui|abarrote|tiendita|esta a|estan a|anda en|andan en|lo dan|los dan|a como lo/.test(n) && !/caja/.test(n)) {
       mem.precios[p.id] = { v: num, ts: Date.now() }; save();
       return R('Anotado: ' + p.nombre + ' en tiendas a ' + $m(num) + '. Tú lo vendes en ' + $m(p.precio) + (p.precio > num * 1.08 ? ' (estás arriba).' : p.precio < num * 0.92 ? ' (hay espacio para subirlo).' : ' (vas parejo).') + ' Lo voy a tomar en cuenta.', ['Ficha de ' + p.nombre]);
     }
@@ -466,7 +468,7 @@
       return R('Listo, tu meta para flete gratis ahora es ' + $m(num) + '.', ['¿Qué pido?']);
     }
     if (/que (has )?aprendid|que sabes de mi|que recuerdas|que has guardado|que sabes de mi negocio/.test(n)) return R(aprendido(A));
-    if (/confirmo olvidar todo/.test(n)) { mem.precios = {}; mem.cajas = {}; mem.resp = {}; mem.cal = {}; mem.fb = {}; mem.noSirve = {}; mem.desc = {}; mem.pred = []; delete mem.fleteGratis; save(); return R('Listo, olvidé todo lo aprendido. Empiezo de cero con tus ventas.'); }
+    if (/confirmo olvidar todo/.test(n)) { mem.precios = {}; mem.cajas = {}; mem.resp = {}; mem.cal = {}; mem.fb = {}; mem.noSirve = {}; mem.desc = {}; mem.pred = []; mem.alias = {}; mem.aprendidas = {}; mem.uso = {}; mem.ctx = {}; delete mem.fleteGratis; save(); return R('Listo, olvidé todo lo aprendido. Empiezo de cero con tus ventas.'); }
     if (/olvid(a|ar)|borra(r)? (lo )?(aprendido|todo)/.test(n)) return R('Si quieres que olvide lo que aprendí (precios de tiendas, cajas, pronósticos), escribe exactamente: confirmo olvidar todo');
 
     // --- acciones ---
@@ -576,6 +578,349 @@
     mem.sinEntender = mem.sinEntender.slice(-100); save();
     return R('Eso todavía no lo sé contestar. Lo guardé: en "Informe" toca "Generar reporte", súbelo a Claude y lo mejoramos.' + (sug.length ? ' ¿Quisiste decir alguna de estas?' : ' Mientras tanto prueba con estas:'), sug.length ? sug.slice(0, 4) : CHIPS0.slice(0, 4));
   }
+  // =====================================================================
+  // ENTENDIMIENTO v4 — entrenado con ~1,000 preguntas de negocio (español de México)
+  // Capas: limpieza -> corrección de dedazos -> reglas por intención -> parecido con el corpus
+  // -> memoria de contexto (seguimientos) -> aprendizaje de lo que no entendió.
+  // =====================================================================
+  const ENT = {
+    saludo: "hola|buenas|buen dia|buenos dias|buenas tardes|que onda|ayuda|menu|que puedes hacer|que haces|que sabes hacer|hola asistente|holaa|buenas noches|epa|quiubo|que tal|hey|en que me puedes ayudar|como me ayudas|para que sirves|que eres",
+    plan: "que cargo hoy|que debo cargar hoy|que llevo hoy|que llevo a la ruta|que le meto a la camioneta|que surto hoy|plan del dia|plan de hoy|que hago hoy|que cargo|que le cargo al carro|que cargo para la ruta de hoy|que meto al carro hoy|que debo llevar hoy|que debo llevarme hoy a vender|que llevo para hoy|plan de la semana|que cargo manana|que debo surtir hoy|que producto llevo hoy|dime que cargar|que le cargo a la unidad|que llevo en la camioneta|que le echo al carro|que debo subir al carro hoy|para hoy que cargo|cargame el plan de hoy|que meto hoy|que subo a la camioneta",
+    pedido: "que pido|que debo pedir|que le pido al proveedor|armame el pedido|arma mi pedido|cuanto me falta para el flete gratis|cuanto me falta para flete gratis|cuanto me falta para los 20 mil|que compro|que debo comprar|que tengo que comprar|que compro en monterrey|que me falta pedir|hazme el pedido|pedido sugerido|que pedimos|que pido esta semana|que pido para completar el flete|que compro para llegar a 20000|que pido hoy|que necesito comprar|que tengo que pedir|dime que pedir|que le encargo al proveedor|ayudame a armar el pedido|que le pido a monterrey|que surto con el proveedor|lista de compras|que hay que comprar|cuanto necesito pedir|cuanto debo pedir para el flete|completa mi pedido|que me conviene pedir|que pido primero|que debo reponer|reponer inventario|que reabasteco|que resurto|que ocupo pedir",
+    ruta: "ruta de hoy|ruta|a quien visito hoy|a quien le vendo hoy|a quien visito|que clientes visito hoy|clientes de hoy|que clientes me faltan|cuantos clientes me faltan hoy|a quien me falta visitar|quienes me faltan|que clientes tengo hoy|mi ruta|a quien le toca hoy|a quien le toca visita hoy|a quien debo visitar|que tiendas me faltan|tiendas de hoy|cual es mi ruta de hoy|que clientes toca visitar hoy|quienes faltan por visitar|que clientes me faltan de visitar|a donde voy hoy|a quien le llego hoy|que tiendas visito hoy",
+    recom: "que me recomiendas|dame un consejo|dame consejos|que me sugieres|que es lo mas urgente|que es lo mas importante|prioridades|que debo hacer|que hago|sugerencias|recomendaciones|algun consejo|en que me enfoco|que debo atender primero|que es urgente|que cosas debo arreglar|que se me esta pasando|tienes algun consejo para mi negocio|que mejoro en mi negocio|como mejoro mis ventas|como vendo mas|que puedo mejorar|que me aconsejas|dime algo importante|alguna sugerencia",
+    subir: "que subo de precio|que le subo de precio|que debo subir de precio|que producto subo|a cuales les subo el precio|que precios subo|que le aumento de precio|a que le subo|que le subo|que productos puedo subir|que me conviene subir de precio|cuales puedo encarecer|que subo|que productos estan baratos|en que estoy barato|que estoy vendiendo muy barato|que precios estan bajos|que precio conviene subir|subir precios|que le puedo subir|que puedo subirle",
+    bajar: "que bajo de precio|que le bajo de precio|que le bajo|que debo bajar de precio|a que le bajo el precio|que productos rebajo|que pongo en oferta|que meto a promocion|que promociono|que debo poner en oferta|que ofertas hago|como muevo el producto que no se vende|que bajo|que precios bajo|que rebajo|que le hago oferta|que mando a promocion|que le pongo promo|que productos estan caros|en que estoy caro|a que le bajo|que le rebajo para venderlo|que remato",
+    yano: "que ya no debo vender|que debo dejar de vender|que dejo de surtir|que dejo de comprar|que descontinuo|que productos no me convienen|que productos no me dejan|que quito del inventario|que dejo de pedir|que ya no pido|que saco del catalogo|que productos sobran|que no me conviene vender|que productos no sirven|que elimino|que producto ya no me deja nada|que no vale la pena vender|que ya no cargo|que elimino de mi inventario|que dejo de llevar|cual no me conviene seguir vendiendo",
+    agotados: "que se me esta acabando|que productos estan agotados|que se me acabo|que esta por acabarse|que agotados tengo|que productos estan sin stock|que me falta|que no tengo|productos agotados|que esta agotado|que poco stock tengo|que productos quedan pocos|que ya se acabo|que se agoto|que se me termino|que no tengo en inventario|cuales estan en cero|que tengo en cero|que tengo en ceros|que productos tengo en 0|que esta en ceros|que casi no me queda|que me esta faltando|que se esta terminando|que ya casi se acaba|de que me estoy quedando sin|que productos me estan faltando|que ya no tengo|que se me va a acabar|que se va a acabar pronto",
+    parados: "que productos estan parados|que no se mueve|que no se vende|que tengo parado|dinero parado|cuanto dinero tengo parado|que productos sobran|que tengo de sobra|que tengo de mas|que exceso de inventario tengo|que producto no rota|que no rota|productos sin movimiento|que productos estan muertos|que esta estancado|que se vende lento|que se vende poco|que es lo que menos vendo|que menos se vende|que vendo menos|que es lo que menos se mueve|que no compre mas|que no debo comprar|cuales no compro|que producto esta lento|que no sale|que no sale del almacen|que tengo guardado sin vender|que esta juntando polvo|que productos tienen poca salida",
+    margen_bajo: "menor margen|que deja menos margen|cuales tienen menos margen|que producto deja menos|que me deja menos ganancia|que tiene el margen mas bajo|productos con poco margen|que tiene poco margen|margen mas bajo|cual deja menos ganancia|que producto es el que menos me deja|peor margen|que me deja poco|cuales dejan poco|en que gano menos|que producto gano menos|cual tiene el peor margen|que me deja menos|que margen bajo tengo|donde gano poco",
+    margen_alto: "que me deja mas ganancia|que gano mas|que deja mas margen|que producto deja mas|mejor margen|en que gano mas|cuales tienen mas margen|que me deja mas|que es lo mas rentable|productos mas rentables|que produto es mas rentable|cual me deja mas dinero|con que gano mas|que producto me da mas ganancia|cual es mi producto mas rentable|donde gano mas|que margen alto tengo|que deja mas dinero|cual es el que mas ganancia deja|cual deja mas utilidad",
+    top: "mas vendidos|que es lo mas vendido|que vendo mas|cuales son mis mas vendidos|que producto vendo mas|top productos|cual es mi producto estrella|productos estrella|que es lo que mas se vende|que se vende mas|lo que mas se mueve|que se mueve mas|los mas populares|que es lo que mas sale|cuales son los mejores productos|que es lo que mas vuela|mejores productos|ranking de productos|que es lo que mas vendo|que producto sale mas|cual es el que mas sale|que productos son los mas vendidos|que vendo mejor|mi top 5|top 10",
+    deben: "quien me debe|quienes me deben|cuanto me deben|quien me debe dinero|quien debe|deudas|clientes que me deben|a quien le fie|a quien le he fiado|quien tiene credito|cuanto tengo por cobrar|por cobrar|que clientes deben|quien no me ha pagado|quien me falta que me pague|cuanto me adeudan|que me deben|quien me debe plata|quienes me adeudan|a quien le cobro|a quien tengo que cobrarle|cobranza|cuentas por cobrar|quien me quedo a deber|quien me quedo debiendo|quien se quedo a deber|quien tiene fiado|quienes tienen fiado|cuanto me deben en total|quien no ha abonado",
+    mejores: "mejores clientes|quien me compra mas|cuales son mis mejores clientes|quien es mi mejor cliente|clientes top|que cliente me compra mas|quienes son mis clientes buenos|cliente mas fiel|quien compra mas|mi mejor cliente|quienes me compran mas|a quien le vendo mas|cual es mi cliente mas grande|top clientes|clientes que mas compran|ranking de clientes|quien es el que mas compra|que cliente deja mas dinero",
+    inactivos: "que clientes se fueron|clientes inactivos|quien dejo de comprar|quienes ya no compran|que clientes ya no me compran|clientes perdidos|quien no compra hace tiempo|quienes no han comprado|quien se me perdio|que clientes perdi|quienes dejaron de comprarme|que clientes no han vuelto|quien no ha vuelto a comprar|a quien ya no le vendo|que clientes abandonaron|quien se desaparecio|que clientes estan dormidos",
+    dias: "que dia vendo mas|cual es mi dia fuerte|cual es mi dia mas flojo|que dia se vende mas|dias fuertes|a que hora vendo mas|cual es mi hora fuerte|cuando vendo mas|en que horario vendo mas|que dia es el mejor|que dia vendo menos|cual es mi mejor dia|cual es mi peor dia|que dia me va mejor|a que horas se vende mas|en que dia hay mas venta|cuando se vende mas|que dia de la semana vendo mas|dias flojos|dime mi hora pico|hora pico|hora de mas ventas",
+    combos: "que combos puedo hacer|que se vende junto|que productos se compran juntos|combos|que ofrezco de gancho|cual es mi gancho|que producto uso de gancho|que paquete armo|que armo de combo|que le ofrezco junto|que va junto|que se compra junto|que productos van juntos|ideas de combos|que puedo ofrecer junto con|que armo en paquete|que me recomiendas ofrecer",
+    gastos: "cuanto gaste|cuanto he gastado|cuanto gaste este mes|cuanto gaste esta semana|cuanto invertí|cuanto invierto|gastos del mes|mis gastos|cuanto compre este mes|cuanto he comprado|cuanto pague de flete|cuanto gaste en mercancia|cuanto gasto en gasolina|cuanto he invertido|en que gaste|cuanto me gaste|gastos de hoy|cuanto gaste ayer|gastos de la semana|cuanto gaste en la semana pasada|cuanto fue mi inversion|total de gastos|total gastado|cuanto me costo todo este mes|cuanto saque de gastos",
+    nomina: "cuanto pague de nomina|cuanto he pagado de nomina|sueldo del ayudante|cuanto le pago al empleado|nomina del mes|cuanto gaste en nomina|cuanto le he pagado al trabajador|pagos de nomina|cuanto pague de sueldos|cuanto le pago a mi empleado|cuanto pague en salarios|cuanto me cuesta el empleado|nomina de la semana|raya de la semana|cuanto pague de raya",
+    comparar: "como voy contra la semana pasada|compara con la semana pasada|vendo mas que la semana pasada|estoy creciendo|han subido mis ventas|vs semana pasada|como voy comparado con la semana pasada|subieron las ventas|estoy vendiendo mejor que antes|voy mejor que la semana pasada|estoy mejor que la semana pasada|vendi mas que la semana pasada|crecieron mis ventas|estoy vendiendo mas|estoy vendiendo menos|bajaron las ventas|cayeron mis ventas|como me fue comparado con antes",
+    ventas: "cuanto llevo|como voy|como voy hoy|como voy esta semana|cuanto he vendido|resumen del dia|corte|corte del dia|cuanto llevo vendido|dime como voy|como va mi negocio|como va el negocio|como va la venta|como van las ventas|cuanto he ganado|balance|estado del negocio|como estoy|como estamos|ventas|ganancia|utilidad del dia|cuanto llevo ganado hoy|como va la semana|como va el mes|cuanto llevo este mes|cuanto llevo en la semana|cuanto llevo en el mes",
+    aprendido: "que has aprendido|que sabes de mi|que recuerdas|que has guardado|tienes memoria|te acuerdas de lo que te dije|que sabes de mi negocio|que aprendiste|que recuerdas de mi|que te he enseñado|que te he ensenado|recuerdas lo que te dije|aprendes|tienes memoria de lo que te digo|que te acuerdas",
+    reporte: "genera el reporte|descargar reporte|exportar reporte|dame un reporte|mandame el reporte|quiero el reporte|hazme un reporte|bajar reporte|reporte",
+    gracias: "gracias|muchas gracias|ok gracias|va gracias|excelente gracias|perfecto|ok|va|listo|esta bien|gracias asistente|chido|sale|muy bien",
+    adios: "adios|hasta luego|nos vemos|bye|me voy|hasta manana|chao",
+    explica: "que es el margen|que significa margen|como se calcula el margen|que es ganancia|que es un gancho|que es flete|que es rotacion|que significa que se alcanza para semanas|como calculas lo que debo cargar|como sacas el pedido|como funciona el asistente|como aprendes|de donde sacas los datos|como calculas el pronostico|por que me dices que pida eso|porque me recomiendas eso|como decides que cargue|explicame el margen",
+    inventario: "cuanto vale mi inventario|valor del inventario|cuanto tengo en inventario|cuanto dinero tengo en mercancia|cuantos productos tengo|cuantas piezas tengo en total|cuanto capital tengo en producto|valor de mi mercancia|cuanto tengo invertido en inventario|cuantos productos manejo",
+    datos_malos: "que productos no tienen costo|productos sin costo|que productos tienen costo cero|que productos no tienen precio|productos con precio en 0|que datos debo corregir|que debo corregir|hay errores en mi inventario|que productos tienen stock negativo|stock negativo|que productos estan mal capturados|productos a revisar|que revisar",
+    ticket: "cual es mi ticket promedio|ticket promedio|cuanto me compran por venta|cuanto compra en promedio un cliente|venta promedio|cuantas ventas hago por dia|cuantas ventas llevo|cuantas ventas tengo|cuantos tickets hice hoy|cuantos tickets llevo",
+    pronostico: "cuanto voy a vender|cuanto venderé esta semana|cuanto voy a vender manana|pronostico de ventas|cuanto espero vender|que espero vender esta semana|cuanto voy a ganar esta semana|prediccion de ventas",
+    olvidar: "olvida todo|borra lo aprendido|olvida lo que te dije|reinicia tu memoria|borrar memoria",
+    lista_prod: "cuantos clientes tengo|cuantos clientes registrados tengo|lista de mis clientes|cuales son mis clientes|cuantos clientes compraron hoy|cuantos clientes me compraron esta semana",
+    caro_barato: "cual es mi producto mas caro|cual es el producto mas barato|que producto es el mas caro|producto mas costoso|cual es el mas barato que vendo",
+    perdida: "que vendo a perdida|estoy perdiendo dinero en algun producto|que producto me hace perder|que productos estan a perdida|hay algo que vendo mas barato de lo que me cuesta|en que pierdo|donde estoy perdiendo dinero|que productos me dan perdida",
+    flete: "cuanto flete pague|cuanto me costo el flete|cuanto gaste en flete|como voy con el flete|el flete me esta comiendo la ganancia|cuanto pago de flete por pedido|como bajo el flete|como evito pagar flete"
+  };
+  const EXTRA_VOC = 'proveedor proveedores tiene tienen tienda tiendas cuesta cuestan caja cajas trae traen vienen piezas meta flete gratis minimo oxxo walmart bodega mayoreo competencia descontinuado existencia precio precios costo costos hay ya llego llegaron sirve funciona explicame significa calcula calculas sacas decides aprendes olvida borra confirmo todo memoria nombre llamo refiero refieres quise decir ultima ultimo vez compro compra compran compraron visita visito dias dia lunes martes miercoles jueves viernes sabado domingo semana semanas mes meses ayer hoy anteayer antier manana pasada pasado ultimos ultimas este esta total promedio gaste gasto gastos gastado nomina sueldo sueldos salario raya empleado trabajador ayudante ayudas ayuda ayudame ayudar sirves sirve debe deben debo debes deuda deudas cobrar cobro cobranza abono abonos fiado fie pague pagado pagaron';
+  const FILL = /\b(oye|oiga|oigame|ey|epa|hey|a ver|por favor|porfa|pf|asistente|disculpa|disculpe|una duda|tengo una duda|quiero saber|quisiera saber|me puedes decir|me podrias decir|puedes decirme|podrias decirme|digame|ahorita|pues|mira|o sea|bueno|entonces|me gustaria saber|necesito saber)\b/g;
+  const limpiar = q => norm(q).replace(/[¿?¡!.,;:()"“”]/g, ' ').replace(FILL, ' ').replace(/\s+/g, ' ').trim().replace(/^(dime|dame|digame|mandame|pasame|ayudame a|ayudame|quiero saber|quiero ver|necesito) (?=\S)/, '');
+  // distancia Damerau (una transposición cuenta como 1 error) y comparación tolerante a dedazos
+  const dl = (a, b) => {
+    if (a === b) return 0; const n = a.length, m = b.length; if (!n) return m; if (!m) return n;
+    const d = []; for (let i = 0; i <= n; i++) { d[i] = [i]; } for (let j = 0; j <= m; j++) d[0][j] = j;
+    for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) { const c = a[i - 1] === b[j - 1] ? 0 : 1; d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c); if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1); }
+    return d[n][m];
+  };
+  const fuzz = (w, x) => { const d = dl(w, x); if (d === 0) return true; if (w.length >= 8) return d <= 2; if (d !== 1) return false; if (w.length >= 7) return true; if (w.length === x.length) { let h = 0; for (let i = 0; i < w.length; i++) if (w[i] !== x[i]) h++; return h === 2; } return true; };
+  const TKS = s => norm(s).split(/[^a-z0-9&]+/).filter(Boolean);
+  const VOC = {}, FREC = {};
+  const sumaVoc = txt => TKS(txt).forEach(w => { if (w.length >= 4 && !/\d/.test(w)) { VOC[w] = 1; FREC[w] = (FREC[w] || 0) + 1; } });
+  Object.keys(ENT).forEach(k => sumaVoc(ENT[k].replace(/\|/g, ' ')));
+  sumaVoc(EXTRA_VOC);
+  const VOCL = Object.keys(VOC);
+  const corrPal = (w, prot) => {
+    if (w.length < 4 || VOC[w] || /\d/.test(w) || prot[w]) return w;
+    for (let i = 0; i < prot.__l.length; i++) { const x = prot.__l[i]; if (Math.abs(x.length - w.length) <= 1 && w.length >= 4 && fuzz(w, x)) return w; }
+    const lim = w.length >= 8 ? 2 : 1; let best = null, bd = 9, bf = 0;
+    for (let i = 0; i < VOCL.length; i++) {
+      const v = VOCL[i]; if (Math.abs(v.length - w.length) > lim) continue;
+      const d = dl(w, v); if (d > lim) continue; if (w.length <= 5 && w.length === v.length && d === 1) { let h = 0; for (let k = 0; k < w.length; k++) if (w[k] !== v[k]) h++; if (h === 1 && w[0] !== v[0]) continue; }
+      if (d < bd || (d === bd && (FREC[v] || 0) > bf)) { bd = d; best = v; bf = FREC[v] || 0; }
+    }
+    return best || w;
+  };
+  function corregir(s, A) {
+    const prot = { __l: [] };
+    A.L.forEach(r => TKS(r.nombre).forEach(w => { if (w.length >= 3) { prot[w] = 1; } }));
+    A.C.forEach(c => TKS(c.nombre).forEach(w => { if (w.length >= 3) prot[w] = 1; }));
+    Object.keys(mem.alias || {}).forEach(a => TKS(a).forEach(w => { prot[w] = 1; }));
+    prot.__l = Object.keys(prot).filter(k => k !== '__l' && k.length >= 4);
+    return s.split(' ').map(w => corrPal(w, prot)).join(' ');
+  }
+  // --- parecido con el corpus (TF-IDF por raíz de 4 letras) ---
+  const RT = w => (w.length > 4 ? w.slice(0, 4) : w);
+  const SW = /^(que|de|el|la|los|las|un|una|mi|me|mis|se|lo|le|les|es|en|a|y|o|por|para|con|del|al|tengo|esta|este)$/;
+  const IDX = [], DF = {};
+  Object.keys(ENT).forEach(k => ENT[k].split('|').forEach(f => {
+    const st = TKS(f).filter(w => !SW.test(w)).map(RT); if (!st.length) return;
+    IDX.push({ k, st }); st.filter((x, i) => st.indexOf(x) === i).forEach(x => { DF[x] = (DF[x] || 0) + 1; });
+  }));
+  const idf = x => Math.log((IDX.length + 1) / ((DF[x] || 0) + 0.5)) + 0.2;
+  function parecido(s) {
+    const qs = TKS(s).filter(w => !SW.test(w)).map(RT); if (!qs.length) return { k: null, sc: 0, top: [] };
+    const nq = Math.sqrt(qs.reduce((a, x) => a + idf(x) * idf(x), 0)) || 1; let best = { k: null, sc: 0 }; const por = {};
+    IDX.forEach(d => {
+      let dot = 0; qs.forEach((x, i) => { if (d.st.indexOf(x) >= 0 && qs.indexOf(x) === i) dot += idf(x) * idf(x); });
+      if (!dot) return;
+      for (let i = 0; i + 1 < qs.length; i++) for (let j = 0; j + 1 < d.st.length; j++) if (qs[i] === d.st[j] && qs[i + 1] === d.st[j + 1]) dot += 0.6 * idf(qs[i]);
+      const nd = Math.sqrt(d.st.reduce((a, x) => a + idf(x) * idf(x), 0)) || 1, sc = dot / (nq * nd);
+      if (sc > (por[d.k] || 0)) por[d.k] = sc;
+      if (sc > best.sc) best = { k: d.k, sc };
+    });
+    best.top = Object.keys(por).sort((x, y) => por[y] - por[x]).slice(0, 3).map(k => ({ k, sc: por[k] }));
+    return best;
+  }
+
+  // --- reglas por intención (sobre texto limpio y corregido) ---
+  const NOMB = /nomina|sueldo|salario|\braya\b|empleado|trabajador|ayudante/;
+  const REG = [
+    ['olvidar', s => /\b(olvid|borr|reinici|resete|limpi)\w*/.test(s) && /\b(todo|memoria|aprendid|dije|ensen)/.test(s)],
+    ['aprendido', /\b(que|cuanto) (has |haz )?(aprendid|aprendiste|sabes de mi|recuerdas|guardad|te acuerdas|te he ensenado|te ensene|guardas)|tienes memoria|te acuerdas|\baprendes\b|recuerdas lo que|\bmemoria\b|que sabes de mi/],
+    ['reporte', /\b(reporte|exportar|descargar)\b/],
+    ['explica', s => /\bque (es|son|significa|quiere decir)\b/.test(s) && /\b(margen|ganancia|gancho|flete|rotacion|alcanza|pronostico|stock|pedido|costo|utilidad|ticket|inventario|asistente|credito|semanas)\b/.test(s) || /\bcomo (funciona|aprendes|calculas|sacas|decides|se calcula|se saca|se obtiene|lo calculas|haces)\b|\bexplica\w*|\bpor ?que (me )?(dices|recomiendas|sugieres|aconsejas|pides)|de donde sacas|como sabes|que significa/.test(s)],
+    ['adios', /^(adios|chao|chau|bye|hasta (luego|manana|pronto)|nos vemos|me voy|cuidate|ahi nos vemos)/],
+    ['gracias', s => s.split(' ').length <= 3 && /^((muchas |mil )?(gracias|grax)( .*)?|(ok|okey|okay|vale|va|sale|listo|perfecto|excelente|chido|genial|muy bien|esta bien|de acuerdo|entendido|enterado|simon|sip|oki|buenisimo|super|padre|nice|cool)( (gracias|grax|va|ok))?|(excelente|perfecto|genial|chido|listo) gracias)$/.test(s)],
+    ['saludo', s => s.split(' ').length <= 6 && /^(hola+|holi|buenas( (tardes|noches|dias))?|buen(os)? dias|que onda|quiubo|que tal|epa|hey|saludos|ayuda|menu|que puedes( hacer)?|que haces|que sabes( hacer)?|en que me (puedes )?ayud\w*|como me ayud\w*|para que sirves|que eres|quien eres|que me puedes ofrecer)( .*)?$/.test(s)],
+    ['nomina', s => NOMB.test(s)],
+    ['perdida', /\ba perdida\b|perdiendo|\bpierdo\b|perder\b|hace perder|dan perdida|mas barato de lo que (me )?cuesta|menos de lo que (me )?cuesta|debajo del costo/],
+    ['datos_malos', /(sin|no tienen?|con) (costo|precio)|(costo|precio)s? (en |a )?(0|cero)|stock negativo|negativ|mal capturad|(debo|hay que|tengo que) (corregir|revisar|arreglar)|que (corregir|revisar|arreglar)|errores?|datos (malos|incorrectos|erroneos)|a revisar|que revisar/],
+    ['inventario', /(valor|vale|capital|invertido|dinero|cuanto (tengo|hay|vale)).*(inventario|mercancia|existencia|almacen|bodega|en producto)|inventario (total|valor)|\bcuantos productos\b|\bcuantas piezas\b|\bmi inventario\b/],
+    ['ticket', /ticket promedio|venta promedio|promedio (por|de) venta|compra(n)? en promedio|cuantas ventas (hago|llevo|tengo|hice|he hecho)|cuantos tickets|ventas por dia/],
+    ['pronostico', /cuanto (voy a|vendere|espero|podre|ganare|vamos a|se va a)|pronostico|prediccion|proyeccion|que espero vender|estimado de ventas/],
+    ['caro_barato', s => /\bmas (caro|barato|costoso|economico)\b/.test(s) && /producto|articulo|vendo|tengo|manejo|cual/.test(s) && !/estan|estoy/.test(s)],
+    ['lista_clientes', s => /cuantos clientes|lista de (mis )?clientes|cuales son mis clientes|mis clientes$|clientes registrados/.test(s) && !/falt|visit|toca|ruta/.test(s)],
+    ['flete', s => /flete/.test(s) && !/falta|gratis|completar|llegar|pedido|pido|pedir|compro|meta/.test(s)],
+    ['gastos', /gast|invert|inversion|cuanto (compre|he comprado|pague)|cuanto (me )?costo (todo|el mes)|compras (del|de este|de la)|total (de )?gastos/],
+    ['inactivos', s => /cliente|quien|quienes|tienda/.test(s) && /(se fueron|se fue|se me perdio|se desaparecio|inactiv|perdid|perdi\b|abandon|dormid|ya no (me )?(compra|compran|vendo)|dej\w+ de comprar|no (ha|han) (vuelto|comprado)|no compra\w* hace|sin comprar|ya no le vendo|se perdieron)/.test(s)],
+    ['yano', /ya no (debo |deberia |tengo que |conviene |voy a )?(vender|surtir|pedir|comprar|cargar|llevar|pido|cargo|llevo|compro|surto)|dej(o|ar|e|aria|amos) de (vender|surtir|pedir|comprar|cargar|llevar)|descontinu|\bquito\b|\bsaco (del|de mi)|\belimin|(no|ya no) (me )?(conviene|sirve|sirven|dejan?|vale la pena)/],
+    ['bajar', /como (muevo|saco|remato|libero)|\bpromo\w*|oferta|remat/],
+    ['dias', /\b(que|cual|en que|a que|cual es mi|cual es el) (dia|dias|hora|horas|horario)|dias? (fuerte|fuertes|flojo|flojos|mejor|peor)|\bhora (pico|fuerte)|cuando (se )?(vend|vuela)\w*|mejor dia|peor dia|dia de la semana|a que horas|dia (se )?vend|hora de mas|horario/],
+    ['parados', /\bparados?\b|\bsobra\b|\bsobran\b|sobrante|exceso|de sobra|\bde mas\b|inmovil|\bno (se )?(mueve|vende|rota|sale|surte)\b|muert|estanc|lento|lenta|menos (se )?(vend|mueve|sale|rota)|que menos (vendo|vende|se vende|se mueve|sale)|vendo menos|poca salida|sin movimiento|no compres|no compre mas|no debo comprar|cuales no compro|juntando polvo|guardado sin vender|no pidas|no debo pedir|que no compre/],
+    ['plan', s => !/cuanto|pido|pedir|proveedor/.test(s) && ((/\b(carg\w*|llev\w*|meto|echo|surto|surtir)\b/.test(s) && /\b(hoy|manana|carro|camioneta|unidad|ruta|vender|dia|semana)\b/.test(s)) || /\bsub(ir|o|e)\w* (al|a la|a el)\b/.test(s) || /\bque (debo )?(cargo|cargar)\b|\bcargar\b|plan (de |del |de la )?(hoy|dia|semana)|que hago hoy|\bcargame\b|que le (meto|cargo|echo)|que meto\b|que llevo\b/.test(s))],
+    ['deben', /\bdeb(e|en|ia|ian)\b|\bdeuda|\bfia(do|dos|r|ste)\b|\bfie\b|\bcredito|por cobrar|\bcobr(ar|o|anza|ale|arle)\b|adeud|\babon|quedo (a )?deber|quedo debiendo|se quedo a deber|no (me )?(ha|han) (pagado|abonado)|me falta que me pague|pagado/],
+    ['mejores', /mejor(es)? cliente|clientes? (top|fiel|fieles|buen|buenos|grande|que mas)|quien(es)? (me )?compra(n)? mas|a quien le vendo mas|que cliente (me )?(deja|compra)|top clientes|ranking de clientes|cliente mas|quien es el que mas compra|cual es mi cliente/],
+    ['ruta', /\bruta\b|a quien (le )?(visito|vendo|toca|llego|debo visitar|me falta)|(clientes|tiendas|quienes)( que)? (me )?(faltan|toca|tengo hoy|visito|de hoy|por visitar|faltan de visitar)|clientes de hoy|tiendas de hoy|a donde voy|que clientes (tengo|me faltan|toca|visito)|que tiendas (me faltan|visito|toca)|me falta visitar|faltan por visitar|visitar/],
+    ['pedido', /\b(pedir|pido|pide|pedido|pedimos|comprar|compro|surtir|surto|reponer|resurtir|resurto|reabastec\w*|encargo|encargarle|surtido)\b|lista de compras|hay que comprar|que ocupo|flete gratis|20 ?mil|20,?000|cuanto me falta|completa\w* (mi )?pedido|que compro|necesito comprar/],
+    ['combos', /combo|\bjuntos?\b|gancho|paquete|ofrec|que va junto|(se )?(compra|vende)n? junto/],
+    ['margen', /margen|rentab|utilidad (por|de)|ganancia por|\bgano (mas|menos|poco)|deja(n)? (mas|menos|poco)|\bme deja\b|\bme da mas ganancia|donde gano|en que gano|con que gano|mas ganancia|menos ganancia|mas dinero|mas utilidad/],
+    ['subir', /\bsub(ir|o|e|irle|irles|irlo|irlos)\b|aument(ar|o)|encarec|\bbarato\b|\bbaratos\b|precios? bajos|estan bajos/],
+    ['bajar', /\bbaj(ar|o|e|arle|arles|ando)\b|rebaj|\bcaro\b|\bcaros\b|\bcara\b/],
+    ['agotados', /agotad|sin stock|sin existencia|\bacab|\btermin|\bfalt(a|an|ando|ante|antes)\b|queda(n)? (poco|pocos|nada)|casi no (me )?queda|en (cero|ceros|0)\b|(ya )?no tengo|no (me )?queda|me quede sin|quedando sin/],
+    ['top', /mas vendid|\bmas (se )?(vende|vendo|mueve|sale|vuela)\b|\btop\b|estrella|popular|ranking de productos|mejores productos|vendo mejor|producto que sale mas|que (vendo|se vende) mas|lo que mas se|lo mas vend/],
+    ['recom', /recomiend|consejo|sugier|sugerenc|aconsej|prioridad|urgente|importante|\bque (debo|hago|mejoro|puedo mejorar)\b|como (mejoro|vendo mas|aumento|crezco|gano mas)|en que me enfoco|se me (esta )?pasa|mejorar/],
+    ['comparar', /compar|contra (la )?semana|\bvs\b|(mas|mejor|peor|menos) que (la )?(semana|antes|ayer)|\bcreci\w*|\bcrec\w*|subi(eron|do|n)? (las |mis )?ventas|bajaron|cayeron|\bcayo\b|estoy (vendiendo )?(mejor|peor|mas|menos)|voy mejor|voy peor|vendo mas que|vendi mas que/],
+    ['ventas', /vend(i|ido|iste|imos)\b|\bventas?\b|\bganancia|\bgane\b|ganado|\bllevo\b|como (voy|va|vamos|estoy|estamos|me fue)|\bcorte\b|balance|resumen|ingreso|utilidad|estado del negocio|\bfacture\b|\bhoy\b|ayer|semana|\bmes\b|lunes|martes|miercoles|jueves|viernes|sabado|domingo|cuanto (saque|lleve)/]
+  ];
+  const CANON = { saludo: 'hola', plan: 'que cargo hoy', pedido: 'que pido', ruta: 'ruta de hoy', recom: 'que me recomiendas', subir: 'que subo de precio', bajar: 'que bajo de precio', yano: 'que ya no debo vender', agotados: 'productos agotados', parados: 'dinero parado', margen_bajo: 'menor margen', margen_alto: 'que me deja mas ganancia', top: 'mas vendidos', deben: 'quien me debe', mejores: 'mejores clientes', inactivos: 'clientes inactivos', dias: 'que dia vendo mas', combos: 'combos', comparar: 'compara con la semana pasada', aprendido: 'que has aprendido', reporte: 'reporte', olvidar: 'olvida todo' };
+  const CHIP = { plan: '¿Qué cargo hoy?', pedido: '¿Qué pido?', ruta: 'Ruta de hoy', recom: '¿Qué me recomiendas?', subir: '¿Qué subo de precio?', bajar: '¿Qué bajo de precio?', yano: '¿Qué ya no debo vender?', agotados: 'Productos agotados', parados: 'Productos parados', margen_bajo: 'Menor margen', margen_alto: 'Mayor margen', top: 'Más vendidos', deben: '¿Quién me debe?', mejores: 'Mejores clientes', inactivos: 'Clientes que se fueron', dias: '¿Qué día vendo más?', combos: 'Combos', gastos: '¿Cuánto gasté este mes?', comparar: 'Comparar con la semana pasada', ventas: '¿Cómo voy hoy?', inventario: 'Valor del inventario', perdida: '¿Qué vendo a pérdida?', ticket: 'Ticket promedio', pronostico: '¿Cuánto voy a vender?', flete: '¿Cuánto pagué de flete?' };
+  const esRank = n => /agotad|sin stock|se acab|por acabar|poco stock|quedan pocos|parado|sobra|exceso|no compres|sobrante|inmovil|no se mueve|no se vende|muert|estanc|lento|menos (se )?(vend|mueve)|(vende|mueve)n? menos|mas vendid|mas se (vende|mueve)|top|estrella|popular|(vende|mueve)n? mas|margen|rentab|gano mas|deja mas|me deja|cuales|que productos|que producto|mis clientes/.test(n);
+  function intencion(s) {
+    const ap = mem.aprendidas && mem.aprendidas[s]; if (ap) return { i: ap, via: 'aprendida', sc: 1 };
+    for (let k = 0; k < REG.length; k++) { const [i, f] = REG[k]; if (typeof f === 'function' ? f(s) : f.test(s)) { return { i: i === 'margen' ? (/menos|menor|bajo|peor|poco|minim/.test(s) ? 'margen_bajo' : 'margen_alto') : i, via: 'regla', sc: 1 }; } }
+    const pr = parecido(s); return pr.k && pr.sc >= 0.5 ? { i: pr.k, via: 'parecido', sc: pr.sc } : { i: null, via: null, sc: pr.sc, cerca: pr.k };
+  }
+
+  const RR = (t, chips) => ({ t, chips: chips || [] });
+  const usoChips = () => { const u = mem.uso || {}, ks = Object.keys(u).filter(k => CHIP[k]).sort((a, b) => u[b] - u[a]).slice(0, 6); const base = CHIPS0.slice(); ks.slice(0, 4).reverse().forEach(k => { const c = CHIP[k], j = base.indexOf(c); if (j >= 0) base.splice(j, 1); base.unshift(c); }); return base.slice(0, 6); };
+  const GLOS = [
+    [/margen/, 'Margen = lo que te queda de cada peso que vendes. Se calcula (precio − costo) ÷ precio. Si vendes a $20 algo que te cuesta $15, ganas $5 y el margen es 25%. Más margen = más ganancia por pieza; menos margen necesita más volumen.'],
+    [/ganancia|utilidad/, 'Ganancia = precio de venta − costo, por cada pieza que vendes. La ganancia del día suma todas las piezas vendidas. Ojo: si un producto tiene costo $0, la app lo cuenta como 100% de ganancia; por eso te aviso cuando los veo.'],
+    [/gancho/, 'Gancho = un producto que atrae al cliente porque se vende mucho aunque deje poco margen. Lo usas para ofrecerle junto otro que sí te deja más. Yo busco los que más vendes con margen bajo.'],
+    [/flete/, 'Flete = lo que te cobra el proveedor por mandar la mercancía. Tu proveedor lo da gratis desde la meta que me dijiste (por defecto $20,000). Por eso armo el pedido para que llegue a esa meta con productos que sí rotan.'],
+    [/rotacion|alcanza|semanas|stock/, '"Te alcanza para X semanas" = piezas que tienes ÷ lo que vendes por semana (promedio de tus últimas 4 semanas, dándole más peso a las últimas 2). Menos de 1 semana = pídelo; más de 6 = ya tienes de sobra.'],
+    [/pedido|pido|comprar/, 'Armo el pedido así: para cada producto que sí vendes calculo lo que vendes por semana y te sugiero cubrir 2 semanas (menos lo que ya tienes), respetando cajas completas. Si no llegas a tu meta de flete gratis, completo con lo que más rota y más te deja.'],
+    [/cargar|cargo|plan/, 'El plan de carga mira qué día es hoy y cuánto vendes normalmente cada día de la semana de cada producto; suma los próximos 5 días de venta, le resta lo que ya tienes y te dice qué llevar de más. Además me calibro: comparo lo que predije contra lo que vendiste y ajusto.'],
+    [/pronostico|prediccion/, 'El pronóstico toma tu venta de los últimos 4 días iguales (por ejemplo los últimos 4 jueves) y saca el promedio. Mientras más historial, más acertado.'],
+    [/aprend|memoria|asistente|funciona/, 'No soy una IA generativa: soy un conjunto de reglas sobre TUS datos (ventas, inventario, clientes). Aprendo de tres formas: de cada venta que registras, de lo que me enseñas (precios de tiendas, piezas por caja, qué no tiene tu proveedor, nombres que le das a tus productos) y de tus respuestas a mis consejos (si dices "ya lo hice" o "no me sirve" ajusto qué te muestro primero). Todo se guarda en este celular.'],
+    [/credito|fiado/, 'Las ventas a crédito quedan como saldo pendiente del cliente. Te aviso quién debe y desde hace cuántos días para que cobres antes de fiarle de nuevo.'],
+    [/ticket/, 'Ticket promedio = lo vendido ÷ número de ventas del periodo.'],
+    [/inventario/, 'El valor del inventario lo calculo con las piezas que tienes × el costo de cada producto (lo que te costó). A precio de venta sería más.']
+  ];
+  const POR_QUE = { plan: 'El plan de carga se basa en lo que vendes cada día de la semana, lo que ya tienes y lo que pronostico para tus próximos 5 días de venta.', pedido: 'El pedido cubre 2 semanas de venta por producto menos tu stock, en cajas completas, y completa hasta tu meta de flete gratis con lo que más rota y más deja.', agotados: 'Cuento como "por acabarse" lo que te alcanza para menos de una semana según tu ritmo de venta.', parados: 'Es dinero parado lo que tardaría más de 6 semanas en venderse a tu ritmo actual.', subir: 'Sugiero subir lo que se vende mucho (de lo más vendido) y deja entre 15% y 28% de margen, sin pasarme del precio en tiendas si me lo dijiste.', bajar: 'Sugiero bajar lo que tienes parado o casi no se vende, hasta un precio donde todavía ganes.', margen_bajo: 'Margen = (precio − costo) ÷ precio, solo de lo que sí vendiste en 4 semanas.', margen_alto: 'Ordeno por ganancia total: ganancia por pieza × piezas vendidas en 4 semanas.', top: 'Ordeno por piezas vendidas en las últimas 4 semanas.', deben: 'Sumo el saldo pendiente de las ventas a crédito de cada cliente.', ventas: 'Sumo tus ventas registradas del periodo; el margen real no cuenta productos con costo $0.', yano: 'Marco los que vendes a pérdida, los que no se han movido en 4 semanas y los de margen muy bajo con poca venta.' };
+  function explicar(s, ctx) {
+    const g = GLOS.filter(x => x[0].test(s))[0]; if (g) return RR(g[1], ['¿Qué cargo hoy?', '¿Qué pido?']);
+    if (/por ?que|porque|como (sacaste|calculaste)|de donde sale|en que te basas/.test(s) && ctx && POR_QUE[ctx.i]) return RR(POR_QUE[ctx.i], []);
+    return RR(GLOS[8][1], CHIPS0.slice(0, 4));
+  }
+  const RA = (k, t, c) => { const r = RR(t, c); r.attr = k; return r; };
+  function atributoProd(A, p, s) {
+    const ok = x => x.test(s);
+    if (ok(/\bsub(ir|o|e)|\bbaj(ar|o|e)|rebaj|oferta|promo|pido|pedir|compro|comprar|surtir|ya no|proveedor|trae|caja|oxxo|tienda|walmart/)) return null;
+    const cob = p.sem > 0 ? p.stock / p.sem : null, alc = cob == null ? '' : cob < 1 ? ' — te alcanza para menos de una semana' : ' — te alcanza ~' + Math.round(cob) + ' semanas';
+    if (ok(/cuant(o|os|as)? (me )?(queda|quedan|tengo|hay|stock|existencia|piezas|pzas)|\btengo\b|\bhay\b|me queda|stock de|existencia|\bquedan?\b/)) return RA('stock', 'De ' + p.nombre + ' tienes ' + p.stock + ' pza' + (p.stock === 1 ? '' : 's') + alc + '. Vendes ~' + p.sem.toFixed(1) + ' por semana.' + (p.stock <= 0 && p.u28 >= 2 ? ' Está agotado y se vende: pídelo.' : ''), ['Ficha de ' + p.nombre, '¿Cuánto pido de ' + p.nombre + '?']);
+    if (ok(/cuanto (me )?(cuesta|costo|pago|compro)|\bcosto\b|a cuanto (lo )?compro|a como (lo )?compro/) && !ok(/vendo|venta/)) return RA('costo', p.nombre + ': te cuesta ' + $m(p.costo) + ' y lo vendes en ' + $m(p.precio) + (p.margen != null ? ' (margen ' + Math.round(p.margen) + '%, ' + $m(p.gpp) + ' por pieza)' : '') + '.', ['Ficha de ' + p.nombre]);
+    if (ok(/cuanto cuesta|cuanto vale|precio|a cuanto (lo )?vendo|a como (esta|lo vendo)/)) return RA('precio', p.nombre + ': lo vendes en ' + $m(p.precio) + ' y te cuesta ' + $m(p.costo) + (p.margen != null ? ' (margen ' + Math.round(p.margen) + '%)' : '') + (mem.precios[p.id] ? '. En tiendas está a ' + $m(mem.precios[p.id].v) : '') + '.', ['¿Subo el precio de ' + p.nombre + '?']);
+    if (ok(/margen|cuanto (me )?(gano|deja|ganas)|ganancia (de|por|con)|cuanto gano/)) return RA('margen', p.nombre + ' te deja ' + $m(p.gpp) + ' por pieza' + (p.margen != null ? ' (margen ' + Math.round(p.margen) + '%)' : '') + '. En 4 semanas vendiste ' + p.u28 + ' pzas = ' + $m(p.gpp * p.u28) + ' de ganancia.', ['Ficha de ' + p.nombre]);
+    return null;
+  }
+  function clienteResp(A, cli, s) {
+    const ts = A.trAll.filter(t => (t.clienteNombre || 'Cliente General') === cli.nombre), CL = A.CL.filter(c => norm(c.nombre) === norm(cli.nombre))[0];
+    const u = {}; ts.forEach(t => (t.items || []).forEach(i => { u[i.nombre] = (u[i.nombre] || 0) + (Number(i.cant) || 0); }));
+    const top = Object.keys(u).sort((a, b) => u[b] - u[a]).slice(0, 3);
+    if (/ultima vez|cuando (fue|compro)|hace cuanto|ultima compra/.test(s)) return RR(cli.nombre + ' compró por última vez ' + hace(cli.ult, A.now) + ' (' + new Date(cli.ult).toLocaleDateString('es-MX') + ').');
+    if (/debe|deuda|adeud|fiado|credito/.test(s)) return RR(cli.debe > 0 ? cli.nombre + ' te debe ' + $m(cli.debe) + ' (desde hace ' + Math.floor((A.now - cli.desde) / D) + ' días).' : cli.nombre + ' no te debe nada. 👌');
+    return RR(cli.nombre + ':\n• ' + cli.compras + ' compras por ' + $m(cli.total) + ' (ticket ~' + $m(cli.total / cli.compras) + ')\n• Última compra ' + hace(cli.ult, A.now) + (CL && CL.dias && CL.dias.length ? '\n• Lo visitas: ' + CL.dias.map(d => NOMD[d]).join(', ') : '') + '\n' + (cli.debe > 0 ? '• Te debe ' + $m(cli.debe) + ' (desde hace ' + Math.floor((A.now - cli.desde) / D) + ' días)' : '• No te debe nada') + (top.length ? '\n• Lo que más te compra: ' + top.join(', ') : '') + (ts.length >= 3 && A.now - cli.ult > 14 * D ? '\n👉 Hace tiempo que no compra: mándale mensaje.' : ''), []);
+  }
+
+  // --- manejadores de intenciones nuevas ---
+  const H = {
+    perdida(A) {
+      const h = A.L.filter(r => r.costo > 0 && r.precio > 0 && r.precio < r.costo).sort((a, b) => (b.costo - b.precio) * b.u28 - (a.costo - a.precio) * a.u28);
+      const m = A.L.filter(r => r.costo > 0 && r.precio >= r.costo && r.margen != null && r.margen < 5 && r.u28 > 0);
+      if (!h.length) return RR('No vendes nada a pérdida ahora mismo. 👌' + (m.length ? ' Eso sí, estos casi no te dejan nada (menos de 5%): ' + m.slice(0, 4).map(r => r.nombre).join(', ') + '.' : ''), ['Menor margen']);
+      return RR('Estos los vendes a pérdida:\n' + lista(h, r => r.nombre + ' — precio ' + $m(r.precio) + ' < costo ' + $m(r.costo) + ' (pierdes ' + $m(r.costo - r.precio) + ' por pieza' + (r.u28 ? ', ' + r.u28 + ' vendidas en 4 semanas' : '') + ')', 6) + '\nSube el precio o corrige el costo si está mal capturado.', ['¿Qué subo de precio?']);
+    },
+    datos_malos(A) {
+      const neg = A.L.filter(r => r.stock < 0), c0 = A.L.filter(r => !(r.costo > 0)), p0 = A.L.filter(r => !(r.precio > 0)), mal = A.L.filter(r => r.costo > 0 && r.precio > 0 && r.precio < r.costo);
+      const f = (arr, n) => arr.slice(0, n || 5).map(r => r.nombre).join(', ') + (arr.length > (n || 5) ? ' y ' + (arr.length - (n || 5)) + ' más' : '');
+      const t = [];
+      if (neg.length) t.push('Stock negativo (' + neg.length + '): ' + f(neg));
+      if (c0.length) t.push('Costo en $0 (' + c0.length + '): ' + f(c0) + '. La app los cuenta como 100% de ganancia.');
+      if (p0.length) t.push('Precio en $0 (' + p0.length + '): ' + f(p0));
+      if (mal.length) t.push('Precio menor al costo (' + mal.length + '): ' + f(mal));
+      return RR(t.length ? 'Esto conviene corregir:\n• ' + t.join('\n• ') : 'Tus datos se ven bien: sin stock negativo, sin costos ni precios en $0. 👌', ['¿Qué pido?']);
+    },
+    inventario(A) {
+      const con = A.L.filter(r => r.stock > 0), vc = con.reduce((a, r) => a + r.stock * r.costo, 0), vp = con.reduce((a, r) => a + r.stock * r.precio, 0), pz = con.reduce((a, r) => a + r.stock, 0);
+      return RR('Tu inventario: ' + A.L.length + ' productos, ' + con.length + ' con existencia, ' + pz + ' piezas.\n• A costo: ' + $m(vc) + '\n• A precio de venta: ' + $m(vp) + ' (ganancia potencial ' + $m(vp - vc) + ')', ['Productos parados', 'Productos agotados']);
+    },
+    ticket(A, s) {
+      const per = periodo(s, A.now); if (per) return RR(resumenPeriodo(A, per), ['Ayer', 'Esta semana']);
+      const n = A.tr.length, m = sumF(A.tr, 'monto'), dias = []; A.tr.forEach(t => { const k = new Date(Number(t.id)).toDateString(); if (dias.indexOf(k) < 0) dias.push(k); });
+      return RR(n ? 'En 4 semanas: ' + n + ' ventas por ' + $m(m) + '.\n• Ticket promedio ' + $m(m / n) + '\n• ~' + (n / Math.max(1, dias.length)).toFixed(1) + ' ventas por día que trabajas' : 'Aún no tengo ventas para calcularlo.', ['¿Cómo voy hoy?']);
+    },
+    pronostico(A, s) {
+      const dow = new Date(A.now).getDay(), prom = d => { const v = A.trAll.filter(t => new Date(Number(t.id)).getDay() === d && A.now - Number(t.id) <= 28 * D), dias = []; v.forEach(t => { const k = new Date(Number(t.id)).toDateString(); if (dias.indexOf(k) < 0) dias.push(k); }); return dias.length ? sumF(v, 'monto') / dias.length : 0; };
+      if (A.trAll.length < 8) return RR('Todavía tengo pocas ventas para pronosticar. Con unas 8 o más ya te digo.');
+      let t = '', ds = [];
+      if (/manana/.test(s)) { const d = dow === 5 ? 1 : dow === 6 ? 1 : (dow + 1) % 7; return RR('El ' + (dow >= 5 || dow === 0 ? 'lunes' : 'mañana (' + NOMD[d] + ')') + ' normalmente vendes ~' + $m(prom(d >= 1 && d <= 5 ? d : 1)) + ' (promedio de tus últimos ' + NOMD[d >= 1 && d <= 5 ? d : 1] + 's).'); }
+      if (/\bhoy\b/.test(s) && dow >= 1 && dow <= 5) return RR('Hoy ' + NOMD[dow] + ' normalmente vendes ~' + $m(prom(dow)) + '.');
+      const lab = dow >= 1 && dow <= 5; for (let d = lab ? dow : 1; d <= 5; d++) ds.push(d);
+      const tot = ds.reduce((a, d) => a + prom(d), 0);
+      t = (lab ? 'Lo que resta de la semana (' + ds.map(d => NOMD[d]).join(', ') + ')' : 'La próxima semana') + ': ~' + $m(tot) + ' en ventas según tu promedio por día. Es un estimado, no una garantía.';
+      return RR(t, ['¿Cómo voy hoy?']);
+    },
+    caro_barato(A, s) {
+      const L = A.L.filter(r => r.precio > 0 && (r.stock > 0 || r.u28 > 0)), barato = /barato|economico/.test(s), o = L.slice().sort((a, b) => barato ? a.precio - b.precio : b.precio - a.precio);
+      return RR(o.length ? 'Los productos más ' + (barato ? 'baratos' : 'caros') + ' que manejas:\n' + lista(o, r => r.nombre + ' — ' + $m(r.precio) + ' (costo ' + $m(r.costo) + ')', 5) : 'No encuentro productos con precio.', ['Más vendidos']);
+    },
+    lista_clientes(A, s) {
+      const reg = A.CL.length, hoy = new Date(A.now).toDateString(), ch = {}; A.trAll.forEach(t => { if (new Date(Number(t.id)).toDateString() === hoy) ch[t.clienteNombre || 'Cliente General'] = 1; });
+      const sem = {}; A.trAll.filter(t => A.now - Number(t.id) <= 7 * D).forEach(t => { sem[t.clienteNombre || 'Cliente General'] = 1; });
+      if (/lista|cuales son/.test(s) && reg) return RR('Tus ' + reg + ' clientes registrados:\n' + lista(A.CL.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))), c => c.nombre + (Array.isArray(c.dias) && c.dias.length ? ' (' + c.dias.map(d => NOMD[d].slice(0, 3)).join('/') + ')' : ''), 15), ['Ruta de hoy']);
+      return RR('Tienes ' + reg + ' clientes registrados. Hoy han comprado ' + Object.keys(ch).length + ' y en los últimos 7 días ' + Object.keys(sem).length + '.', ['Mejores clientes', 'Ruta de hoy']);
+    },
+    flete(A) {
+      const comp = A.todas.filter(t => t.tipo === 'Gasto' && t.itemsCompra && A.now - Number(t.id) <= 28 * D).sort((a, b) => b.id - a.id), meta = Number(mem.fleteGratis) || 20000;
+      if (!comp.length) return RR('No veo compras de mercancía con flete en las últimas 4 semanas. Tu meta para flete gratis es ' + $m(meta) + '.', ['¿Qué pido?']);
+      const fl = comp.reduce((a, g) => a + (Number(g.fleteMonto) || 0), 0), sub = comp.reduce((a, g) => a + (Number(g.subtotal) || 0), 0), u = comp.filter(g => Number(g.fleteMonto) > 0)[0];
+      return RR('En 4 semanas pagaste ' + $m(fl) + ' de flete (' + (sub ? (fl / sub * 100).toFixed(1) : 0) + '% de ' + $m(sub) + ' en compras).' + (u && Number(u.subtotal) < meta ? ' Tu pedido del ' + (u.fechaStr || 'último') + ' fue de ' + $m(u.subtotal) + ' y pagó ' + $m(u.fleteMonto) + '; con ' + $m(meta) + ' o más era gratis. Para bajar el flete arma pedidos de ' + $m(meta) + '+ con lo que sí rota.' : ' Tu meta para flete gratis es ' + $m(meta) + '.'), ['¿Qué pido?']);
+    }
+  };
+  function aplicarAlias(s) {
+    Object.keys(mem.alias || {}).sort((a, b) => b.length - a.length).forEach(a => { const p = (LS('yimi_productos') || []).filter(x => String(x.id) === String(mem.alias[a]))[0]; if (!p) return; const re = new RegExp('(^| )' + a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '( |$)'); if (re.test(s)) s = s.replace(re, ' ' + norm(p.nombre).split(' ').slice(0, 2).join(' ') + ' ').replace(/\s+/g, ' ').trim(); });
+    return s;
+  }
+  const PER_RE = /\b(hoy|ayer|anteayer|antier|esta semana|la semana pasada|semana pasada|este mes|el mes pasado|mes pasado|lunes|martes|miercoles|jueves|viernes|sabado|domingo|ultimos? \d+ dias)\b/;
+  const ATTR_Q = { stock: 'cuanto tengo de ', precio: 'cuanto cuesta ', costo: 'cuanto me cuesta ', margen: 'cuanto me deja ', pedir: 'cuanto pido de ', ficha: 'como va ' };
+  function responder(q, viaChip) {
+    const A = analizar(), raw = String(q || '');
+    let s = limpiar(raw) || norm(raw).trim();
+    const c0 = mem.ctx || {}, ctx = Date.now() - (c0.ts || 0) < 45 * 60 * 1000 ? c0 : {};
+    OFF = 0;
+    const fin = (r, i, x) => { x = x || {}; mem.ctx = { ts: Date.now(), i: i || null, pid: x.pid || null, cid: x.cid || null, attr: x.attr || null, q: x.q || s, step: LN, tot: LT, off: x.off || 0, pend: x.pend || null }; if (i && CHIP[i]) { mem.uso = mem.uso || {}; mem.uso[i] = (mem.uso[i] || 0) + 1; } save(); return r; };
+    const base = (qq, i, x) => { const r = responderBase(qq, A); return fin(r, i, Object.assign({ q: qq }, x || {})); };
+    if (/confirmo olvidar todo/.test(norm(raw))) return base('confirmo olvidar todo');
+    // 0. nombre
+    let m = s.match(/^(hola )?(me llamo|mi nombre es) ([a-z]{2,15})$/);
+    if (m) { mem.nombre = cap(m[3]); save(); return fin(RR('Mucho gusto, ' + mem.nombre + ' 👋 Ya me lo aprendí. ¿Qué quieres revisar?', usoChips()), 'saludo'); }
+    if (/\d{4,}/.test(s) && /flete|meta|minimo/.test(s) && /\b(es|ahora|cambio|son|de)\b|meta|minimo/.test(s) && !/\?/.test(raw)) { const r0 = responderBase(s, A); if (r0 && /meta para flete gratis ahora/.test(r0.t)) return fin(r0, 'ens', { q: s }); }
+    // 1. enseñarle apodos de productos: "cuando diga papas me refiero a sabritas" / "a las sabritas les digo papas"
+    m = s.match(/^(?:cuando (?:te )?(?:diga|digo|escriba|pregunte|ponga) )?(.{2,30}?) (?:me refiero a|quiero decir|es lo mismo que|se refiere a|significa) (.{2,40})$/);
+    let ap = m ? { a: m[1], t: m[2] } : null;
+    if (!ap) { m = s.match(/^(?:a |al |a la |a los |a las )?(.{2,40}?) (?:le digo|les digo|le llamo|les llamo|le decimos|les decimos|lo llamo|la llamo) (.{2,30})$/); if (m) ap = { a: m[2], t: m[1] }; }
+    if (ap && !/\d/.test(ap.a) && ap.a.split(' ').length <= 3) {
+      const cp = buscarProds(A, ap.t), pp = cp.length && (cp[0].s >= 3 || cp[0].s >= 1.5) ? cp[0].r : null;
+      if (pp) { mem.alias[ap.a.trim()] = pp.id; save(); return fin(RR('Anotado: cuando me digas "' + ap.a + '" entiendo ' + pp.nombre + '.', ['Ficha de ' + pp.nombre]), 'alias', { pid: pp.id }); }
+      return fin(RR('No encontré un producto parecido a "' + ap.t + '". Dime el nombre como lo tienes en tu inventario y lo aprendo.', CHIPS0.slice(0, 3)), 'alias');
+    }
+    // 2. corregirme: "me refería a ..."
+    m = s.match(/^(?:no )?(?:me referia a|quise decir|queria decir|lo que queria era|me referia) (.+)$/);
+    if (m) { const r = responder(m[1]); const i2 = intencion(corregir(limpiar(m[1]), A)).i; if (ctx.pend && i2) { mem.aprendidas[ctx.pend] = i2; save(); r.t += '\n\n(Aprendí que "' + ctx.pend + '" se refiere a eso.)'; } return r; }
+    s = corregir(s, A); s = aplicarAlias(s);
+    // 3. si venía de una pregunta que no entendí y ahora tocó una opción, lo aprendo
+    if (viaChip && ctx.pend) { const i3 = intencion(s).i; if (i3) { mem.aprendidas[ctx.pend] = i3; const ks = Object.keys(mem.aprendidas); if (ks.length > 200) delete mem.aprendidas[ks[0]]; } }
+    // 4. seguimientos
+    if (ctx.i && /^(y )?(dame |dime |muestrame |ver |quiero ver )?(mas|otros|otras|siguientes?|los demas|el resto|mas productos|mas opciones|mas clientes)$/.test(s) && ctx.q) {
+      OFF = (ctx.off || 0) + (ctx.step || 5);
+      if (OFF >= (ctx.tot || 0)) { OFF = 0; return fin(RR('Ya no tengo más en esa lista. 👌', usoChips()), ctx.i, { q: ctx.q }); }
+      const r = responderBase(ctx.q, A); const off = OFF; OFF = 0; return fin(r, ctx.i, { q: ctx.q, off, pid: ctx.pid });
+    }
+    if (/^(y )?(por ?que|porque|como (sacaste|calculaste|lo calculas|lo sacas|sale)|explica(me)? (eso|esto)|de donde sale( eso)?|en que te basas)( eso| esto)?$/.test(s)) return fin(explicar(s, ctx), ctx.i);
+    let cand = buscarProds(A, s), p = cand.length && (cand[0].s >= 3 || (!esRank(s) && cand[0].s >= 1.5)) ? cand[0].r : null;
+    const per = PER_RE.test(s);
+    if (!p && ctx.pid && A.P[ctx.pid]) {
+      const cp = A.P[ctx.pid], solo = s.split(' ').length <= 5;
+      if (/\b(ese|esa|eso|este|esta)( producto| articulo)?\b|\bel mismo\b/.test(s) && !/cliente/.test(s)) { s = s.replace(/\b(ese|esa|eso|este|esta)( producto| articulo)?\b|\bel mismo\b/, norm(cp.nombre).split(' ').slice(0, 2).join(' ')); cand = buscarProds(A, s); p = cand.length ? cand[0].r : cp; }
+      else if (solo && /^(y )?(el |la |de |su )?(margen|costo|precio|stock|existencia|ganancia|cuanto (me )?(queda|tengo|cuesta|deja|pido)|cuantos|cuantas)\b/.test(s)) p = cp;
+      else if (solo && per && !intencion(s).via) p = cp;
+    }
+    if (p && ctx.attr && !ctx.pid && false) p = p;
+    // 5. producto
+    if (p) {
+      const ens = /proveedor|en tiendas?|oxxo|walmart|super\b|bodega|competencia|\btrae|traen|vienen|\bcaja\b|meta de flete|ya hay|si hay|si tiene|ya no/.test(s);
+      if (ens) return base(s, 'prod', { pid: p.id });
+      let ss = s; if (cand.length === 0 || cand[0].r.id !== p.id) ss = s + ' ' + norm(p.nombre).split(' ').slice(0, 2).join(' ');
+      const at = atributoProd(A, p, ss);
+      if (at) return fin(at, 'prod', { pid: p.id, attr: at.attr });
+      if (per && /\b(vend|ventas|como va|cuanto|dime)\b/.test(s)) return base(ss, 'prod', { pid: p.id, attr: 'ficha' });
+      const r0 = base(ss, 'prod', { pid: p.id, attr: /\bpid|ped|compro|comprar/.test(s) ? 'pedir' : 'ficha' });
+      return r0;
+    }
+    // 6. cliente
+    const cli = buscarCliente(A, s);
+    if (cli && !/mejores|top|todos|lista|cuantos|inactiv|se fueron|ruta/.test(s)) return fin(clienteResp(A, cli, s), 'cliente', { cid: cli.nombre });
+    if (!cli && ctx.cid && /\b(el|ella|ese cliente|esa tienda|ese|esa)\b|^(y )?(cuanto|cuando)/.test(s) && /debe|deuda|ultima|cuando|compra|cuanto/.test(s) && s.split(' ').length <= 6) { const c2 = A.C.filter(c => c.nombre === ctx.cid)[0]; if (c2) return fin(clienteResp(A, c2, s), 'cliente', { cid: c2.nombre }); }
+    // 6b. seguimiento por periodo: "y ayer?" / "esta semana"
+    if (per && s.split(' ').length <= 4 && ctx.i) {
+      if (ctx.i === 'gastos') return base('cuanto gaste ' + s, 'gastos');
+      if (ctx.i === 'nomina') return base('nomina ' + s, 'nomina');
+      if (ctx.i === 'ticket') return fin(H.ticket(A, s), 'ticket');
+    }
+    // 7. intención
+    const it = intencion(s), i = it.i;
+    if (i) {
+      if (i === 'gracias') return fin(RR('¡De nada! 👌 Aquí sigo para lo que ocupes.', usoChips()), i);
+      if (i === 'adios') return fin(RR('¡Hasta luego! Cuando quieras me preguntas qué cargar o qué pedir. 👋', []), i);
+      if (i === 'saludo') { const g = responderBase('hola', A); if (mem.nombre) g.t = g.t.replace('Hola 👋', 'Hola ' + mem.nombre + ' 👋'); g.chips = usoChips(); return fin(g, i); }
+      if (i === 'explica') return fin(explicar(s, ctx), i);
+      if (H[i]) return fin(H[i](A, s), i);
+      if (i === 'gastos') return base('cuanto gaste ' + s, i);
+      if (i === 'nomina') return base(s + ' nomina', i);
+      if (i === 'ventas') return base('resumen ' + s, i);
+      if (CANON[i]) return base(CANON[i], i);
+    }
+    // 8. no entendí: lo intento con el cascarón viejo y si tampoco, sugiero lo más parecido y lo guardo
+    const r = responderBase(s, A);
+    if (r && /^Eso todavía no lo sé contestar/.test(r.t)) {
+      const ch = (it.cerca ? [it.cerca] : []).concat(((parecido(s).top) || []).map(x => x.k)).filter((x, j, a) => a.indexOf(x) === j && CHIP[x]).slice(0, 3).map(k => CHIP[k]);
+      r.chips = ch.length ? ch : usoChips().slice(0, 4);
+      r.t = 'Eso todavía no lo sé contestar. Lo guardé para aprender' + (ch.length ? ': ¿quisiste decir alguna de estas? (si tocas una, aprendo que tu pregunta era eso)' : '. Mientras tanto prueba con estas:');
+      return fin(r, null, { pend: s });
+    }
+    return fin(r, null, {});
+  }
+
   async function preguntarIA(q) {
     try {
       const A = analizar();
@@ -586,7 +931,7 @@
     } catch (e) { return 'No pude conectar con la IA en línea. Revisa tu wifi.'; }
   }
 
-  window.__asistenteDigar = { analizar, insights, responder, informe, plan, pedido, ruta, reporte, kpis, calibrar, _mem: () => mem, version: VER };
+  window.__asistenteDigar = { analizar, insights, responder, entender: s => intencion(corregir(limpiar(s), analizar())), _ent: ENT, informe, plan, pedido, ruta, reporte, kpis, calibrar, _mem: () => mem, version: VER };
   if (typeof document === 'undefined') return;
 
   // ---------- INTERFAZ ----------
@@ -657,7 +1002,7 @@
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, () => prompt('Copia este texto:', t)); else prompt('Copia este texto:', t);
   }
   function pintarC() {
-    const msgs = mem.chat.length ? mem.chat : [{ r: 'ia', t: 'Hola 👋 Soy tu asistente. Pregúntame lo que quieras de tu negocio o enséñame cosas (precios de tiendas, piezas por caja).', chips: CHIPS0 }];
+    const msgs = mem.chat.length ? mem.chat : [{ r: 'ia', t: 'Hola 👋 Soy tu asistente. Pregúntame lo que quieras de tu negocio o enséñame cosas (precios de tiendas, piezas por caja).', chips: usoChips() }];
     let h = msgs.map(m => '<div class="ia-m ' + m.r + '">' + esc(m.t) + '</div>').join('');
     const last = msgs[msgs.length - 1];
     if (last && last.r === 'ia' && last.chips && last.chips.length) h += '<div class="ia-ch">' + last.chips.map(c => '<button data-a="chip" data-q="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>';
@@ -675,7 +1020,7 @@
     if (!q) return;
     inp.value = '';
     mem.chat.push({ r: 'yo', t: q });
-    let r = responder(q);
+    let r = responder(q, !!texto);
     if (r === null) { mem.chat.push({ r: 'ia', t: 'Pensando…' }); pintarC(); const t = await preguntarIA(q); mem.chat.pop(); r = { t, chips: [] }; }
     if (r.t.indexOf('Eso todavía no lo sé contestar') !== 0) { const kq2 = norm(q); mem.sinEntender = mem.sinEntender.filter(x => norm(x.q) !== kq2); }
     mem.chat.push({ r: 'ia', t: r.t, chips: r.chips }); mem.chat = mem.chat.slice(-40); save(); pintarC();

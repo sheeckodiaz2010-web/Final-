@@ -17,7 +17,7 @@
     <style>
         /* Estilos mínimos propios (Tailwind ya viene compilado arriba, sin CDN) */
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        html, body { overscroll-behavior-y: contain; }
+        html, body { overscroll-behavior-y: contain; overscroll-behavior-x: none; }
         body { -webkit-tap-highlight-color: transparent; }
         /* Evita que al mantener presionado salga Google Traducir / diccionario */
         html, body, button, div, span, p, h1, h2, h3, h4, h5, h6, label {
@@ -435,6 +435,10 @@ input,select,textarea{font-size:16px}
                 <button onclick="abrirMenuCatalogo()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></span>
                     <span style="display:block;min-width:0;"><span class="ajuste-label">Catálogo</span></span>
+                </button>
+                <button onclick="if(typeof abrirAsistente==='function'){abrirAsistente()}else{alert('Falta subir asistente.js a GitHub junto al index.html')}" class="ajuste-card">
+                    <span class="ajuste-icono" style="font-size:26px;line-height:30px;">🧠</span>
+                    <span style="display:block;min-width:0;"><span class="ajuste-label">Asistente</span><span class="ajuste-sub" id="asistente-sub" style="color:#2563eb;">Abrir &gt;</span></span>
                 </button>
                 <button onclick="actualizarApp()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span>
@@ -7005,7 +7009,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-22-h';
+const APP_BUILD = '2026-10-22-i';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7294,6 +7298,19 @@ document.addEventListener('visibilitychange', () => {
   function medir(){var b=document.getElementById('barra-superior-fija');if(b)document.documentElement.style.setProperty('--hdr-h',b.offsetHeight+'px');}
   window.addEventListener('load',medir);window.addEventListener('resize',medir);
   document.addEventListener('DOMContentLoaded',medir);setTimeout(medir,500);setTimeout(medir,1500);
+})();
+</script>
+<script>
+/* Gesto/boton atras: no cierra el POS. Si el asistente esta abierto, lo cierra; si no, no hace nada. */
+(function () {
+  var armado = false;
+  function armar() { if (armado) return; armado = true; try { history.pushState({ pos: 1 }, '', location.href); } catch (e) {} }
+  ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function (ev) { window.addEventListener(ev, armar, { capture: true, passive: true }); });
+  window.addEventListener('popstate', function () {
+    try { history.pushState({ pos: 1 }, '', location.href); } catch (e) {}
+    var f = (window.__capas || []).pop();
+    if (f) { try { f(); } catch (e) {} }
+  });
 })();
 </script>
 <script src="asistente.js"></script>

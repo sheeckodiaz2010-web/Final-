@@ -394,6 +394,14 @@
     const nm = k => (A.P[k] ? A.P[k].nombre : k);
     return 'Esto es lo que sé de ti:\n• Ventas: ' + A.trAll.length + ' registradas\n• Precios de otras tiendas: ' + (pk.length ? pk.map(k => nm(k) + ' ' + $m(mem.precios[k].v)).join(', ') : 'ninguno') + '\n• Piezas por caja: ' + (ck.length ? ck.map(k => nm(k) + ' ' + mem.cajas[k]).join(', ') : 'ninguna') + '\n• Proveedor sin stock: ' + (hk.filter(k => mem.resp[k].v === 'no').map(k => nm(k.replace('hay:', ''))).join(', ') || 'ninguno') + '\n• Meta de flete gratis: ' + $m(Number(mem.fleteGratis) || 20000) + '\n• Pronósticos ajustados: ' + cc.length + ' productos\n• Consejos aplicados: ' + mem.hechas + '\nPuedes enseñarme: "Sabritas en tiendas cuesta 18", "la caja de Sabritas trae 24", "el proveedor ya no tiene Sabritas", "mi meta de flete es 25000".';
   }
+  // Patrones de preguntas que antes no sabía contestar (los usa responder y la limpieza del reporte)
+  const P_MEM = /(tienes|tiene|hay|usas|guardas) (la )?memoria|te acuerdas|recuerdas|aprendes|te acuerdas de|memoria/;
+  const P_NOMINA = /nomina|sueldo|salario|empleado|trabajador|raya\b/;
+  const P_NOPREG = /(no|ni) (te )?pregunte (eso|esa|eso)|no es lo que (te )?pregunte|eso no (te )?(pregunte|es lo que)|no te (pedi|pregunte) eso|no fue lo que pregunte/;
+  const P_YANO = /ya no (debo|deberia|tengo que|conviene|voy a)? ?(vender|surtir|pedir|comprar|cargar|llevar)|que (deje|dejo|debo dejar|deberia dejar) de (vender|surtir|pedir|comprar|cargar)|dejar de (vender|surtir|pedir|comprar)|que (quito|saco|elimino|descontinuo)|descontinu(ar|o)|que (productos )?no (me )?(conviene|sirve|dejan?)/;
+  const P_BAJAR = /(que|cual(es)?|a que|cuales?) (le |les |lo |los )?(bajo|baje|bajarle|bajar|rebajo|rebajar)\b|\bbajo (de |el |los )?precio|bajar (de |el |los )?precio|bajarle (el )?precio|rebaj|promocion|oferta|\bmover\b/;
+  mem.sinEntender = mem.sinEntender.filter(x => { const q = norm(x.q); return !(P_MEM.test(q) || P_NOMINA.test(q) || P_NOPREG.test(q) || P_YANO.test(q) || P_BAJAR.test(q)); });
+  save();
   const CHIPS0 = ['¿Qué cargo hoy?', '¿Qué pido?', '¿Cómo voy hoy?', '¿Quién me debe?', '¿Qué subo de precio?', 'Ruta de hoy', 'Más vendidos', 'Menor margen'];
   function responder(q) {
     const A = analizar(), n = norm(q).trim(), ins = insights(A);
@@ -402,6 +410,39 @@
     const RANK = /agotad|sin stock|se acab|por acabar|poco stock|quedan pocos|parado|sobra|exceso|no compres|sobrante|inmovil|no se mueve|no se vende|muert|estanc|lento|menos (se )?(vend|mueve)|(vende|mueve)n? menos|mas vendid|mas se (vende|mueve)|top|estrella|popular|(vende|mueve)n? mas|margen|rentab|gano mas|deja mas|me deja/.test(n);
     const cand = buscarProds(A, q), p = cand.length && (cand[0].s >= 3 || (!RANK && cand[0].s >= 1.5)) ? cand[0].r : null;
     const otros = cand.filter(x => p && x.r.id !== p.id && x.s >= cand[0].s * 0.8).slice(0, 2);
+
+    // --- preguntas que antes no entendía ---
+    if (P_NOPREG.test(n)) {
+      let prev = null; for (let i = mem.chat.length - 2; i >= 0; i--) { if (mem.chat[i] && mem.chat[i].r === 'yo') { prev = mem.chat[i].t; break; } }
+      if (prev && !P_NOPREG.test(norm(prev))) { const kp = norm(prev), ex2 = mem.sinEntender.filter(x => norm(x.q) === kp)[0]; if (ex2) { ex2.n = (ex2.n || 1) + 1; ex2.ts = Date.now(); } else mem.sinEntender.push({ q: prev + ' (me contestó otra cosa)', ts: Date.now(), n: 1 }); save(); }
+      return R('Perdón, te contesté otra cosa. Dime la pregunta con otras palabras (por ejemplo: \"¿qué bajo de precio?\", \"¿qué ya no debo vender?\", \"¿cuánto pagué de nómina?\") o toca una opción. Ya guardé que no te entendí para mejorarlo.', CHIPS0.slice(0, 6));
+    }
+    if (P_MEM.test(n) && !p) return R('Sí, tengo memoria: aprendo de tus ventas y de lo que me enseñas, y se guarda en este celular.\n\n' + aprendido(A), ['¿Qué cargo hoy?', '¿Qué pido?']);
+    if (P_NOMINA.test(n)) {
+      const per = periodo(n, A.now) || { a: A.now - 28 * D, b: A.now + D, l: 'en 28 días' };
+      const g = A.todas.filter(t => t.tipo === 'Gasto' && Number(t.id) >= per.a && Number(t.id) < per.b && norm(t.categoria || '').indexOf('nomina') >= 0);
+      const tot = sumF(g, 'monto'), vtas = sumF(venEntre(A, per.a, per.b), 'monto');
+      return R(g.length ? 'De nómina ' + per.l + ' has pagado ' + $m(tot) + ' (' + g.length + ' pago' + (g.length > 1 ? 's' : '') + ')' + (vtas > 0 ? ', que es el ' + (tot / vtas * 100).toFixed(1) + '% de lo que vendiste (' + $m(vtas) + ')' : '') + '.\n' + lista(g.slice().sort((a, b) => Number(b.id) - Number(a.id)), t => (t.fecha || '') + ' — ' + (t.descripcion || 'Nómina') + ' ' + $m(t.monto), 5) : 'No encuentro pagos de nómina ' + per.l + '. Si los registras como gasto en la categoría \"Nómina\", aquí te los sumo. Esto solo cuenta lo que pagas tú; no tengo sueldos ni comisiones calculadas.', ['¿Cuánto gasté este mes?', '¿Cómo voy hoy?']);
+    }
+    if (P_YANO.test(n) && !p) {
+      const c = [];
+      A.L.forEach(r => {
+        if (r.costo > 0 && r.precio > 0 && r.precio < r.costo && r.u28 >= 1) c.push({ r, pt: 100 + (r.costo - r.precio) * r.u28, why: 'lo vendes a pérdida (precio ' + $m(r.precio) + ' < costo ' + $m(r.costo) + ')' });
+        else if (r.u28 === 0 && r.stock > 0 && r.costo > 0) c.push({ r, pt: 50 + r.stock * r.costo / 100, why: 'cero ventas en 4 semanas y tienes ' + r.stock + ' pzas (' + $m(r.stock * r.costo) + ' parados)' });
+        else if (r.u28 > 0 && r.u28 <= 3 && r.margen != null && r.margen < 12) c.push({ r, pt: 30 + (12 - r.margen), why: 'vendes ' + r.u28 + ' en 4 semanas y deja solo ' + Math.round(r.margen) + '% de margen' });
+        else if (r.stock > 0 && r.costo > 0 && r.sem > 0 && r.stock / r.sem > 12) c.push({ r, pt: 10 + r.stock * r.costo / 100, why: 'tienes para ~' + Math.round(r.stock / r.sem) + ' semanas (' + $m(r.stock * r.costo) + ' parados)' });
+      });
+      c.sort((a, b) => b.pt - a.pt);
+      return R(c.length ? 'Yo dejaría de surtir estos (con tus últimas semanas de ventas):\n' + lista(c, x => x.r.nombre + ' — ' + x.why, 7) + '\nMuévelos con oferta y no los recompres. Tú decides: solo veo tus números.' : 'Por ahora no veo productos que convenga dejar de vender: todo lo que tienes se mueve o deja margen.', ['Productos parados', 'Menor margen']);
+    }
+    if (P_BAJAR.test(n) && !p) {
+      const c = A.L.filter(r => r.stock > 0 && r.costo > 0 && r.precio > 0 && ((r.sem > 0 && r.stock / r.sem > 6) || r.u28 <= 1)).map(r => { const piso = Math.ceil(r.costo * 1.05 * 10) / 10; return { r, piso, v: r.stock * r.costo }; }).filter(x => x.r.precio > x.piso).sort((a, b) => b.v - a.v);
+      const ca = ins.filter(i => /^caro:/.test(i.key));
+      let t = '';
+      if (c.length) t += 'Para mover producto, bájale a:\n' + lista(c, x => x.r.nombre + ' — ' + x.r.stock + ' pzas paradas (' + $m(x.v) + '), lo vendes en ' + $m(x.r.precio) + '; puedes llegar a ' + $m(x.piso) + ' y aún ganas', 6);
+      if (ca.length) t += (t ? '\n\n' : '') + 'Y estos los tienes más caros que las tiendas:\n' + lista(ca, i => i.tit.replace(/^Estás más caro: /, '') + ' — ' + i.txt, 4);
+      return R(t || 'Por ahora no veo precios que convenga bajar. Lo que se mueve bien déjalo como está.', ['¿Qué subo de precio?', 'Productos parados']);
+    }
 
     // --- enseñar ---
     if (p && num != null && /tienda|cuesta|cuestan|cobran|venden|mercado|super|oxxo|walmart|competencia|bodega/.test(n) && !/caja/.test(n)) {
@@ -636,6 +677,7 @@
     mem.chat.push({ r: 'yo', t: q });
     let r = responder(q);
     if (r === null) { mem.chat.push({ r: 'ia', t: 'Pensando…' }); pintarC(); const t = await preguntarIA(q); mem.chat.pop(); r = { t, chips: [] }; }
+    if (r.t.indexOf('Eso todavía no lo sé contestar') !== 0) { const kq2 = norm(q); mem.sinEntender = mem.sinEntender.filter(x => norm(x.q) !== kq2); }
     mem.chat.push({ r: 'ia', t: r.t, chips: r.chips }); mem.chat = mem.chat.slice(-40); save(); pintarC();
   }
   const fb = (k, campo) => { const t = k.split(':')[0]; mem.fb[t] = mem.fb[t] || { ok: 0, no: 0 }; mem.fb[t][campo]++; };

@@ -7009,7 +7009,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-22-i';
+const APP_BUILD = '2026-10-23-a';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7314,7 +7314,7 @@ document.addEventListener('visibilitychange', () => {
   function armar() { if (armado) return; armado = true; empujar(PROFUNDIDAD); }
   ['touchend', 'pointerup', 'click', 'keydown'].forEach(function (ev) { window.addEventListener(ev, armar, { capture: true, passive: true }); });
   try { empujar(2); } catch (e) {}
-  function rellenar() { var est = history.state; if (!est || !est.pos || est.pos < tope - 1) { empujar(PROFUNDIDAD); } }
+  function rellenar() { armado = false; }
   window.addEventListener('popstate', function () {
     empujar(1);
     if (ATRAS_CIERRA_CAPAS) {
@@ -7322,7 +7322,7 @@ document.addEventListener('visibilitychange', () => {
       if (f) { try { f(); } catch (e) {} }
     }
   });
-  window.addEventListener('pageshow', function () { armado = true; empujar(PROFUNDIDAD); });
+  window.addEventListener('pageshow', function () { empujar(2); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') rellenar(); });
   window.addEventListener('hashchange', function (e) { try { e.preventDefault(); } catch (x) {} });
 })();

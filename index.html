@@ -7005,7 +7005,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-21-g';
+const APP_BUILD = '2026-10-22-h';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7296,4 +7296,5 @@ document.addEventListener('visibilitychange', () => {
   document.addEventListener('DOMContentLoaded',medir);setTimeout(medir,500);setTimeout(medir,1500);
 })();
 </script>
+<script src="asistente.js"></script>
 </body></html>

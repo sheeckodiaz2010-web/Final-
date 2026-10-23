@@ -7009,7 +7009,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-23-b';
+const APP_BUILD = '2026-10-23-c';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7302,13 +7302,15 @@ document.addEventListener('visibilitychange', () => {
 </script>
 <script>
 /* Gesto/boton atras: bloqueado. No cierra el POS ni lo manda a ninguna parte.
-   Chrome salta las entradas de historial creadas sin un toque real, por eso se rellena la pila
-   con cada toque (la 1a vez 6 entradas) y se repone una en cada "atras". Al bloquear un atras
-   sale un aviso "Atras bloqueado" 1 segundo: si la app se cierra SIN ese aviso, es que el
-   telefono sigue con la version vieja. El gesto de quitar el fijado es del sistema y no se toca. */
+   Truco: cada "atras" se deshace de inmediato con history.go(+n) (adelante), asi la pila de
+   historial no se vacia nunca. Las entradas se crean con un toque real (Chrome salta las
+   que se crean sin toque). Sale el aviso "Atras bloqueado" 1 segundo. El gesto de quitar el
+   fijado de pantalla es del sistema Android y no se toca. */
 (function () {
   var ATRAS_CIERRA_CAPAS = false; /* true = el atras solo cierra ventanas abiertas (modales/asistente) */
-  var PROFUNDIDAD = 6, armado = false, tope = 0, ultimo = 0, aviso = null, tAviso = 0;
+  var PROFUNDIDAD = 10, armado = false, ultimo = 0, aviso = null, tAviso = 0;
+  function posActual() { var st = history.state; return (st && typeof st.pos === 'number') ? st.pos : 0; }
+  var tope = posActual();
   function empujar(n) {
     for (var i = 0; i < n; i++) { try { history.pushState({ pos: ++tope }, '', location.href); } catch (e) {} }
   }
@@ -7332,14 +7334,16 @@ document.addEventListener('visibilitychange', () => {
     } catch (e) {}
   }
   window.addEventListener('popstate', function () {
-    empujar(1);
+    var p = posActual();
+    if (p >= tope) return; /* es el "adelante" que nosotros mismos pedimos */
     avisar();
+    try { history.go(tope - p); } catch (e) { empujar(1); }
     if (ATRAS_CIERRA_CAPAS) {
       var f = (window.__capas || []).pop();
       if (f) { try { f(); } catch (e) {} }
     }
   });
-  window.addEventListener('pageshow', function () { empujar(2); });
+  window.addEventListener('pageshow', function () { tope = Math.max(tope, posActual()); });
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') armado = false; });
   window.addEventListener('hashchange', function (e) { try { e.preventDefault(); } catch (x) {} });
 })();

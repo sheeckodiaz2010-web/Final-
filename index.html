@@ -142,7 +142,10 @@ input,select,textarea{font-size:16px}
 </style>
 <style>
 body.en-inicio{padding-bottom:0 !important}
-.home-grid{height:calc(100dvh - var(--hdr-h,96px) - 32px - env(safe-area-inset-bottom,0px));min-height:420px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.15fr 1fr;gap:14px}
+body.modo-botones nav.fixed.bottom-0{display:none !important}
+body.modo-botones #vista-venta .bottom-16{bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important}
+body.modo-botones #txt-modo{font-size:14px;font-weight:800}
+.home-grid{height:calc(100dvh - var(--hdr-h,96px) - 32px - env(safe-area-inset-bottom,0px));min-height:540px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.1fr 1fr .9fr;gap:14px}
 .tile-d{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 12px 16px;border:0;border-radius:28px;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.18);transition:transform .08s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0}
 .tile-d:active{transform:scale(.96)}
 .tile-d svg{width:56%;max-width:140px;flex:1;min-height:0;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -151,6 +154,8 @@ body.en-inicio{padding-bottom:0 !important}
 .t-ventas{grid-column:1/-1;background:linear-gradient(160deg,#3ddc97,#1fa971)}
 .t-clientes{background:linear-gradient(160deg,#7c4dff,#5b2fd6)}
 .t-inventario{background:linear-gradient(160deg,#f0523d,#c8321f)}
+.t-trx{background:linear-gradient(160deg,#f7c04a,#e08a00)}
+.t-ajustes{background:linear-gradient(160deg,#a3adcf,#6f7aa8)}
 .tbadge{position:absolute;top:12px;right:12px;background:#fff;font-weight:900;font-size:12px;padding:4px 9px;border-radius:99px}
 .tb-p{color:#5b2fd6}.tb-r{color:#c8321f}
 .mapd-pin{width:36px;height:36px;margin:-18px 0 0 -18px;font-size:14px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
@@ -200,12 +205,11 @@ body.en-inicio{padding-bottom:0 !important}
         <div class="flex items-center gap-2">
             <button type="button" id="btn-volver-inicio" onclick="cambiarVista('inicio')" style="display:none;align-items:center;gap:2px;margin-left:-6px;padding:6px 10px 6px 6px;font-size:17px;font-weight:800;color:#2563eb;min-height:40px;touch-action:manipulation;-webkit-tap-highlight-color:transparent">‹ Inicio</button>
             <span id="logo-digar" class="text-blue-600 font-black text-xl tracking-tight">DIGAR</span>
-            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo" style="display:none;font-size:14px;font-weight:800">Inicio</span>
+            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo" style="display:none">Inicio</span>
         </div>
         <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" style="display:none" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
             🏪 <span id="txt-cliente-actual">Elegir cliente</span>
         </button>
-    <button type="button" id="btn-menu-inicio" onclick="abrirMenuInicio()" aria-label="Menú" style="width:44px;height:40px;border-radius:12px;background:#f3f4f6;border:1px solid #e5e7eb;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent">☰</button>
     </header>
     </div>
 
@@ -228,6 +232,14 @@ body.en-inicio{padding-bottom:0 !important}
                     <span class="tbadge tb-r" id="ini-bad-inv" style="display:none"></span>
                     <svg viewBox="0 0 64 48"><path d="M8 44h48"/><rect x="10" y="26" width="18" height="18" rx="1.5"/><rect x="34" y="26" width="18" height="18" rx="1.5"/><rect x="22" y="6" width="20" height="18" rx="1.5"/><path d="M10 35h18M34 35h18M22 15h20"/></svg>
                     <div><div class="tn">Inventario</div><div class="td" id="ini-sub-inv"> </div></div>
+                </button>
+                <button type="button" class="tile-d t-trx" onclick="cambiarVista('transacciones')">
+                    <svg viewBox="0 0 64 48"><path d="M18 4h28v40l-4.7-3.2-4.6 3.2-4.7-3.2-4.6 3.2-4.7-3.2L18 44z"/><path d="M25 15h14M25 23h14M25 31h9"/></svg>
+                    <div><div class="tn">Transacciones</div><div class="td" id="ini-sub-trx"> </div></div>
+                </button>
+                <button type="button" class="tile-d t-ajustes" onclick="cambiarVista('mas')">
+                    <svg viewBox="0 0 64 48"><circle cx="32" cy="24" r="7"/><circle cx="32" cy="24" r="15"/><path d="M32 3v6M32 39v6M11 24h6M47 24h6M17 9l4 4M43 35l4 4M47 9l-4 4M21 35l-4 4"/></svg>
+                    <div><div class="tn">Ajustes</div><div class="td" id="ini-sub-aju"> </div></div>
                 </button>
             </div>
         </div>
@@ -344,7 +356,7 @@ body.en-inicio{padding-bottom:0 !important}
                 </div>
             </div></div>
 
-            <div class="fixed left-0 right-0 max-w-md mx-auto px-4 z-10" style="bottom:calc(12px + env(safe-area-inset-bottom,0px))">
+            <div class="fixed bottom-16 left-0 right-0 max-w-md mx-auto px-4 z-10">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <button type="button" onclick="abrirCalculadora()" aria-label="Calculadora" class="transition active:scale-95" style="flex:none;width:54px;height:54px;border-radius:18px;border:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#60a5fa 0%,#2563eb 55%,#1e3a8a 100%);box-shadow:0 6px 14px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.35);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4.5" y="2" width="15" height="20" rx="3.2" stroke="#fff" stroke-width="1.8"/><rect x="7.5" y="5" width="9" height="4" rx="1.2" fill="#fff"/><circle cx="8.8" cy="12.6" r="1.15" fill="#fff"/><circle cx="12" cy="12.6" r="1.15" fill="#fff"/><circle cx="15.2" cy="12.6" r="1.15" fill="#fff"/><circle cx="8.8" cy="16.1" r="1.15" fill="#fff"/><circle cx="12" cy="16.1" r="1.15" fill="#fff"/><circle cx="15.2" cy="16.1" r="1.15" fill="#fff"/><circle cx="8.8" cy="19.4" r="1.15" fill="#fff"/><circle cx="12" cy="19.4" r="1.15" fill="#fff"/><circle cx="15.2" cy="19.4" r="1.15" fill="#fbbf24"/></svg></button>
                     <button onclick="abrirCarrito()" style="flex:1;min-width:0;" class="bg-gray-900 text-white font-semibold py-3.5 rounded-full shadow-lg text-sm transition active:scale-95 flex justify-between items-center px-6">
@@ -517,15 +529,6 @@ body.en-inicio{padding-bottom:0 !important}
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="5" width="18" height="2.6" rx="1.3"/><rect x="3" y="10.7" width="18" height="2.6" rx="1.3"/><rect x="3" y="16.4" width="18" height="2.6" rx="1.3"/></svg> Más
         </button>
     </nav>
-
-    <!-- Menú ☰ (Transacciones y Ajustes) -->
-    <div id="menu-inicio" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto" onclick="if(event.target===this)cerrarMenuInicio()">
-        <div class="bg-white rounded-t-3xl p-4" style="padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))">
-            <button type="button" onclick="cerrarMenuInicio();cambiarVista('transacciones')" class="w-full text-left p-4 flex items-center gap-4 text-base font-bold text-gray-800 border-b border-gray-100"><span class="text-2xl">🧾</span> Transacciones</button>
-            <button type="button" onclick="cerrarMenuInicio();cambiarVista('mas')" class="w-full text-left p-4 flex items-center gap-4 text-base font-bold text-gray-800"><span class="text-2xl">⚙️</span> Ajustes</button>
-            <button type="button" onclick="cerrarMenuInicio()" class="w-full text-center p-3 mt-1 text-sm font-semibold text-gray-500">Cerrar</button>
-        </div>
-    </div>
 
     <!-- Modal menú acciones cliente -->
     <div id="modal-menu-cliente" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
@@ -2852,6 +2855,7 @@ async function guardarClienteRapido() {
 // -------------------- NAVEGACIÓN --------------------
 function cambiarVista(v) {
     desenfocarCampos();
+    if (v === 'inicio' && typeof modoBotones === 'function' && !modoBotones()) v = 'clientes';
     const vistas = ['inicio', 'clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas'];
     vistas.forEach(vista => {
         const el = $(`vista-${vista}`);
@@ -6607,7 +6611,7 @@ async function procesarExportarDatos() {
 
 function abrirModalBackup() {
     actualizarBotonHuella();
-    try { drivePintar(); } catch (e) {}
+    try { drivePintar(); pintarModoBotones(); } catch (e) {}
     $('modal-backup').classList.remove('hidden');
 }
 
@@ -7082,7 +7086,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-24-b';
+const APP_BUILD = '2026-10-24-e';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7444,19 +7448,43 @@ function mapaUrlComoLlegar(c) {
     if (mapaTieneUbic(c)) return 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng;
     return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((c.nombre || '') + ' ' + (c.direccion || ''));
 }
+function modoBotones() { return true; }
 function ajustarCabecera(v) {
     try {
-        const inicio = v === 'inicio';
+        const on = modoBotones();
         const set = (id, show, disp) => { const e = document.getElementById(id); if (e) e.style.display = show ? (disp || '') : 'none'; };
+        document.body.classList.toggle('modo-botones', on);
+        if (!on) {
+            document.body.classList.remove('en-inicio');
+            set('logo-digar', true); set('btn-volver-inicio', false); set('txt-modo', true); set('btn-cliente-header', true);
+            return;
+        }
+        const inicio = v === 'inicio';
         document.body.classList.toggle('en-inicio', inicio);
         set('logo-digar', inicio);
-        set('btn-menu-inicio', inicio, 'flex');
         set('btn-volver-inicio', !inicio, 'flex');
         set('txt-modo', !inicio);
         set('btn-cliente-header', v === 'venta', 'flex');
         window.scrollTo(0, 0);
         window.dispatchEvent(new Event('resize'));
     } catch (e) {}
+}
+function aplicarModoBotones() {
+    const on = modoBotones();
+    const i = document.getElementById('vista-inicio'), c = document.getElementById('vista-clientes');
+    document.body.classList.toggle('modo-botones', on);
+    if (on) { if (i) i.classList.remove('hidden'); if (c) c.classList.add('hidden'); ajustarCabecera('inicio'); renderInicio(); }
+    else { if (i) i.classList.add('hidden'); ajustarCabecera('clientes'); }
+}
+function pintarModoBotones() {
+    const b = document.getElementById('btn-modo-botones');
+    if (b) b.textContent = '🔲 Inicio con botones grandes: ' + (modoBotones() ? 'activado' : 'apagado');
+}
+function alternarModoBotones() {
+    try { localStorage.setItem('digar_modo_botones', modoBotones() ? '0' : '1'); } catch (e) {}
+    aplicarModoBotones(); pintarModoBotones();
+    try { cerrarModal('modal-backup'); } catch (e) {}
+    cambiarVista(modoBotones() ? 'inicio' : 'clientes');
 }
 function renderInicio() {
     try {
@@ -7467,6 +7495,9 @@ function renderInicio() {
         set('ini-sub-ven', 'Hoy: ' + money(tot) + ' · ' + vh.length + (vh.length === 1 ? ' venta' : ' ventas'));
         set('ini-sub-cli', clientes.length + (clientes.length === 1 ? ' cliente' : ' clientes'));
         set('ini-sub-inv', productos.length + (productos.length === 1 ? ' producto' : ' productos'));
+        set('ini-sub-trx', 'Historial de ventas');
+        let ur = ''; try { ur = localStorage.getItem('digar_drive_ultimo') || ''; } catch (e) {}
+        set('ini-sub-aju', (ur && typeof driveFmt === 'function') ? 'Respaldo: ' + driveFmt(ur) : 'Respaldo y más');
         let cred = 0; try { cred = obtenerCreditosPorCliente().length; } catch (e) {}
         const bc = document.getElementById('ini-bad-cli');
         if (bc) { bc.style.display = cred > 0 ? '' : 'none'; bc.textContent = cred + ' con crédito'; }
@@ -7478,7 +7509,7 @@ function renderInicio() {
 function abrirMenuInicio() { const m = document.getElementById('menu-inicio'); if (m) m.classList.remove('hidden'); }
 function cerrarMenuInicio() { const m = document.getElementById('menu-inicio'); if (m) m.classList.add('hidden'); }
 (function () {
-    ajustarCabecera('inicio'); renderInicio();
+    aplicarModoBotones();
     setInterval(function () { const v = document.getElementById('vista-inicio'); if (v && !v.classList.contains('hidden')) renderInicio(); }, 4000);
 })();
 </script>

@@ -965,6 +965,26 @@ body.en-inicio{padding-bottom:0 !important}
                 <button onclick="cerrarModal('modal-backup')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <p class="text-xs text-gray-400 -mt-1">Tus ventas, clientes e inventario viven solo en este celular. Respalda de vez en cuando para no perderlos.</p>
+            <div style="border:1px solid #e5e7eb;border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <span style="font-weight:800;font-size:14px">☁️ Respaldo automático en Drive</span>
+                    <span id="drive-pill" style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:#f3f4f6;color:#6b7280">Apagado</span>
+                </div>
+                <p id="drive-ultimo" style="font-size:11px;color:#6b7280;margin:0">Aún no hay respaldos en Drive.</p>
+                <input id="drive-url" type="url" inputmode="url" autocomplete="off" placeholder="Enlace de tu Apps Script (termina en /exec)" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
+                <input id="drive-clave" type="password" autocomplete="off" placeholder="Clave secreta" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
+                <div style="display:flex;gap:8px;align-items:center">
+                    <span style="font-size:12px;font-weight:700;color:#374151;flex:none">Respaldar cada</span>
+                    <select id="drive-horas" onchange="driveGuardarCfg()" style="flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:10px;font-size:13px;background:#fff">
+                        <option value="1">1 hora</option><option value="3">3 horas</option><option value="6">6 horas</option><option value="12">12 horas</option><option value="24">24 horas</option>
+                    </select>
+                </div>
+                <button type="button" id="drive-toggle" onclick="driveAlternar()" style="width:100%;padding:12px;border-radius:12px;font-size:12px;font-weight:800;background:#2563eb;color:#fff">Activar respaldo automático</button>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <button type="button" onclick="driveSubir(true)" style="padding:11px;border-radius:12px;font-size:12px;font-weight:800;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb">⬆️ Respaldar ahora</button>
+                    <button type="button" onclick="driveRestaurar()" style="padding:11px;border-radius:12px;font-size:12px;font-weight:800;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb">⬇️ Restaurar de Drive</button>
+                </div>
+            </div>
             <div class="pt-1 space-y-2">
                 <button onclick="compartirRespaldo()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs shadow-sm">📤 Compartir respaldo (Drive, WhatsApp, correo)</button>
                 <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
@@ -6587,6 +6607,7 @@ async function procesarExportarDatos() {
 
 function abrirModalBackup() {
     actualizarBotonHuella();
+    try { drivePintar(); } catch (e) {}
     $('modal-backup').classList.remove('hidden');
 }
 
@@ -7460,6 +7481,110 @@ function cerrarMenuInicio() { const m = document.getElementById('menu-inicio'); 
     ajustarCabecera('inicio'); renderInicio();
     setInterval(function () { const v = document.getElementById('vista-inicio'); if (v && !v.classList.contains('hidden')) renderInicio(); }, 4000);
 })();
+</script>
+<script>
+// ==================== RESPALDO AUTOMÁTICO EN GOOGLE DRIVE (vía Apps Script) ====================
+const DRIVE_CFG = 'digar_drive_cfg', DRIVE_ULT = 'digar_drive_ultimo';
+let _driveSubiendo = false;
+function driveCfg() {
+    const base = { url: '', clave: '', horas: 6, activo: false };
+    try { return Object.assign(base, JSON.parse(localStorage.getItem(DRIVE_CFG) || '{}')); } catch (e) { return base; }
+}
+function driveGuardarCfg(extra) {
+    const c = driveCfg();
+    const u = document.getElementById('drive-url'), k = document.getElementById('drive-clave'), h = document.getElementById('drive-horas');
+    if (u) c.url = u.value.trim();
+    if (k) c.clave = k.value.trim();
+    if (h) c.horas = Number(h.value) || 6;
+    if (extra) Object.assign(c, extra);
+    try { localStorage.setItem(DRIVE_CFG, JSON.stringify(c)); } catch (e) {}
+    drivePintar();
+}
+function driveAviso(m) { try { if (window.toast) window.toast(m); else alert(m); } catch (e) {} }
+function driveFmt(iso) {
+    try { return new Date(iso).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+}
+function drivePintar(errTxt) {
+    const c = driveCfg(), $$ = id => document.getElementById(id);
+    if (!$$('drive-url')) return;
+    if (document.activeElement !== $$('drive-url')) $$('drive-url').value = c.url;
+    if (document.activeElement !== $$('drive-clave')) $$('drive-clave').value = c.clave;
+    $$('drive-horas').value = String(c.horas);
+    const on = c.activo && c.url && c.clave;
+    const pill = $$('drive-pill');
+    pill.textContent = on ? 'Activo' : 'Apagado';
+    pill.style.background = on ? '#dcfce7' : '#f3f4f6';
+    pill.style.color = on ? '#15803d' : '#6b7280';
+    const t = $$('drive-toggle');
+    t.textContent = c.activo ? 'Desactivar respaldo automático' : 'Activar respaldo automático';
+    t.style.background = c.activo ? '#e5e7eb' : '#2563eb';
+    t.style.color = c.activo ? '#374151' : '#fff';
+    const ult = localStorage.getItem(DRIVE_ULT);
+    $$('drive-ultimo').textContent = errTxt ? ('⚠️ ' + errTxt) : (ult ? 'Último respaldo en Drive: ' + driveFmt(ult) : 'Aún no hay respaldos en Drive.');
+    $$('drive-ultimo').style.color = errTxt ? '#b91c1c' : '#6b7280';
+}
+function driveAlternar() {
+    const c = driveCfg();
+    driveGuardarCfg();
+    const n = driveCfg();
+    if (!n.activo && (!n.url || !n.clave)) { driveAviso('Primero pega el enlace y la clave'); return; }
+    driveGuardarCfg({ activo: !c.activo });
+    if (!c.activo) driveSubir(false, true);
+}
+async function driveSubir(manual, forzar) {
+    const c = driveCfg();
+    if (!c.url || !c.clave) { if (manual) driveAviso('Falta el enlace y la clave'); return false; }
+    if (_driveSubiendo) return false;
+    const vacio = !productos.length && !clientes.length && !transacciones.length;
+    if (vacio && !manual) return false;
+    if (!navigator.onLine) { if (manual) drivePintar('Sin internet'); return false; }
+    _driveSubiendo = true;
+    try {
+        const cuerpo = JSON.stringify({ clave: c.clave, datos: { productos, clientes, transacciones, configTicket, categorias: todasLasCategorias() } });
+        const hdr = { 'Content-Type': 'text/plain;charset=utf-8' };
+        try {
+            const r = await fetch(c.url, { method: 'POST', headers: hdr, body: cuerpo });
+            let j; try { j = await r.json(); } catch (e) { throw new Error('Respuesta inesperada. Revisa que el acceso sea "Cualquier persona".'); }
+            if (!j.ok) throw new Error(j.error === 'clave' ? 'Clave incorrecta' : (j.error || 'Error al guardar'));
+        } catch (e) {
+            if (!(e instanceof TypeError)) throw e;
+            await fetch(c.url, { method: 'POST', mode: 'no-cors', headers: hdr, body: cuerpo }); // sin confirmación, pero se envía
+        }
+        const ahora = new Date().toISOString();
+        localStorage.setItem(DRIVE_ULT, ahora);
+        localStorage.setItem('yimi_ultimo_respaldo', ahora);
+        try { cerrarBannerRespaldo(); } catch (e) {}
+        drivePintar();
+        if (manual) driveAviso('Respaldo guardado en Drive ✓');
+        return true;
+    } catch (e) {
+        drivePintar(e && e.message ? e.message : 'No se pudo respaldar');
+        if (manual) driveAviso('No se pudo respaldar en Drive');
+        return false;
+    } finally { _driveSubiendo = false; }
+}
+async function driveRestaurar() {
+    const c = driveCfg();
+    if (!c.url || !c.clave) { driveAviso('Falta el enlace y la clave'); return; }
+    try {
+        const r = await fetch(c.url + (c.url.includes('?') ? '&' : '?') + 'clave=' + encodeURIComponent(c.clave));
+        const txt = await r.text();
+        let j = null; try { j = JSON.parse(txt); } catch (e) {}
+        if (!j) throw new Error('Respuesta inesperada');
+        if (j.ok === false) throw new Error(j.error === 'clave' ? 'Clave incorrecta' : (j.error || 'No hay respaldo'));
+        await aplicarRespaldo(txt);
+    } catch (e) { drivePintar(e && e.message ? e.message : 'No se pudo leer el respaldo'); driveAviso('No se pudo restaurar de Drive'); }
+}
+function driveRevisar() {
+    const c = driveCfg();
+    if (!c.activo || !c.url || !c.clave) return;
+    const ult = Date.parse(localStorage.getItem(DRIVE_ULT) || '') || 0;
+    if (Date.now() - ult >= c.horas * 3600000) driveSubir(false);
+}
+setInterval(driveRevisar, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(driveRevisar, 1500); });
+window.addEventListener('online', function () { setTimeout(driveRevisar, 2000); });
+setTimeout(driveRevisar, 20000);
 </script>
 <script src="asistente.js?v=2026-10-24-b"></script>
 </body></html>

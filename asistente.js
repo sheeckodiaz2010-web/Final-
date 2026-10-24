@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   if (typeof window === 'undefined' || window.__asistenteDigar) return;
-  const VER = 'v5 2026-10-24';
+  const VER = 'v5.1 2026-10-24';
   const D = 864e5, MEMK = 'yimi_ia_mem';
   const LS = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const norm = s => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -955,8 +955,19 @@
     }
     return L.join('\n');
   }
-  async function preguntarIA(q, simple) {
-    const ia = mem.ia || {};
+  // Pregunta a Groq qué modelos tiene disponibles esta cuenta y escoge el mejor (los nombres cambian con el tiempo)
+  async function elegirGroq(key, signal, excluir) {
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: 'Bearer ' + key }, signal });
+      const j = await r.json(); if (!r.ok) return null;
+      const ids = (j.data || []).map(m => m.id).filter(id => id && !/whisper|guard|tts|playai|orpheus|embed|safeguard|compound|allam/i.test(id) && excluir.indexOf(id) < 0);
+      const pref = [/llama-3\.3-70b/, /llama-?4.*(scout|maverick)/, /gpt-oss-120b/, /llama-3\.1-70b/, /qwen.*32b/, /gpt-oss-20b/, /llama.*70b/, /llama-3\.1-8b/];
+      for (const pr of pref) { const x = ids.find(id => pr.test(id)); if (x) return x; }
+      return ids[0] || null;
+    } catch (e) { return null; }
+  }
+  async function preguntarIA(q, simple, probados) {
+    const ia = mem.ia || {}; probados = probados || [];
     const seg = new AbortController(), to = setTimeout(() => seg.abort(), 30000);
     try {
       if (!iaPropia()) { // modo antiguo: endpoint propio (mem.url)
@@ -970,7 +981,7 @@
       const hist = simple ? [] : mem.chat.filter(m => m.t && m.t !== 'Pensando…').slice(-7, -1).map(m => ({ role: m.r === 'yo' ? 'user' : 'assistant', t: String(m.t).slice(0, 700) }));
       while (hist.length && hist[0].role !== 'user') hist.shift();
       const pregunta = (ctx ? 'DATOS DEL NEGOCIO:\n' + ctx + '\n\nPREGUNTA DEL DUEÑO: ' : '') + q;
-      let url, init, leer;
+      let url, init, leer, modelo = '';
       if (ia.prov === 'gemini') {
         const modelo = ia.modelo || 'gemini-flash-latest';
         url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelo + ':generateContent?key=' + encodeURIComponent(ia.key);
@@ -979,13 +990,20 @@
         leer = j => { const c = j.candidates && j.candidates[0]; const t = c && c.content && c.content.parts ? c.content.parts.map(x => x.text || '').join('').trim() : ''; return t || (j.promptFeedback && j.promptFeedback.blockReason ? 'La IA bloqueó la pregunta (' + j.promptFeedback.blockReason + ').' : (c && c.finishReason ? 'La IA no devolvió texto (' + c.finishReason + ').' : '')); };
       } else {
         url = 'https://api.groq.com/openai/v1/chat/completions';
+        modelo = ia.modelo || await elegirGroq(ia.key, seg.signal, probados) || 'llama-3.3-70b-versatile';
         const messages = [{ role: 'system', content: SYS }].concat(hist.map(m => ({ role: m.role, content: m.t })), [{ role: 'user', content: pregunta }]);
-        init = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ia.key }, body: JSON.stringify({ model: ia.modelo || 'llama-3.3-70b-versatile', messages, temperature: 0.3, max_tokens: 1200 }) };
-        leer = j => ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
+        init = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ia.key }, body: JSON.stringify({ model: modelo, messages, temperature: 0.3, max_tokens: 1200 }) };
+        leer = j => ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
       }
       init.signal = seg.signal;
       const r = await fetch(url, init);
       let j = null; try { j = await r.json(); } catch (e) {}
+      if (!r.ok && ia.prov !== 'gemini' && (r.status === 404 || r.status === 400 || r.status === 403) && /model/i.test(JSON.stringify(j || {})) && probados.length < 4) {
+        probados.push(modelo);
+        const otro = await elegirGroq(ia.key, seg.signal, probados);
+        if (otro) { mem.ia.modelo = otro; save(); clearTimeout(to); return preguntarIA(q, simple, probados); }
+      }
+      if (r.ok && ia.prov !== 'gemini' && ia.modelo !== modelo && modelo) { mem.ia.modelo = modelo; save(); }
       if (!r.ok) {
         const det = (j && ((j.error && (j.error.message || j.error)) || j.message)) || '';
         const pista = r.status === 400 || r.status === 401 || r.status === 403 ? ' Revisa que la clave esté bien copiada y sea de ' + (ia.prov === 'gemini' ? 'Gemini (Google AI Studio)' : 'Groq') + '.' : r.status === 429 ? ' Llegaste al límite gratis por minuto/día; espera un poco.' : r.status === 413 ? ' Son muchos datos para el plan gratis; intenta de nuevo en un minuto.' : '';

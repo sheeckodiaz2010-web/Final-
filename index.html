@@ -140,6 +140,22 @@ input,select,textarea{font-size:16px}
 .mapd-msg{display:none;position:absolute;left:10px;right:60px;top:10px;z-index:6;font:700 11px/1.3 system-ui,sans-serif;color:#92400e;background:#fef3c7;border:1px solid #fde68a;padding:6px 8px;border-radius:10px;pointer-events:none}
 .mapd.sin-tiles .mapd-msg{display:block}
 </style>
+<style>
+body.en-inicio{padding-bottom:0 !important}
+.home-grid{height:calc(100dvh - var(--hdr-h,96px) - 32px - env(safe-area-inset-bottom,0px));min-height:420px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.15fr 1fr;gap:14px}
+.tile-d{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 12px 16px;border:0;border-radius:28px;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.18);transition:transform .08s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0}
+.tile-d:active{transform:scale(.96)}
+.tile-d svg{width:56%;max-width:140px;flex:1;min-height:0;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tile-d .tn{font-size:22px;font-weight:900;letter-spacing:-.01em;margin-top:8px;text-align:center}
+.tile-d .td{font-size:13px;font-weight:700;opacity:.92;margin-top:2px;text-align:center}
+.t-ventas{grid-column:1/-1;background:linear-gradient(160deg,#3ddc97,#1fa971)}
+.t-clientes{background:linear-gradient(160deg,#7c4dff,#5b2fd6)}
+.t-inventario{background:linear-gradient(160deg,#f0523d,#c8321f)}
+.tbadge{position:absolute;top:12px;right:12px;background:#fff;font-weight:900;font-size:12px;padding:4px 9px;border-radius:99px}
+.tb-p{color:#5b2fd6}.tb-r{color:#c8321f}
+.mapd-pin{width:36px;height:36px;margin:-18px 0 0 -18px;font-size:14px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.mapd-pin.sel{width:46px;height:46px;margin:-23px 0 0 -23px;font-size:17px;border-color:#111827}
+</style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 
@@ -182,29 +198,51 @@ input,select,textarea{font-size:16px}
     <!-- HEADER -->
     <header class="bg-white border-b sticky top-0 z-20 px-4 py-3 flex justify-between items-center shadow-sm">
         <div class="flex items-center gap-2">
-            <span class="text-blue-600 font-black text-xl tracking-tight">DIGAR</span>
-            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo">Clientes</span>
+            <button type="button" id="btn-volver-inicio" onclick="cambiarVista('inicio')" style="display:none;align-items:center;gap:2px;margin-left:-6px;padding:6px 10px 6px 6px;font-size:17px;font-weight:800;color:#2563eb;min-height:40px;touch-action:manipulation;-webkit-tap-highlight-color:transparent">‹ Inicio</button>
+            <span id="logo-digar" class="text-blue-600 font-black text-xl tracking-tight">DIGAR</span>
+            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo" style="display:none;font-size:14px;font-weight:800">Inicio</span>
         </div>
-        <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+        <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" style="display:none" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
             🏪 <span id="txt-cliente-actual">Elegir cliente</span>
         </button>
+    <button type="button" id="btn-menu-inicio" onclick="abrirMenuInicio()" aria-label="Menú" style="width:44px;height:40px;border-radius:12px;background:#f3f4f6;border:1px solid #e5e7eb;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent">☰</button>
     </header>
     </div>
 
     <!-- CONTENEDOR DE VISTAS -->
     <main class="max-w-md mx-auto p-4">
 
+        <!-- VISTA INICIO (botones grandes) -->
+        <div id="vista-inicio">
+            <div class="home-grid">
+                <button type="button" class="tile-d t-ventas" onclick="cambiarVista('venta')">
+                    <svg viewBox="0 0 64 48"><rect x="8" y="22" width="48" height="20" rx="3"/><path d="M14 22v-8h26v8M44 12h8v10"/><rect x="18" y="4" width="16" height="6" rx="1.5"/><path d="M16 30h6M26 30h6M36 30h6M16 36h6M26 36h6M36 36h6"/></svg>
+                    <div><div class="tn">Ventas</div><div class="td" id="ini-sub-ven"> </div></div>
+                </button>
+                <button type="button" class="tile-d t-clientes" onclick="cambiarVista('clientes')">
+                    <span class="tbadge tb-p" id="ini-bad-cli" style="display:none"></span>
+                    <svg viewBox="0 0 64 48"><circle cx="22" cy="14" r="8"/><path d="M6 42c0-9 7-15 16-15s16 6 16 15z"/><circle cx="44" cy="16" r="7"/><path d="M42 28c10-1 18 5 18 14H46"/></svg>
+                    <div><div class="tn">Clientes</div><div class="td" id="ini-sub-cli"> </div></div>
+                </button>
+                <button type="button" class="tile-d t-inventario" onclick="cambiarVista('productos')">
+                    <span class="tbadge tb-r" id="ini-bad-inv" style="display:none"></span>
+                    <svg viewBox="0 0 64 48"><path d="M8 44h48"/><rect x="10" y="26" width="18" height="18" rx="1.5"/><rect x="34" y="26" width="18" height="18" rx="1.5"/><rect x="22" y="6" width="20" height="18" rx="1.5"/><path d="M10 35h18M34 35h18M22 15h20"/></svg>
+                    <div><div class="tn">Inventario</div><div class="td" id="ini-sub-inv"> </div></div>
+                </button>
+            </div>
+        </div>
+
         <!-- VISTA CLIENTES (antes Inicio) -->
-        <div id="vista-clientes" class="space-y-3">
+        <div id="vista-clientes" class="hidden space-y-3">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-bold">Mis Clientes</h2>
                 <div style="display:flex;align-items:center;gap:8px">
-                    <div style="display:flex;background:#e5e7eb;border-radius:12px;padding:3px">
-                        <button type="button" id="vc-lista" onclick="setVistaClientes('lista')" style="padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800">Lista</button>
-                        <button type="button" id="vc-mapa" onclick="setVistaClientes('mapa')" style="padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800">Mapa</button>
-                    </div>
                     <button onclick="abrirModalFormCliente()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
                 </div>
+            </div>
+            <div style="display:flex;background:#e5e7eb;border-radius:14px;padding:4px;gap:4px">
+                <button type="button" id="vc-lista" onclick="setVistaClientes('lista')" style="flex:1;min-height:40px;border-radius:11px;font-size:14px;font-weight:800;touch-action:manipulation">📋 Lista</button>
+                <button type="button" id="vc-mapa" onclick="setVistaClientes('mapa')" style="flex:1;min-height:40px;border-radius:11px;font-size:14px;font-weight:800;touch-action:manipulation">📍 Mapa</button>
             </div>
             <button onclick="abrirModalFormCliente()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">
                 + Agregar nuevo cliente
@@ -218,8 +256,8 @@ input,select,textarea{font-size:16px}
             <div id="lista-clientes-inicio" class="space-y-2"></div>
             <div id="mapa-clientes-wrap" class="hidden space-y-2">
                 <div style="position:relative">
-                    <div id="mapa-clientes" style="height:calc(100dvh - 400px);min-height:320px"></div>
-                    <div id="mapa-popup" class="hidden" style="position:absolute;left:8px;right:8px;bottom:8px;z-index:20;background:#fff;border-radius:16px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
+                    <div id="mapa-clientes" style="height:calc(100dvh - 400px);min-height:320px;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb"></div>
+                    <div id="mapa-popup" class="hidden" style="position:absolute;left:8px;right:8px;bottom:8px;z-index:20;background:#fff;border-radius:22px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
                 </div>
                 <div id="mapa-resumen" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;font-weight:800"></div>
                 <div id="mapa-sin-ubic" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -306,7 +344,7 @@ input,select,textarea{font-size:16px}
                 </div>
             </div></div>
 
-            <div class="fixed bottom-16 left-0 right-0 max-w-md mx-auto px-4 z-10">
+            <div class="fixed left-0 right-0 max-w-md mx-auto px-4 z-10" style="bottom:calc(12px + env(safe-area-inset-bottom,0px))">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <button type="button" onclick="abrirCalculadora()" aria-label="Calculadora" class="transition active:scale-95" style="flex:none;width:54px;height:54px;border-radius:18px;border:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#60a5fa 0%,#2563eb 55%,#1e3a8a 100%);box-shadow:0 6px 14px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.35);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4.5" y="2" width="15" height="20" rx="3.2" stroke="#fff" stroke-width="1.8"/><rect x="7.5" y="5" width="9" height="4" rx="1.2" fill="#fff"/><circle cx="8.8" cy="12.6" r="1.15" fill="#fff"/><circle cx="12" cy="12.6" r="1.15" fill="#fff"/><circle cx="15.2" cy="12.6" r="1.15" fill="#fff"/><circle cx="8.8" cy="16.1" r="1.15" fill="#fff"/><circle cx="12" cy="16.1" r="1.15" fill="#fff"/><circle cx="15.2" cy="16.1" r="1.15" fill="#fff"/><circle cx="8.8" cy="19.4" r="1.15" fill="#fff"/><circle cx="12" cy="19.4" r="1.15" fill="#fff"/><circle cx="15.2" cy="19.4" r="1.15" fill="#fbbf24"/></svg></button>
                     <button onclick="abrirCarrito()" style="flex:1;min-width:0;" class="bg-gray-900 text-white font-semibold py-3.5 rounded-full shadow-lg text-sm transition active:scale-95 flex justify-between items-center px-6">
@@ -462,7 +500,7 @@ input,select,textarea{font-size:16px}
     </div>
 
     <!-- NAVEGACIÓN -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between items-stretch z-30 max-w-md mx-auto">
+    <nav style="display:none !important" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between items-stretch z-30 max-w-md mx-auto">
         <button onclick="cambiarVista('clientes')" id="nav-clientes" class="flex flex-col items-center text-blue-600 text-[10px] font-bold" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 2px calc(9px + env(safe-area-inset-bottom, 0px));min-height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 2 11.2h3V20h5.2v-5.6h3.6V20H19v-8.8h3z"/></svg> Clientes
         </button>
@@ -479,6 +517,15 @@ input,select,textarea{font-size:16px}
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="5" width="18" height="2.6" rx="1.3"/><rect x="3" y="10.7" width="18" height="2.6" rx="1.3"/><rect x="3" y="16.4" width="18" height="2.6" rx="1.3"/></svg> Más
         </button>
     </nav>
+
+    <!-- Menú ☰ (Transacciones y Ajustes) -->
+    <div id="menu-inicio" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto" onclick="if(event.target===this)cerrarMenuInicio()">
+        <div class="bg-white rounded-t-3xl p-4" style="padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))">
+            <button type="button" onclick="cerrarMenuInicio();cambiarVista('transacciones')" class="w-full text-left p-4 flex items-center gap-4 text-base font-bold text-gray-800 border-b border-gray-100"><span class="text-2xl">🧾</span> Transacciones</button>
+            <button type="button" onclick="cerrarMenuInicio();cambiarVista('mas')" class="w-full text-left p-4 flex items-center gap-4 text-base font-bold text-gray-800"><span class="text-2xl">⚙️</span> Ajustes</button>
+            <button type="button" onclick="cerrarMenuInicio()" class="w-full text-center p-3 mt-1 text-sm font-semibold text-gray-500">Cerrar</button>
+        </div>
+    </div>
 
     <!-- Modal menú acciones cliente -->
     <div id="modal-menu-cliente" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
@@ -1985,8 +2032,9 @@ function pintarToggleVista() {
     ['lista', 'mapa'].forEach(k => {
         const b = $('vc-' + k); if (!b) return;
         const on = vistaClientes === k;
-        b.style.background = on ? '#2563eb' : 'transparent';
-        b.style.color = on ? '#fff' : '#4b5563';
+        b.style.background = on ? '#fff' : 'transparent';
+        b.style.color = on ? '#111827' : '#6b7280';
+        b.style.boxShadow = on ? '0 1px 3px rgba(0,0,0,.15)' : 'none';
     });
 }
 function setVistaClientes(v) {
@@ -2069,16 +2117,18 @@ function abrirPopupMapa(id, silencioso) {
     mapaSelId = c.id;
     if (mapaClientes) { mapaClientes.sel = c.id; mapaClientes._sched(); }
     const e = estadoClienteHoy(c), idA = mapaIdAttr(c.id);
-    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="min-width:0"><div style="font-size:15px;font-weight:800;color:#111827">${escHtml(c.nombre)}</div>
-        <div style="font-size:12px;color:#6b7280">${escHtml(c.direccion || 'Sin dirección')}</div>
-        <div style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]};margin-top:2px">● ${MAPA_TXT[e][0]}</div>
-        <div id="mapa-popup-dist" style="font-size:12px;font-weight:800;color:#2563eb;margin-top:2px"></div></div>
-        <button type="button" onclick="cerrarPopupMapa()" style="font-size:22px;line-height:1;color:#9ca3af;padding:0 4px">×</button></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
-        <button type="button" onclick="mapaAccion('venta','${idA}')" style="background:#16a34a;color:#fff;font-size:12px;font-weight:800;padding:10px;border-radius:12px">🛒 Venta</button>
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+        <div style="width:42px;height:42px;border-radius:50%;background:#f1f3f8;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none">🏪</div>
+        <div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:800;color:#111827">${escHtml(c.nombre)}</div>
+        <div style="font-size:12px;color:#6b7280">${escHtml(c.direccion || 'Sin dirección')}</div></div>
+        <button type="button" onclick="cerrarPopupMapa()" style="font-size:24px;line-height:1;color:#9ca3af;padding:4px 6px">×</button></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px"><span style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]}">● ${MAPA_TXT[e][0]}</span><span id="mapa-popup-dist" style="font-size:12px;font-weight:800;color:#2563eb"></span></div>
+        <div style="display:flex;gap:10px;margin-top:10px">
+        <a href="${mapaUrlComoLlegar(c)}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;font-size:15px;font-weight:800;text-decoration:none">🧭 Cómo llegar</a>
+        <button type="button" onclick="mapaAccion('venta','${idA}')" style="flex:1;min-height:48px;border-radius:14px;background:#1fa971;color:#fff;font-size:15px;font-weight:800">🛒 Vender</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
         <button type="button" onclick="mapaAccion('nocompro','${idA}')" style="background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:800;padding:10px;border-radius:12px">${e === 'nocompro' ? 'Quitar "No compró"' : '✕ No compró'}</button>
-        <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="grid-column:1/-1;background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
+        <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
     box.classList.remove('hidden');
     if (!silencioso && mapaClientes && mapaTieneUbic(c)) mapaClientes.centrarArriba(c.lat, c.lng);
     actualizarDistanciaPopup();
@@ -2782,8 +2832,7 @@ async function guardarClienteRapido() {
 // -------------------- NAVEGACIÓN --------------------
 function cambiarVista(v) {
     desenfocarCampos();
-    if (v === 'inicio') v = 'clientes';
-    const vistas = ['clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas'];
+    const vistas = ['inicio', 'clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas'];
     vistas.forEach(vista => {
         const el = $(`vista-${vista}`);
         const nav = $(`nav-${vista}`);
@@ -2804,7 +2853,7 @@ function cambiarVista(v) {
         navActivo.classList.remove('text-gray-700', 'font-medium');
     }
 
-    const labels = { clientes: 'Clientes', mas: 'Ajustes', venta: 'Venta', estadisticas: 'Estadísticas' };
+    const labels = { inicio: 'Inicio', clientes: 'Clientes', mas: 'Ajustes', venta: 'Ventas', productos: 'Inventario', estadisticas: 'Estadísticas' };
     $('txt-modo').innerText = labels[v] || (v.charAt(0).toUpperCase() + v.slice(1));
 
     if (v === 'clientes') renderListaClientesInicio();
@@ -2813,6 +2862,8 @@ function cambiarVista(v) {
     if (v === 'transacciones') { inicializarFiltrosFechas(); renderTransacciones(); }
     if (v === 'mas') { actualizarContadorClientesUI(); actualizarBadgeCreditos(); }
     if (v === 'estadisticas') renderEstadisticas();
+    if (v === 'inicio') renderInicio();
+    ajustarCabecera(v);
 }
 
 // -------------------- VENTA / PRODUCTOS --------------------
@@ -7364,6 +7415,50 @@ document.addEventListener('visibilitychange', () => {
     } catch (e) {}
   }
   if (document.readyState === 'complete') setTimeout(pedirToque, 400); else window.addEventListener('load', function () { setTimeout(pedirToque, 400); });
+})();
+</script>
+<script>
+// ==================== PANTALLA DE INICIO (botones grandes) ====================
+function mapaUrlComoLlegar(c) {
+    if (mapaTieneUbic(c)) return 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng;
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent((c.nombre || '') + ' ' + (c.direccion || ''));
+}
+function ajustarCabecera(v) {
+    try {
+        const inicio = v === 'inicio';
+        const set = (id, show, disp) => { const e = document.getElementById(id); if (e) e.style.display = show ? (disp || '') : 'none'; };
+        document.body.classList.toggle('en-inicio', inicio);
+        set('logo-digar', inicio);
+        set('btn-menu-inicio', inicio, 'flex');
+        set('btn-volver-inicio', !inicio, 'flex');
+        set('txt-modo', !inicio);
+        set('btn-cliente-header', v === 'venta', 'flex');
+        window.scrollTo(0, 0);
+        window.dispatchEvent(new Event('resize'));
+    } catch (e) {}
+}
+function renderInicio() {
+    try {
+        const set = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+        const h = hoy();
+        const vh = transacciones.filter(t => t.tipo === 'Venta' && t.fechaStr === h);
+        const tot = vh.reduce((a, t) => a + (Number(t.monto) || 0), 0);
+        set('ini-sub-ven', 'Hoy: ' + money(tot) + ' · ' + vh.length + (vh.length === 1 ? ' venta' : ' ventas'));
+        set('ini-sub-cli', clientes.length + (clientes.length === 1 ? ' cliente' : ' clientes'));
+        set('ini-sub-inv', productos.length + (productos.length === 1 ? ' producto' : ' productos'));
+        let cred = 0; try { cred = obtenerCreditosPorCliente().length; } catch (e) {}
+        const bc = document.getElementById('ini-bad-cli');
+        if (bc) { bc.style.display = cred > 0 ? '' : 'none'; bc.textContent = cred + ' con crédito'; }
+        const bajos = productos.filter(p => Number(p.stock) <= 5).length;
+        const bi = document.getElementById('ini-bad-inv');
+        if (bi) { bi.style.display = bajos > 0 ? '' : 'none'; bi.textContent = bajos + (bajos === 1 ? ' bajo' : ' bajos'); }
+    } catch (e) {}
+}
+function abrirMenuInicio() { const m = document.getElementById('menu-inicio'); if (m) m.classList.remove('hidden'); }
+function cerrarMenuInicio() { const m = document.getElementById('menu-inicio'); if (m) m.classList.add('hidden'); }
+(function () {
+    ajustarCabecera('inicio'); renderInicio();
+    setInterval(function () { const v = document.getElementById('vista-inicio'); if (v && !v.classList.contains('hidden')) renderInicio(); }, 4000);
 })();
 </script>
 <script src="asistente.js?v=2026-10-24-b"></script>

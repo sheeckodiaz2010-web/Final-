@@ -2269,15 +2269,16 @@ function actualizarContadorClientesUI() {
     renderListaClientesInicio();
 }
 
-// ---- Días de visita (1=Lun ... 5=Vie) ----
+// ---- Días de visita (1=Lun ... 6=Sáb) ----
 const DIAS_SEM = [
     { n: 1, corto: 'Lun', largo: 'Lunes' },
     { n: 2, corto: 'Mar', largo: 'Martes' },
     { n: 3, corto: 'Mié', largo: 'Miércoles' },
     { n: 4, corto: 'Jue', largo: 'Jueves' },
-    { n: 5, corto: 'Vie', largo: 'Viernes' }
+    { n: 5, corto: 'Vie', largo: 'Viernes' },
+    { n: 6, corto: 'Sáb', largo: 'Sábado' }
 ];
-function diaHoy() { const d = new Date().getDay(); return (d >= 1 && d <= 5) ? d : 'todos'; }
+function diaHoy() { const d = new Date().getDay(); return (d >= 1 && d <= 6) ? d : 'todos'; }
 let diaFiltroClientes = diaHoy();
 let ultimoDiaRevisado = new Date().toDateString();
 

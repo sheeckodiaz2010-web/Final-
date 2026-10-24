@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visor de la nube</title>
+<style>
+body{font-family:-apple-system,system-ui,sans-serif;margin:0 auto;padding:16px;background:#f3f4f6;color:#111827;max-width:480px}
+h2{margin:4px 0}p{font-size:13px;color:#6b7280}
+input,button{width:100%;box-sizing:border-box;font-size:16px;border-radius:12px;padding:12px;margin-top:8px;border:1.5px solid #d1d5db}
+button{background:#2563eb;color:#fff;border:0;font-weight:700}
+details{background:#fff;border-radius:12px;margin-top:8px;padding:10px 12px;border:1px solid #e5e7eb}
+summary{font-weight:700;font-size:14px}
+.v{border-top:1px solid #f3f4f6;padding:8px 0;font-size:13px}.v small{color:#6b7280;display:block}
+</style></head><body>
+<h2>Visor de la nube</h2>
+<p>Solo lectura: no modifica ni borra nada. Escribe el mismo teléfono y contraseña que usas en la app.</p>
+<input id="tel" placeholder="Teléfono" inputmode="tel" autocomplete="off">
+<input id="pw" type="password" placeholder="Contraseña" autocomplete="off">
+<button onclick="ver()">Ver ventas en la nube</button>
+<div id="out" style="margin-top:12px;font-size:14px"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const cfg={apiKey:"AIzaSyBgewMDUwJgixTcNP9-L-_cDi2-qUCefxc",authDomain:"yimi-pos.firebaseapp.com",projectId:"yimi-pos",storageBucket:"yimi-pos.firebasestorage.app",messagingSenderId:"424267757246",appId:"1:424267757246:web:cb334f8da8d1e7488310ef"};
+const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+async function hash(s){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('digar|'+s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function ver(){
+  const out=$('out');out.textContent='Conectando…';
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(cfg);
+    const id=await hash($('tel').value.trim()+'|'+$('pw').value);
+    const snap=await firebase.firestore().collection('pos_datos').doc(id).get();
+    if(!snap.exists){out.textContent='No hay datos con ese teléfono y contraseña.';return;}
+    const d=snap.data(),T=d.transacciones||[];window._d=d;
+    const act=d.actualizado&&d.actualizado.toDate?d.actualizado.toDate().toLocaleString():'?';
+    const dias={};T.forEach(t=>{const f=t.fechaStr||'sin fecha';(dias[f]=dias[f]||[]).push(t);});
+    let h=`<p><b>Última escritura en la nube:</b> ${E(act)}<br><b>Total de movimientos:</b> ${T.length}</p>`;
+    Object.keys(dias).sort().reverse().slice(0,30).forEach(f=>{
+      const L=dias[f],tot=L.reduce((a,t)=>a+(Number(t.monto)||0),0);
+      h+=`<details><summary>${E(f)} · ${L.length} mov. · $${tot.toFixed(2)}</summary>`+L.map(t=>`<div class="v"><b>${E(t.tipo||'')} ${E(t.clienteNombre||'')}</b> · $${(Number(t.monto)||0).toFixed(2)}<small>${E(t.fecha||'')}${t.esCredito?' · crédito':''}</small><small>${E((t.items||[]).map(i=>i.cant+'x '+i.nombre).join(', '))}</small></div>`).join('')+`</details>`;
+    });
+    h+=`<button onclick="guardar()">Guardar copia completa (.json)</button>`;
+    out.innerHTML=h;
+  }catch(e){out.textContent='Error: '+(e.message||e);}
+}
+async function guardar(){
+  const d=window._d,txt=JSON.stringify({productos:d.productos,clientes:d.clientes,transacciones:d.transacciones,configTicket:d.configTicket});
+  const f=new File([txt],'copia-nube-'+new Date().toISOString().slice(0,10)+'.json',{type:'application/json'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return;}}catch(e){}
+  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.click();
+}
+</script></body></html>

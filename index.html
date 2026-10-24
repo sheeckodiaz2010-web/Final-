@@ -124,8 +124,8 @@ body{font-variant-numeric:tabular-nums;letter-spacing:-.005em;animation:appIn .3
 .rounded-xl{border-radius:14px}
 input,select,textarea{font-size:16px}
 .font-black,.font-extrabold{letter-spacing:-.01em}
-#banner-offline{position:fixed;top:0;left:0;right:0;z-index:9998;padding:calc(6px + env(safe-area-inset-top,0px)) 12px 6px;background:#b45309;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-align:center;transform:translateY(-110%);transition:transform .25s}
-#banner-offline.on{transform:none}
+#banner-offline{position:fixed;top:var(--hdr-h,96px);left:0;right:0;z-index:25;padding:5px 12px;background:#b45309;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s}
+#banner-offline.on{opacity:1}
 .mapd{position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;border:1px solid #d1d5db;border-radius:16px;-webkit-user-select:none;user-select:none}
 .mapd-grid{position:absolute;inset:0;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:48px 48px;opacity:.55}
 .mapd-tl,.mapd-pl{position:absolute;inset:0;overflow:hidden}
@@ -177,12 +177,12 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 </div>
                 <div class="p-5 bg-white">
                     <label class="text-xs font-semibold text-gray-500">Teléfono</label>
-                    <input type="tel" id="login-telefono" placeholder="861 123 4567" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
+                    <input type="tel" id="login-telefono" autocomplete="username" placeholder="861 123 4567" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
                     <label class="text-xs font-semibold text-gray-500">Contraseña</label>
-                    <input type="password" id="login-password" placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
+                    <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
                     <div id="login-confirmar-wrap" class="hidden">
                         <label class="text-xs font-semibold text-gray-500">Confirmar contraseña</label>
-                        <input type="password" id="login-password-confirmar" placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
+                        <input type="password" id="login-password-confirmar" autocomplete="new-password" placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
                     </div>
                     <p id="login-error" class="text-xs text-red-600 mb-2 hidden"></p>
                     <button onclick="intentarLogin()" id="login-btn" class="w-full text-white font-bold py-3 rounded-xl text-sm bg-blue-600">Iniciar sesión</button>
@@ -195,9 +195,8 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 
     <!-- BARRA SUPERIOR + HEADER (juntos y fijos arriba, así el reloj siempre se ve) -->
     <div id="barra-superior-fija" style="position:sticky;top:0;z-index:30;">
-    <div class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-between items-center">
+    <div class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-center items-center">
         <span id="reloj-app" style="font-size:15px;font-weight:800;letter-spacing:.2px;font-variant-numeric:tabular-nums;" aria-label="Hora actual"></span>
-        <button onclick="copiarCodigoFuente(this)" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-[11px] font-bold">Copiar Código</button>
     </div>
 
     <!-- HEADER -->
@@ -261,7 +260,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </button>
             <div id="barra-buscar-clientes" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
                 <div class="relative">
-                    <input type="text" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
+                    <input autocomplete="off" type="text" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
                 </div>
                 <div id="chips-dias-clientes" style="display:flex;gap:6px;overflow-x:auto;padding-top:8px;padding-bottom:2px"></div>
             </div>
@@ -309,15 +308,12 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 
         <!-- VISTA VENTA (solo productos) -->
         <div id="vista-venta" class="hidden space-y-3">
-            <div class="flex gap-2 items-center">
+            <div class="flex gap-2 items-center" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
                 <div class="relative flex-1">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">🔍</span>
-                    <input type="text" id="buscador-venta" placeholder="Buscar producto..." class="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="toggleLimpiarBuscadorVenta()">
+                    <input autocomplete="off" type="text" id="buscador-venta" placeholder="Buscar producto..." class="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="toggleLimpiarBuscadorVenta()">
                     <button id="btn-limpiar-buscador-venta" onclick="limpiarBuscadorVenta()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden" type="button" aria-label="Limpiar búsqueda">✕</button>
                 </div>
-                <button onclick="abrirEscanerQR()" class="bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-1 active:scale-95 transition" title="Escanear pedido QR">
-                    📷
-                </button>
                 <button onclick="alternarModoVista()" id="btn-modo-vista" class="bg-white border border-gray-200 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 shadow-sm flex items-center gap-1 active:scale-95 transition">
                     <span id="icono-vista-modo">🔲</span> <span id="texto-vista-modo" class="text-xs">Grid</span>
                 </button>
@@ -388,8 +384,8 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 </div>
             </div>
 
-            <div class="relative">
-                <input type="text" id="buscador-inventario" placeholder="Ítem, valor o código" class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
+            <div class="relative" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
+                <input autocomplete="off" type="text" id="buscador-inventario" placeholder="Ítem, valor o código" class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
             </div>
             <div id="lista-inventario" class="space-y-2"></div>
         </div>
@@ -414,11 +410,11 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <span class="text-[10px] text-gray-400 block">Desde</span>
-                        <input type="date" id="filtro-fecha-desde" onchange="renderTransacciones()" class="w-full p-2 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-600">
+                        <input autocomplete="off" type="date" id="filtro-fecha-desde" onchange="renderTransacciones()" class="w-full p-2 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-600">
                     </div>
                     <div>
                         <span class="text-[10px] text-gray-400 block">Hasta</span>
-                        <input type="date" id="filtro-fecha-hasta" onchange="renderTransacciones()" class="w-full p-2 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-600">
+                        <input autocomplete="off" type="date" id="filtro-fecha-hasta" onchange="renderTransacciones()" class="w-full p-2 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-600">
                     </div>
                 </div>
             </div>
@@ -607,11 +603,11 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <input type="hidden" id="form-cliente-id">
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Nombre del negocio o cliente</label>
-                <input type="text" id="form-cliente-nombre" placeholder="Ej. Tienda Pancho" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="form-cliente-nombre" placeholder="Ej. Tienda Pancho" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Dirección</label>
-                <input type="text" id="form-cliente-dir" placeholder="Ej. Av. Benito Juárez #123" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="form-cliente-dir" placeholder="Ej. Av. Benito Juárez #123" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Ubicación en el mapa</label>
@@ -623,7 +619,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Teléfono</label>
-                <input type="text" id="form-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="form-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Días de visita (puedes elegir más de uno)</label>
@@ -656,7 +652,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Contraseña</label>
-                <input type="password" id="borrar-password" autocomplete="off" class="w-full p-3 border rounded-xl text-sm" onkeydown="if(event.key==='Enter')validarBorrarTodo()">
+                <input type="password" id="borrar-password" autocomplete="new-password" class="w-full p-3 border rounded-xl text-sm" onkeydown="if(event.key==='Enter')validarBorrarTodo()">
             </div>
             <p id="borrar-error" class="text-xs text-red-600 hidden"></p>
             <button onclick="validarBorrarTodo()" class="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Continuar</button>
@@ -672,7 +668,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <button onclick="cerrarSelectorCliente()" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <button onclick="abrirClienteRapido()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">➕ Agregar cliente rápido</button>
-            <input type="text" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
+            <input autocomplete="off" type="text" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
             <div id="lista-clientes-seleccion" class="space-y-2 overflow-y-auto" style="flex:1;min-height:0"></div>
         </div>
     </div>
@@ -686,15 +682,15 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Nombre del negocio o cliente *</label>
-                <input type="text" id="rapido-cliente-nombre" placeholder="Ej. Tienda Pancho" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="rapido-cliente-nombre" placeholder="Ej. Tienda Pancho" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Dirección (opcional)</label>
-                <input type="text" id="rapido-cliente-dir" placeholder="Ej. Av. Benito Juárez #123" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="rapido-cliente-dir" placeholder="Ej. Av. Benito Juárez #123" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Teléfono (opcional)</label>
-                <input type="text" id="rapido-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="rapido-cliente-tel" placeholder="Ej. 861..." class="w-full p-3 border rounded-xl text-sm">
             </div>
             <button onclick="guardarClienteRapido()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md mt-2">Guardar y usar en esta venta</button>
         </div>
@@ -730,15 +726,15 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-500">Costo unitario (sin impuestos)</label>
-                    <input type="number" inputmode="decimal" step="0.01" min="0" id="cn-costo" oninput="calcGananciaProdNuevo()" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-semibold focus:outline-none focus:border-purple-600">
+                    <input autocomplete="off" type="number" inputmode="decimal" step="0.01" min="0" id="cn-costo" oninput="calcGananciaProdNuevo()" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-semibold focus:outline-none focus:border-purple-600">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-500">Cantidad comprada</label>
-                    <input type="number" inputmode="numeric" min="1" id="cn-cant" value="1" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-semibold focus:outline-none focus:border-purple-600">
+                    <input autocomplete="off" type="number" inputmode="numeric" min="1" id="cn-cant" value="1" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-semibold focus:outline-none focus:border-purple-600">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-500">Precio de venta</label>
-                    <input type="number" inputmode="decimal" step="0.01" min="0" id="cn-precio" oninput="calcGananciaProdNuevo()" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-semibold focus:outline-none focus:border-purple-600">
+                    <input autocomplete="off" type="number" inputmode="decimal" step="0.01" min="0" id="cn-precio" oninput="calcGananciaProdNuevo()" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-semibold focus:outline-none focus:border-purple-600">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-500">Ganancia por pieza</label>
@@ -776,16 +772,16 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <div class="grid grid-cols-2 gap-2">
                     <div class="space-y-1">
                         <label class="text-[10px] font-semibold text-gray-500">Fecha</label>
-                        <input type="date" id="compra-fecha-input" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                        <input autocomplete="off" type="date" id="compra-fecha-input" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-semibold text-gray-500">Folio (opcional)</label>
-                        <input type="text" id="compra-folio-input" placeholder="Ej. S99 19750" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                        <input autocomplete="off" type="text" id="compra-folio-input" placeholder="Ej. S99 19750" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
                     </div>
                 </div>
                 <div class="space-y-1">
                     <label class="text-[10px] font-semibold text-gray-500">Proveedor (opcional)</label>
-                    <input type="text" id="compra-proveedor-input" placeholder="Ej. Castillo del Dulce" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
+                    <input autocomplete="off" type="text" id="compra-proveedor-input" placeholder="Ej. Castillo del Dulce" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[10px] font-semibold text-gray-500">Pagado con</label>
@@ -817,11 +813,11 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <div class="grid grid-cols-2 gap-2">
                         <div class="space-y-1">
                             <label class="text-[10px] font-semibold text-gray-500">IEPS $</label>
-                            <input type="number" step="0.01" id="compra-ieps-input" value="0" oninput="renderFacturaCompra()" class="w-full p-2 bg-white border rounded-xl text-xs font-bold">
+                            <input autocomplete="off" type="number" step="0.01" id="compra-ieps-input" value="0" oninput="renderFacturaCompra()" class="w-full p-2 bg-white border rounded-xl text-xs font-bold">
                         </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-semibold text-gray-500">IVA $</label>
-                            <input type="number" step="0.01" id="compra-iva-input" value="0" oninput="renderFacturaCompra()" class="w-full p-2 bg-white border rounded-xl text-xs font-bold">
+                            <input autocomplete="off" type="number" step="0.01" id="compra-iva-input" value="0" oninput="renderFacturaCompra()" class="w-full p-2 bg-white border rounded-xl text-xs font-bold">
                         </div>
                     </div>
                     <div class="flex justify-between font-bold text-base border-t pt-2">
@@ -853,7 +849,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <label class="text-xs font-semibold text-gray-500">Costo del flete (se reparte en el costo de cada producto)</label>
                     <div class="flex items-center gap-2">
                         <span class="text-sm font-bold text-gray-500">$</span>
-                        <input type="number" inputmode="decimal" step="0.01" min="0" id="compra-flete-input" placeholder="0.00" oninput="renderCompraPaso2()" class="flex-1 p-3 border rounded-xl text-base font-bold">
+                        <input autocomplete="off" type="number" inputmode="decimal" step="0.01" min="0" id="compra-flete-input" placeholder="0.00" oninput="renderCompraPaso2()" class="flex-1 p-3 border rounded-xl text-base font-bold">
                     </div>
                     <p class="text-[11px] text-gray-500" id="compra-flete-pct-txt">Sin flete. Escribe el costo del flete si la factura lo trae.</p>
                 </div>
@@ -888,7 +884,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                         </div>
                         <div class="flex items-center gap-2 text-xs text-gray-500">
                             <span>Otro:</span>
-                            <input type="number" step="1" min="0" id="compra-mg-otro" placeholder="28" oninput="setCompraMargenOtro()" class="w-20 p-2 border rounded-lg text-center font-bold">
+                            <input autocomplete="off" type="number" step="1" min="0" id="compra-mg-otro" placeholder="28" oninput="setCompraMargenOtro()" class="w-20 p-2 border rounded-lg text-center font-bold">
                             <span>%</span>
                         </div>
                     </div>
@@ -902,7 +898,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-semibold text-gray-500">Tu precio de venta</label>
-                        <input type="number" step="0.5" id="compra-p-input" oninput="actualizarMargenRealCompra()" class="w-full p-3 border rounded-xl text-center text-lg font-bold">
+                        <input autocomplete="off" type="number" step="0.5" id="compra-p-input" oninput="actualizarMargenRealCompra()" class="w-full p-3 border rounded-xl text-center text-lg font-bold">
                         <p class="text-[11px] text-gray-500 text-center" id="compra-p-mg-real"></p>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
@@ -928,27 +924,27 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Nombre del negocio</label>
-                <input type="text" id="config-ticket-nombre" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="text" id="config-ticket-nombre" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Dirección / ciudad</label>
-                <input type="text" id="config-ticket-dir" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="text" id="config-ticket-dir" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Teléfono</label>
-                <input type="text" id="config-ticket-tel" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="text" id="config-ticket-tel" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">RFC (opcional)</label>
-                <input type="text" id="config-ticket-rfc" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="text" id="config-ticket-rfc" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Mensaje de pie de página</label>
-                <input type="text" id="config-ticket-pie" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="text" id="config-ticket-pie" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Atendió (tu nombre)</label>
-                <input type="text" id="config-ticket-atendio" placeholder="Ej. Sergio" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="text" id="config-ticket-atendio" placeholder="Ej. Sergio" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:border-blue-600">
             </div>
             <div class="space-y-2 pt-1">
                 <span class="text-xs font-semibold text-gray-500">Mostrar en el ticket:</span>
@@ -975,7 +971,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 </div>
                 <p id="drive-ultimo" style="font-size:11px;color:#6b7280;margin:0">Aún no hay respaldos en Drive.</p>
                 <input id="drive-url" type="url" inputmode="url" autocomplete="off" placeholder="Enlace de tu Apps Script (termina en /exec)" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
-                <input id="drive-clave" type="password" autocomplete="off" placeholder="Clave secreta" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
+                <input id="drive-clave" type="password" autocomplete="new-password" placeholder="Clave secreta" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
                 <div style="display:flex;gap:8px;align-items:center">
                     <span style="font-size:12px;font-weight:700;color:#374151;flex:none">Respaldar cada</span>
                     <select id="drive-horas" onchange="driveGuardarCfg()" style="flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:10px;font-size:13px;background:#fff">
@@ -1046,7 +1042,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <button onclick="cerrarModal('modal-categorias')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
             <div class="flex gap-2">
-                <input id="cat-nueva-input" type="text" placeholder="Nueva categoría (ej. Dulces)" class="flex-1 p-3 border rounded-xl text-sm">
+                <input autocomplete="off" id="cat-nueva-input" type="text" placeholder="Nueva categoría (ej. Dulces)" class="flex-1 p-3 border rounded-xl text-sm">
                 <button onclick="agregarCategoriaDesdeGestor()" class="bg-blue-600 text-white font-bold px-4 rounded-xl text-sm">Agregar</button>
             </div>
             <div id="cats-lista" class="overflow-y-auto flex-1"></div>
@@ -1059,7 +1055,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <h3 class="font-bold text-base" id="asignar-cat-titulo">Productos</h3>
                 <button onclick="cerrarModal('modal-asignar-cat')" class="text-gray-400 font-bold text-xl">×</button>
             </div>
-            <input id="asignar-cat-buscar" type="text" placeholder="Buscar producto..." oninput="renderAsignarCategoria()" class="w-full p-3 border rounded-xl text-sm">
+            <input autocomplete="off" id="asignar-cat-buscar" type="text" placeholder="Buscar producto..." oninput="renderAsignarCategoria()" class="w-full p-3 border rounded-xl text-sm">
             <div id="asignar-cat-lista" class="overflow-y-auto flex-1"></div>
             <button onclick="guardarAsignacionCategoria()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Guardar</button>
         </div>
@@ -1156,7 +1152,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <div id="detalle-credito-lista" class="space-y-1 text-xs text-gray-500 max-h-32 overflow-y-auto border-t border-b py-2"></div>
             <div class="space-y-2 pt-1">
                 <label class="text-xs font-semibold text-gray-500">Monto que te está pagando ahora:</label>
-                <input type="number" id="input-abono-credito" class="w-full p-3 bg-gray-50 border rounded-xl text-center text-xl font-bold focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="number" id="input-abono-credito" class="w-full p-3 bg-gray-50 border rounded-xl text-center text-xl font-bold focus:outline-none focus:border-blue-600">
             </div>
             <button onclick="registrarPagoCredito()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-1">Registrar pago recibido</button>
         </div>
@@ -1173,7 +1169,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <p class="text-xs font-semibold text-gray-500 mb-2">¿Cuántas piezas?</p>
                 <div class="flex items-center justify-center gap-4">
                     <button type="button" onclick="cambiarCantModal(-1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl">−</button>
-                    <input type="number" id="cant-prod-input" min="1" value="1" class="w-20 text-center text-3xl font-black border rounded-xl py-2 focus:outline-none focus:border-blue-600">
+                    <input autocomplete="off" type="number" id="cant-prod-input" min="1" value="1" class="w-20 text-center text-3xl font-black border rounded-xl py-2 focus:outline-none focus:border-blue-600">
                     <button type="button" onclick="cambiarCantModal(1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl">+</button>
                 </div>
             </div>
@@ -1254,7 +1250,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <label class="text-xs font-semibold text-gray-500">Cantidad</label>
                 <div class="flex items-center justify-between bg-gray-50 p-3 rounded-2xl border border-gray-200">
                     <button onclick="cambiarCantConfigItem(-1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">-</button>
-                    <input id="cfg-item-cant" type="text" inputmode="numeric" pattern="[0-9]*" value="1" onchange="fijarCantConfigItem(this.value)" style="width:110px;text-align:center;font-size:30px;font-weight:900;border:1px solid #e5e7eb;border-radius:12px;padding:4px 0;background:#fff;color:#111827;">
+                    <input autocomplete="off" id="cfg-item-cant" type="text" inputmode="numeric" pattern="[0-9]*" value="1" onchange="fijarCantConfigItem(this.value)" style="width:110px;text-align:center;font-size:30px;font-weight:900;border:1px solid #e5e7eb;border-radius:12px;padding:4px 0;background:#fff;color:#111827;">
                     <button onclick="cambiarCantConfigItem(1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">+</button>
                 </div>
             </div>
@@ -1284,7 +1280,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="w-full space-y-2">
                 <label class="text-xs font-semibold text-gray-500">Efectivo recibido:</label>
-                <input type="number" id="pago-efectivo" placeholder="0.00" oninput="calcularCambioModal()" class="w-full p-3 bg-gray-50 border rounded-xl text-center text-xl font-bold focus:outline-none focus:border-blue-600">
+                <input autocomplete="off" type="number" id="pago-efectivo" placeholder="0.00" oninput="calcularCambioModal()" class="w-full p-3 bg-gray-50 border rounded-xl text-center text-xl font-bold focus:outline-none focus:border-blue-600">
                 <div class="flex justify-between text-base font-bold pt-1 px-1" id="pago-cambio-fila">
                     <span>Cambio:</span>
                     <span id="pago-cambio-txt" class="text-emerald-600">$0.00</span>
@@ -1358,8 +1354,8 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <button type="button" id="btn-tipo-gasto" onclick="cambiarTipoTransaccionModal('Gasto')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-red-600 text-white">Gasto</button>
                 <button type="button" id="btn-tipo-ingreso" onclick="cambiarTipoTransaccionModal('Ingreso')" class="flex-1 py-2 text-xs font-bold rounded-lg text-gray-600">Ingreso</button>
             </div>
-            <input type="number" step="0.01" id="trans-monto" placeholder="$ 0.00" class="w-full text-center text-3xl font-black text-gray-800 border-none bg-transparent focus:outline-none">
-            <input type="text" id="trans-desc" placeholder="Agregar descripción..." class="w-full p-3 bg-gray-50 border rounded-xl text-sm">
+            <input autocomplete="off" type="number" step="0.01" id="trans-monto" placeholder="$ 0.00" class="w-full text-center text-3xl font-black text-gray-800 border-none bg-transparent focus:outline-none">
+            <input autocomplete="off" type="text" id="trans-desc" placeholder="Agregar descripción..." class="w-full p-3 bg-gray-50 border rounded-xl text-sm">
             <div class="space-y-1">
                 <span class="text-xs font-semibold text-gray-500">Categoría:</span>
                 <div class="grid grid-cols-4 gap-2 text-center text-[10px] font-bold">
@@ -1369,7 +1365,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <button type="button" onclick="seleccionarCatTrans('Nómina', this)" class="cat-btn p-2 border rounded-xl bg-gray-50 border-gray-200 text-gray-600 flex flex-col items-center gap-1"><span>👥</span> Nómina</button>
                 </div>
             </div>
-            <input type="date" id="trans-fecha-input" class="w-full p-3 bg-gray-50 border rounded-xl text-sm">
+            <input autocomplete="off" type="date" id="trans-fecha-input" class="w-full p-3 bg-gray-50 border rounded-xl text-sm">
             <button onclick="guardarTransaccionManual()" class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Guardar transacción</button>
         </div>
     </div>
@@ -1415,7 +1411,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <button onclick="toggleAgregarEditVenta()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-2xl text-sm">➕ Agregar producto</button>
 
             <div id="edit-venta-panel-agregar" class="hidden space-y-2 border rounded-2xl p-3 bg-gray-50">
-                <input type="text" id="edit-venta-buscar" oninput="renderListaAgregarEdit()" placeholder="🔍 Buscar producto o código" class="w-full p-3 border rounded-xl text-sm bg-white">
+                <input autocomplete="off" type="text" id="edit-venta-buscar" oninput="renderListaAgregarEdit()" placeholder="🔍 Buscar producto o código" class="w-full p-3 border rounded-xl text-sm bg-white">
                 <div id="edit-venta-lista-agregar" class="space-y-1.5 max-h-56 overflow-y-auto"></div>
             </div>
 
@@ -1445,19 +1441,19 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <input type="hidden" id="form-prod-id">
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Nombre del producto</label>
-                <input type="text" id="form-prod-nombre" placeholder="Ej. Snickers" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="text" id="form-prod-nombre" placeholder="Ej. Snickers" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Código / SKU (para QR del catálogo)</label>
-                <input type="text" id="form-prod-sku" placeholder="Ej. D-0047 — vacío = automático" class="w-full p-3 border rounded-xl text-sm uppercase">
+                <input autocomplete="off" type="text" id="form-prod-sku" placeholder="Ej. D-0047 — vacío = automático" class="w-full p-3 border rounded-xl text-sm uppercase">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-blue-600">Precio de venta al cliente ($)</label>
-                <input type="number" step="0.01" id="form-prod-precio" placeholder="0.00" oninput="actualizarMargenForm()" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="number" step="0.01" id="form-prod-precio" placeholder="0.00" oninput="actualizarMargenForm()" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Costo unitario de compra, con impuestos ($)</label>
-                <input type="number" step="0.01" id="form-prod-costo" placeholder="0.00" oninput="actualizarMargenForm()" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="number" step="0.01" id="form-prod-costo" placeholder="0.00" oninput="actualizarMargenForm()" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm space-y-1.5">
                 <div class="flex justify-between"><span class="text-gray-500">Ganancia</span><span id="form-prod-gana" class="font-bold text-gray-500">--</span></div>
@@ -1466,7 +1462,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Stock actual (Cantidad)</label>
-                <input type="number" id="form-prod-stock" placeholder="0" class="w-full p-3 border rounded-xl text-sm">
+                <input autocomplete="off" type="number" id="form-prod-stock" placeholder="0" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Categoría</label>
@@ -4197,8 +4193,8 @@ function renderFacturaCompra() {
                     <button type="button" class="text-red-500 font-bold px-1" data-rm="${idx}">✕</button>
                 </div>
                 <div class="flex items-center gap-2 text-gray-500">
-                    Cant <input type="number" value="${item.cant}" class="w-14 p-1 border rounded text-center font-bold bg-white">
-                    Costo $ <input type="number" step="0.01" value="${item.costoUnitario}" class="w-20 p-1 border rounded text-center font-bold bg-white">
+                    Cant <input autocomplete="off" type="number" value="${item.cant}" class="w-14 p-1 border rounded text-center font-bold bg-white">
+                    Costo $ <input autocomplete="off" type="number" step="0.01" value="${item.costoUnitario}" class="w-20 p-1 border rounded text-center font-bold bg-white">
                     <span class="font-bold text-purple-700 ml-auto">${money(sub)}</span>
                 </div>
             `;
@@ -7086,7 +7082,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-24-e';
+const APP_BUILD = '2026-10-24-f';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7616,6 +7612,35 @@ setInterval(driveRevisar, 5 * 60 * 1000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(driveRevisar, 1500); });
 window.addEventListener('online', function () { setTimeout(driveRevisar, 2000); });
 setTimeout(driveRevisar, 20000);
+</script>
+<script>
+// Que el teléfono NO ofrezca contraseñas guardadas en buscadores y demás campos: solo en los de acceso.
+(function () {
+    var ACCESO = { 'login-telefono': 1, 'login-password': 1, 'login-password-confirmar': 1, 'precios-cat-email': 1, 'precios-cat-pass': 1, 'nuevos-cat-email': 1, 'nuevos-cat-pass': 1 };
+    function proteger(el) {
+        try {
+            if (!el || !el.tagName) return;
+            var t = el.tagName;
+            if (t !== 'INPUT' && t !== 'TEXTAREA') return;
+            if (el.id && ACCESO[el.id]) return;
+            var ty = (el.getAttribute('type') || 'text').toLowerCase();
+            if (['checkbox', 'radio', 'file', 'range', 'hidden', 'button', 'submit'].indexOf(ty) >= 0) return;
+            if (ty === 'password') { if (el.getAttribute('autocomplete') !== 'new-password') el.setAttribute('autocomplete', 'new-password'); }
+            else if (!el.hasAttribute('autocomplete') || el.getAttribute('autocomplete') !== 'off') el.setAttribute('autocomplete', 'off');
+            el.setAttribute('data-lpignore', 'true'); el.setAttribute('data-1p-ignore', 'true'); el.setAttribute('data-bwignore', 'true');
+        } catch (e) {}
+    }
+    function todos(raiz) {
+        if (!raiz || !raiz.querySelectorAll) return;
+        if (raiz.tagName === 'INPUT' || raiz.tagName === 'TEXTAREA') proteger(raiz);
+        raiz.querySelectorAll('input,textarea').forEach(proteger);
+    }
+    todos(document);
+    try {
+        new MutationObserver(function (ms) { ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) todos(n); }); }); })
+            .observe(document.documentElement, { childList: true, subtree: true });
+    } catch (e) {}
+})();
 </script>
 <script src="asistente.js?v=2026-10-24-b"></script>
 </body></html>

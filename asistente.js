@@ -1,11 +1,11 @@
 /* Asistente DIGAR v4 - modulo independiente. Lee los datos del POS desde localStorage (yimi_*).
    Se activa con: <script src="asistente.js"></script> antes de </body>.
-   Se abre con abrirAsistente() (opcion "Asistente" en Configuraciones). No es IA generativa:
-   son reglas sobre tus datos que aprenden de tus ventas y de lo que le respondes. Gratis y sin limites. */
+   Se abre con abrirAsistente() (opcion "Asistente" en Configuraciones). Por defecto son reglas sobre tus datos
+   (gratis y sin limites); si pegas una clave de Gemini o Groq en Informe, el chat PIENSA con IA real usando tus datos. */
 (function () {
   'use strict';
   if (typeof window === 'undefined' || window.__asistenteDigar) return;
-  const VER = 'v4 2026-10-22';
+  const VER = 'v5 2026-10-24';
   const D = 864e5, MEMK = 'yimi_ia_mem';
   const LS = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const norm = s => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -569,7 +569,7 @@
     // --- producto ---
     if (p) return R(ficha(A, p, n) + (otros.length ? '\n\nTambién encontré: ' + otros.map(x => x.r.nombre).join(', ') + '.' : ''), ['¿Cuánto pido de ' + p.nombre + '?', '¿Subo el precio de ' + p.nombre + '?']);
 
-    if (mem.url && navigator.onLine) return null; // lo contesta la IA en linea
+    if (iaOn() && !SIN_IA) return null; // lo contesta la IA en linea
     // --- no entendi: sugiero lo mas parecido y lo guardo para aprender ---
     const KW = { ventas: 'Cómo voy hoy', margen: 'Menor margen', pedido: '¿Qué pido?', flete: '¿Qué pido?', deuda: '¿Quién me debe?', clientes: 'Mejores clientes', agotados: 'Productos agotados', reporte: 'Generar reporte', ruta: 'Ruta de hoy', plan: '¿Qué cargo hoy?', precio: '¿Qué subo de precio?', combos: 'Combos', ganancia: 'Cómo voy hoy', parados: 'Productos parados' };
     const sug = []; TOK(q).forEach(w => { if (w.length < 4) return; Object.keys(KW).forEach(k => { if (lev(w, k) <= (k.length >= 7 ? 2 : 1) && sug.indexOf(KW[k]) < 0) sug.push(KW[k]); }); });
@@ -921,17 +921,84 @@
     return fin(r, null, {});
   }
 
-  async function preguntarIA(q) {
-    try {
-      const A = analizar();
-      const top = A.orden.slice(0, 15).map(r => r.nombre + ': ' + r.u28 + ' pzas, stock ' + r.stock + ', margen ' + (r.margen != null ? Math.round(r.margen) + '%' : '?')).join('; ');
-      const r = await fetch(mem.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pregunta: q, resumen: resumenPeriodo(A, periodo('hoy', A.now)) + '\nTop: ' + top, precios_otras_tiendas: mem.precios }) });
-      const j = await r.json();
-      return j.respuesta || 'No recibí respuesta de la IA en línea.';
-    } catch (e) { return 'No pude conectar con la IA en línea. Revisa tu wifi.'; }
+  // ---------- IA EN LINEA (Gemini / Groq) ----------
+  function iaOn() { return !!((mem.ia && mem.ia.key) || mem.url) && navigator.onLine; }
+  function iaPropia() { return !!(mem.ia && mem.ia.key); }
+  const SYS = 'Eres el asistente del negocio DIGAR: venta de abarrotes/mercancía en ruta a tiendas y clientes comerciales en México. ' +
+    'Hablas español de México, claro y directo, como un buen socio que revisa los números. ' +
+    'Te paso los datos reales del negocio (ventas, inventario, clientes, deudas, gastos). Usa SOLO esos datos: piensa y calcula paso a paso antes de contestar, revisa los números y da cifras concretas (pesos, piezas, fechas). ' +
+    'Si algo no está en los datos, dilo y di qué dato faltaría; nunca inventes cifras. Si te piden una recomendación, da una decisión concreta y por qué. ' +
+    'Respuesta corta (máximo ~10 líneas), en texto plano sin markdown (sin asteriscos ni #), con saltos de línea y algún emoji ocasional.';
+  function contextoIA(A) {
+    const L = [], f = n => Math.round((Number(n) || 0) * 100) / 100;
+    const ahora = new Date(A.now);
+    L.push('FECHA: ' + ahora.toLocaleString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    L.push('Llevo ' + A.trAll.length + ' ventas registradas en total; abajo van los últimos 28 días.');
+    L.push('\nRESUMEN POR PERIODO:');
+    ['hoy', 'ayer', 'esta semana', 'semana pasada', 'este mes', 'mes pasado'].forEach(n => { const p = periodo(n, A.now); if (p) L.push('- ' + resumenPeriodo(A, p).split('\n')[0]); });
+    const dias = {};
+    A.tr.forEach(t => { const d = new Date(Number(t.id)), k = d.toLocaleDateString('es-MX') + ' ' + NOMD[d.getDay()].slice(0, 3); const x = dias[k] || (dias[k] = { n: 0, m: 0, g: 0 }); x.n++; x.m += Number(t.monto) || 0; x.g += Number(t.ganancia) || 0; });
+    L.push('\nVENTAS POR DÍA (ventas | monto | ganancia):');
+    Object.keys(dias).forEach(k => L.push(k + ' | ' + dias[k].n + ' | $' + f(dias[k].m) + ' | $' + f(dias[k].g)));
+    L.push('\nPRODUCTOS (nombre | stock | precio | costo | vendidas 7d | vendidas 28d | última venta | precio en otras tiendas):');
+    const prods = A.L.filter(r => r.u28 > 0 || r.stock > 0).sort((a, b) => b.u28 - a.u28 || b.stock - a.stock).slice(0, 130);
+    prods.forEach(r => { const po = mem.precios[r.id]; L.push(r.nombre + ' | ' + r.stock + ' | $' + f(r.precio) + ' | $' + f(r.costo) + ' | ' + r.u7 + ' | ' + r.u28 + ' | ' + (r.ult ? hace(r.ult, A.now) : 'nunca') + (po ? ' | otras tiendas $' + f(po.v) : '') + (r.caja ? ' | caja de ' + r.caja : '')); });
+    if (A.L.length > prods.length) L.push('(+' + (A.L.length - prods.length) + ' productos sin stock y sin ventas en 28 días)');
+    const cl = {}; (A.CL || []).forEach(c => { cl[norm(c.nombre)] = c; });
+    const C = A.C.slice().sort((a, b) => (b.debe - a.debe) || (b.total - a.total));
+    L.push('\nCLIENTES (nombre | compras | total comprado | última compra | debe | días de visita):');
+    C.filter((c, i) => i < 40 || c.debe > 0).slice(0, 70).forEach(c => { const x = cl[norm(c.nombre)]; L.push(c.nombre + ' | ' + c.compras + ' | $' + f(c.total) + ' | ' + hace(c.ult, A.now) + ' | ' + (c.debe > 0 ? '$' + f(c.debe) + ' desde ' + hace(c.desde, A.now) : '$0') + ' | ' + ((x && x.dias || []).map(n => NOMD[n]).join(',') || 'sin día') + (x && x.frecuencia === 'quincenal' ? ' (cada 15 días)' : '')); });
+    const otras = (A.todas || []).filter(t => t.tipo && t.tipo !== 'Venta' && A.now - Number(t.id) <= 28 * D);
+    if (otras.length) {
+      L.push('\nOTROS MOVIMIENTOS 28 DÍAS (gastos, pagos, etc.; fecha | tipo | monto | detalle):');
+      otras.sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 40).forEach(t => L.push(new Date(Number(t.id)).toLocaleDateString('es-MX') + ' | ' + t.tipo + ' | $' + f(t.monto) + ' | ' + (t.concepto || t.descripcion || t.categoria || t.nota || t.clienteNombre || '')));
+    }
+    return L.join('\n');
   }
+  async function preguntarIA(q, simple) {
+    const ia = mem.ia || {};
+    const seg = new AbortController(), to = setTimeout(() => seg.abort(), 30000);
+    try {
+      if (!iaPropia()) { // modo antiguo: endpoint propio (mem.url)
+        const A = analizar();
+        const top = A.orden.slice(0, 15).map(r => r.nombre + ': ' + r.u28 + ' pzas, stock ' + r.stock + ', margen ' + (r.margen != null ? Math.round(r.margen) + '%' : '?')).join('; ');
+        const r = await fetch(mem.url, { method: 'POST', signal: seg.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pregunta: q, resumen: resumenPeriodo(A, periodo('hoy', A.now)) + '\nTop: ' + top, precios_otras_tiendas: mem.precios }) });
+        const j = await r.json();
+        return j.respuesta || 'No recibí respuesta de la IA en línea.';
+      }
+      const ctx = simple ? '' : contextoIA(analizar());
+      const hist = simple ? [] : mem.chat.filter(m => m.t && m.t !== 'Pensando…').slice(-7, -1).map(m => ({ role: m.r === 'yo' ? 'user' : 'assistant', t: String(m.t).slice(0, 700) }));
+      while (hist.length && hist[0].role !== 'user') hist.shift();
+      const pregunta = (ctx ? 'DATOS DEL NEGOCIO:\n' + ctx + '\n\nPREGUNTA DEL DUEÑO: ' : '') + q;
+      let url, init, leer;
+      if (ia.prov === 'gemini') {
+        const modelo = ia.modelo || 'gemini-flash-latest';
+        url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelo + ':generateContent?key=' + encodeURIComponent(ia.key);
+        const contents = hist.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.t }] })).concat([{ role: 'user', parts: [{ text: pregunta }] }]);
+        init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ systemInstruction: { parts: [{ text: SYS }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } }) };
+        leer = j => { const c = j.candidates && j.candidates[0]; const t = c && c.content && c.content.parts ? c.content.parts.map(x => x.text || '').join('').trim() : ''; return t || (j.promptFeedback && j.promptFeedback.blockReason ? 'La IA bloqueó la pregunta (' + j.promptFeedback.blockReason + ').' : (c && c.finishReason ? 'La IA no devolvió texto (' + c.finishReason + ').' : '')); };
+      } else {
+        url = 'https://api.groq.com/openai/v1/chat/completions';
+        const messages = [{ role: 'system', content: SYS }].concat(hist.map(m => ({ role: m.role, content: m.t })), [{ role: 'user', content: pregunta }]);
+        init = { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ia.key }, body: JSON.stringify({ model: ia.modelo || 'llama-3.3-70b-versatile', messages, temperature: 0.3, max_tokens: 1200 }) };
+        leer = j => ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
+      }
+      init.signal = seg.signal;
+      const r = await fetch(url, init);
+      let j = null; try { j = await r.json(); } catch (e) {}
+      if (!r.ok) {
+        const det = (j && ((j.error && (j.error.message || j.error)) || j.message)) || '';
+        const pista = r.status === 400 || r.status === 401 || r.status === 403 ? ' Revisa que la clave esté bien copiada y sea de ' + (ia.prov === 'gemini' ? 'Gemini (Google AI Studio)' : 'Groq') + '.' : r.status === 429 ? ' Llegaste al límite gratis por minuto/día; espera un poco.' : r.status === 413 ? ' Son muchos datos para el plan gratis; intenta de nuevo en un minuto.' : '';
+        return 'La IA respondió con error ' + r.status + '.' + pista + (det ? '\n\nDetalle: ' + String(det).slice(0, 220) : '');
+      }
+      return (j && leer(j)) || 'La IA no me devolvió respuesta. Intenta de nuevo.';
+    } catch (e) {
+      return e && e.name === 'AbortError' ? 'La IA tardó más de 30 segundos y la corté. Intenta de nuevo.' : 'No pude conectar con la IA en línea (' + ((e && e.message) || 'sin detalle') + '). Revisa tu internet.';
+    } finally { clearTimeout(to); }
+  }
+  let SIN_IA = false;
 
-  window.__asistenteDigar = { analizar, insights, responder, entender: s => intencion(corregir(limpiar(s), analizar())), _ent: ENT, informe, plan, pedido, ruta, reporte, kpis, calibrar, _mem: () => mem, version: VER };
+  window.__asistenteDigar = { analizar, insights, responder, entender: s => intencion(corregir(limpiar(s), analizar())), _ent: ENT, informe, plan, pedido, ruta, reporte, kpis, calibrar, _mem: () => mem, _ctx: () => contextoIA(analizar()), version: VER };
   if (typeof document === 'undefined') return;
 
   // ---------- INTERFAZ ----------
@@ -993,6 +1060,12 @@
     h += R.sec.map(x => '<div class="ia-c"><b>' + x.ico + ' ' + esc(x.tit) + '</b><p>' + esc(x.txt) + '</p></div>').join('');
     if (mem.sinEntender.length) h += '<div class="ia-c"><b>❓ Tengo ' + mem.sinEntender.length + ' pregunta(s) que no supe contestar</b><p>Genera el reporte y súbelo a Claude para enseñarme a contestarlas.</p></div>';
     h += '<div class="ia-r"><button class="ok" data-a="reporte">📄 Generar reporte (descargar)</button><button data-a="copiar">📋 Copiar para Claude</button></div>';
+    { const ia = mem.ia || {}, st = 'width:100%;box-sizing:border-box;padding:9px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;margin-bottom:8px;background:#fff';
+      h += '<div class="ia-c"><b>🤖 IA en línea (Gemini / Groq)</b><p>' + (ia.key ? '✅ Activa con ' + (ia.prov === 'gemini' ? 'Gemini' : 'Groq') + '. ' + ((ia.modo || 'siempre') === 'dudas' ? 'Solo la uso cuando mis reglas no entienden.' : 'Todo lo que escribes en el Chat lo piensa la IA con tus datos (ventas, inventario, clientes, deudas). Los botones de sugerencia siguen usando mis reglas.') : 'Pega una clave gratis y el Chat podrá pensar, revisar y calcular con tus datos en vez de solo reglas. La clave se queda únicamente en este teléfono.') + '</p>' +
+        '<select id="ia-prov" style="' + st + '"><option value="groq"' + (ia.prov !== 'gemini' ? ' selected' : '') + '>Groq (llama 3.3, gratis)</option><option value="gemini"' + (ia.prov === 'gemini' ? ' selected' : '') + '>Gemini (Google, gratis)</option></select>' +
+        '<input id="ia-key" type="password" autocomplete="off" placeholder="' + (ia.key ? 'Clave guardada · pega otra para cambiarla' : 'Pega tu clave aquí') + '" style="' + st + '">' +
+        '<div class="ia-r"><button class="ok" data-a="ia-guardar">Guardar</button>' + (ia.key ? '<button data-a="ia-probar">Probar</button><button data-a="ia-modo">' + ((ia.modo || 'siempre') === 'dudas' ? 'Usar IA siempre' : 'Solo cuando no entiendas') + '</button><button data-a="ia-quitar">Quitar</button>' : '') + '</div>' +
+        '<p style="font-size:11px;color:#6b7280;margin:8px 0 0">Al preguntar se envían tus datos de ventas, inventario y clientes a ' + (ia.prov === 'gemini' ? 'Google' : 'Groq') + ' para que pueda contestar. Claves gratis: aistudio.google.com (Gemini) o console.groq.com (Groq).</p></div>'; }
     h += '<div class="ia-f">Se recalcula con tus ventas cada vez que lo abres. · ' + VER + '</div><div class="ia-r" style="justify-content:center"><button data-a="fab">' + (mem.fab ? 'Ocultar' : 'Mostrar') + ' botón flotante 🧠</button></div>';
     B().innerHTML = h;
   }
@@ -1020,8 +1093,16 @@
     if (!q) return;
     inp.value = '';
     mem.chat.push({ r: 'yo', t: q });
-    let r = responder(q, !!texto);
-    if (r === null) { mem.chat.push({ r: 'ia', t: 'Pensando…' }); pintarC(); const t = await preguntarIA(q); mem.chat.pop(); r = { t, chips: [] }; }
+    const directa = !texto && iaPropia() && navigator.onLine && (mem.ia.modo || 'siempre') === 'siempre';
+    let r = directa ? null : responder(q, !!texto);
+    if (r === null) {
+      mem.chat.push({ r: 'ia', t: 'Pensando…' }); pintarC();
+      const t = await preguntarIA(q); mem.chat.pop(); r = { t, chips: [] };
+      if (/^(La IA respondió con error|No pude conectar|La IA tardó|La IA no )/.test(t)) { // si falla la IA, que al menos contesten las reglas
+        SIN_IA = true; let r2 = null; try { r2 = responder(q, !!texto); } catch (e) {} SIN_IA = false;
+        if (r2) r = { t: t + '\n\nMientras tanto, con mis reglas:\n' + r2.t, chips: r2.chips || [] };
+      }
+    }
     if (r.t.indexOf('Eso todavía no lo sé contestar') !== 0) { const kq2 = norm(q); mem.sinEntender = mem.sinEntender.filter(x => norm(x.q) !== kq2); }
     mem.chat.push({ r: 'ia', t: r.t, chips: r.chips }); mem.chat = mem.chat.slice(-40); save(); pintarC();
   }
@@ -1037,6 +1118,10 @@
     if (a === 'reporte') { descargarReporte(); return; }
     if (a === 'enviar') return enviar();
     if (a === 'chip') return enviar(b.dataset.q);
+    if (a === 'ia-guardar') { const k = (pan.querySelector('#ia-key').value || '').trim(), pv = pan.querySelector('#ia-prov').value; if (!k && !(mem.ia && mem.ia.key)) return alert('Pega primero tu clave.'); mem.ia = Object.assign({ modo: 'siempre' }, mem.ia || {}, { prov: pv }); if (k) { mem.ia.key = k; delete mem.ia.modelo; } save(); return pintarI(); }
+    if (a === 'ia-quitar') { delete mem.ia; save(); return pintarI(); }
+    if (a === 'ia-modo') { if (mem.ia) { mem.ia.modo = (mem.ia.modo || 'siempre') === 'siempre' ? 'dudas' : 'siempre'; save(); } return pintarI(); }
+    if (a === 'ia-probar') { b.disabled = true; b.textContent = 'Probando…'; preguntarIA('Responde solo con la palabra OK', true).then(t => { b.disabled = false; b.textContent = 'Probar'; alert(/^OK/i.test(t.trim()) ? '✅ La IA responde bien.' : t); }); return; }
     if (a === 'fab') { mem.fab = !mem.fab; save(); actualizarFab(); return pintarI(); }
     if (a === 'hecho') { mem.hechas++; mem.desc[k] = Date.now(); fb(k, 'ok'); }
     if (a === 'skip') { mem.desc[k] = Date.now(); const it = cache.filter(x => x.key === k)[0]; if (it && !it.preg) { mem.noSirve[k] = { tit: it.tit, ts: Date.now() }; fb(k, 'no'); } }

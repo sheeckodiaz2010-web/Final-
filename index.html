@@ -159,8 +159,14 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 .t-ajustes{background:linear-gradient(160deg,#a3adcf,#6f7aa8)}
 .tbadge{position:absolute;top:12px;right:12px;background:#fff;font-weight:900;font-size:12px;padding:4px 9px;border-radius:99px}
 .tb-p{color:#5b2fd6}.tb-r{color:#c8321f}
-.mapd-pin{width:36px;height:36px;margin:-18px 0 0 -18px;font-size:14px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
-.mapd-pin.sel{width:46px;height:46px;margin:-23px 0 0 -23px;font-size:17px;border-color:#111827}
+.mapd-t{filter:grayscale(.9) contrast(.92) brightness(1.07)}
+.mapd-pin{width:0;height:0;margin:0;border:0;border-radius:0;background:none !important;box-shadow:none;font-size:0;display:block}
+.mapd-pin .pb{position:absolute;left:0;top:-36px;width:36px;height:36px;box-sizing:border-box;border-radius:50% 50% 50% 0;transform-origin:0 100%;transform:rotate(-45deg);background:var(--pc,#2563eb);border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.mapd-pin .pb b{transform:rotate(45deg);font:800 14px/1 system-ui,sans-serif;font-style:normal;color:var(--pt,#fff)}
+.mapd-pin.sel{z-index:3}
+.mapd-pin.sel .pb{transform:rotate(-45deg) scale(1.3);border-color:#111827}
+.mapd-pin.dim{opacity:.45}
+.mapd-rt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
@@ -268,11 +274,12 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div id="lista-clientes-inicio" class="space-y-2"></div>
             <div id="mapa-clientes-wrap" class="hidden space-y-2">
+                <div id="mapa-resumen" style="display:flex;flex-wrap:wrap;gap:6px"></div>
                 <div style="position:relative">
                     <div id="mapa-clientes" style="height:calc(100dvh - 400px);min-height:320px;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb"></div>
                     <div id="mapa-popup" class="hidden" style="position:absolute;left:8px;right:8px;bottom:8px;z-index:20;background:#fff;border-radius:22px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
+                    <div id="mapa-sig" class="hidden" style="position:absolute;left:8px;right:8px;bottom:8px;z-index:19;background:#fff;border-radius:22px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
                 </div>
-                <div id="mapa-resumen" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;font-weight:800"></div>
                 <div id="mapa-sin-ubic" style="display:flex;flex-direction:column;gap:6px"></div>
                 <div class="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
                     <button type="button" id="btn-mapa-offline" onclick="descargarMapaOffline()" class="w-full py-2.5 rounded-xl text-xs font-bold bg-gray-900 text-white">⬇️ Descargar mapa para usar sin internet</button>
@@ -1891,13 +1898,13 @@ class MapaDigar {
     constructor(el) {
         this.el = el; this.z = 15; this.c = { lat: MAPA_BASE.lat, lng: MAPA_BASE.lng };
         this.tiles = new Map(); this.pins = []; this.pinEls = []; this.sel = null; this.yo = null; this.yoEl = null;
-        this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0; this.tocado = false; this.yoAcc = 0; this.yoAccEl = null;
+        this.ruta = []; this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0; this.tocado = false; this.yoAcc = 0; this.yoAccEl = null;
         el.classList.add('mapd');
-        el.innerHTML = '<div class="mapd-grid"></div><div class="mapd-tl"></div><div class="mapd-pl"></div>' +
+        el.innerHTML = '<div class="mapd-grid"></div><div class="mapd-tl"></div><svg class="mapd-rt" xmlns="http://www.w3.org/2000/svg"><polyline fill="none" stroke="#2563eb" stroke-width="4" stroke-dasharray="1 9" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="mapd-pl"></div>' +
             '<div class="mapd-msg">Sin mapa guardado en esta zona. Se ven solo los pines.</div>' +
             '<div class="mapd-ctl"><button type="button" data-a="in" aria-label="Acercar">+</button><button type="button" data-a="out" aria-label="Alejar">−</button><button type="button" data-a="yo" aria-label="Mi ubicación">◎</button></div>' +
             '<div class="mapd-attr">© OpenStreetMap</div>';
-        this.tl = el.querySelector('.mapd-tl'); this.pl = el.querySelector('.mapd-pl');
+        this.tl = el.querySelector('.mapd-tl'); this.pl = el.querySelector('.mapd-pl'); this.rt = el.querySelector('.mapd-rt polyline');
         el.querySelectorAll('.mapd-ctl button').forEach(b => b.addEventListener('click', () => {
             const a = b.dataset.a;
             if (a === 'in') this.zoomBy(1); else if (a === 'out') this.zoomBy(-1); else this.locate();
@@ -1970,8 +1977,9 @@ class MapaDigar {
         this.pins = arr; this.pl.innerHTML = ''; this.pinEls = []; this.yoEl = null; this.yoAccEl = null;
         arr.forEach((p, i) => {
             const d = document.createElement('div');
-            d.className = 'mapd-pin'; d.dataset.i = i;
-            d.style.background = p.color; d.style.color = p.txt || '#fff'; d.textContent = p.label || '';
+            d.className = 'mapd-pin' + (p.dim ? ' dim' : ''); d.dataset.i = i;
+            d.style.setProperty('--pc', p.color); d.style.setProperty('--pt', p.txt || '#fff');
+            d.innerHTML = '<span class="pb"><b></b></span>'; d.querySelector('b').textContent = p.label || '';
             this.pl.appendChild(d); this.pinEls.push(d);
         });
         this._sched();
@@ -2021,6 +2029,7 @@ class MapaDigar {
             img.style.transform = 'translate(' + Math.round(tx * 256 - ox) + 'px,' + Math.round(ty * 256 - oy) + 'px)';
         }
         this.tiles.forEach((img, k) => { if (!need.has(k)) { if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src); img.remove(); this.tiles.delete(k); } });
+        if (this.rt) { const r = this.ruta || []; this.rt.setAttribute('points', r.length > 1 ? r.map(q => Math.round(mapaLngX(q.lng, z) - ox) + ',' + Math.round(mapaLatY(q.lat, z) - oy)).join(' ') : ''); }
         this.pins.forEach((p, i) => {
             const d = this.pinEls[i]; if (!d) return;
             const px = mapaLngX(p.lng, z) - ox, py = mapaLatY(p.lat, z) - oy;
@@ -2085,6 +2094,47 @@ function mapaClientesFiltrados() {
 function estadoClienteHoy(c) { return clienteVisitadoHoy(c) ? 'venta' : (noComproHoy(c) ? 'nocompro' : 'pend'); }
 const MAPA_COL = { venta: '#16a34a', nocompro: '#dc2626', pend: '#eab308' };
 const MAPA_TXT = { venta: ['Con venta hoy', '#15803d'], nocompro: ['No compró hoy', '#b91c1c'], pend: ['Sin venta hoy', '#a16207'] };
+let mapaFiltroEstado = 'todos', mapaRutaOn = false, mapaRutaSaltados = [], _mapaRuta = [];
+function setFiltroMapa(k) { mapaFiltroEstado = k; mapaRutaOn = false; cerrarPopupMapa(); refrescarMapaClientes(false); }
+function toggleRutaMapa() { mapaRutaOn = !mapaRutaOn; mapaRutaSaltados = []; cerrarPopupMapa(); refrescarMapaClientes(true); }
+function mapaRutaSaltar(id) {
+    mapaRutaSaltados.push(String(id)); refrescarMapaClientes(false);
+    const n = _mapaRuta[0]; if (n && mapaClientes) mapaClientes.centrarArriba(n.lat, n.lng);
+}
+function mapaCalcularRuta(con) {
+    const pend = con.filter(c => estadoClienteHoy(c) === 'pend');
+    const salt = pend.filter(c => mapaRutaSaltados.includes(String(c.id)));
+    const pool = pend.filter(c => !mapaRutaSaltados.includes(String(c.id)));
+    const out = [];
+    let cur = miPos ? { lat: miPos.lat, lng: miPos.lng } : null;
+    if (!cur && pool.length) { cur = pool[0]; out.push(pool.shift()); }
+    while (pool.length) {
+        let bi = 0, bd = Infinity;
+        pool.forEach((c, i) => { const d = mapaDist(cur, c); if (d < bd) { bd = d; bi = i; } });
+        cur = pool.splice(bi, 1)[0]; out.push(cur);
+    }
+    return out.concat(salt);
+}
+function pintarSigRuta() {
+    const box = $('mapa-sig'); if (!box) return;
+    if (!mapaRutaOn || mapaSelId !== null || vistaClientes !== 'mapa') { box.classList.add('hidden'); return; }
+    const sig = _mapaRuta[0];
+    if (!sig) {
+        box.innerHTML = '<div style="font-size:15px;font-weight:800;color:#111827">Ruta terminada</div><div style="font-size:12px;color:#6b7280;margin-top:2px">No quedan clientes sin venta con ubicación.</div>';
+        box.classList.remove('hidden'); return;
+    }
+    const idA = mapaIdAttr(sig.id);
+    box.innerHTML = `<div style="font-size:11px;font-weight:800;color:#2563eb;letter-spacing:.3px">SIGUIENTE · QUEDAN ${_mapaRuta.length}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px"><div style="min-width:0;flex:1"><div style="font-size:16px;font-weight:800;color:#111827">${escHtml(sig.nombre)}</div>
+        <div style="font-size:12px;color:#6b7280">${escHtml(sig.direccion || 'Sin dirección')}</div>
+        <div id="mapa-sig-dist" style="font-size:12px;font-weight:800;color:#2563eb;margin-top:2px"></div></div>
+        ${_mapaRuta.length > 1 ? `<button type="button" onclick="mapaRutaSaltar('${idA}')" style="font-size:12px;font-weight:800;color:#6b7280;background:#f3f4f6;padding:9px 12px;border-radius:12px;flex:none">Saltar</button>` : ''}</div>
+        <div style="display:flex;gap:10px;margin-top:10px">
+        <a href="${mapaUrlComoLlegar(sig)}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;font-size:15px;font-weight:800;text-decoration:none">🧭 Cómo llegar</a>
+        <button type="button" onclick="mapaAccion('venta','${idA}')" style="flex:1;min-height:48px;border-radius:14px;background:#1fa971;color:#fff;font-size:15px;font-weight:800">🛒 Vender</button></div>`;
+    box.classList.remove('hidden');
+    actualizarDistanciaPopup();
+}
 function mapaIdAttr(id) { return String(id).replace(/[^A-Za-z0-9_-]/g, ''); }
 function buscarClientePorId(id) { const n = normalizarId(id); return clientes.find(x => normalizarId(x.id) === n); }
 
@@ -2100,8 +2150,16 @@ function refrescarMapaClientes(forzarFit) {
     }
     const lista = mapaClientesFiltrados();
     const con = lista.filter(mapaTieneUbic), sin = lista.filter(c => !mapaTieneUbic(c));
-    const arrPins = con.map(c => {
-        const e = estadoClienteHoy(c);
+    const cnt = { venta: 0, nocompro: 0, pend: 0 };
+    lista.forEach(c => cnt[estadoClienteHoy(c)]++);
+    _mapaRuta = mapaRutaOn ? mapaCalcularRuta(con) : [];
+    const rutaIdx = new Map(_mapaRuta.map((c, i) => [String(c.id), i + 1]));
+    const vis = mapaRutaOn || mapaFiltroEstado === 'todos' ? con : con.filter(c => estadoClienteHoy(c) === mapaFiltroEstado);
+    const arrPins = vis.map(c => {
+        const e = estadoClienteHoy(c), num = rutaIdx.get(String(c.id));
+        if (mapaRutaOn) return num
+            ? { id: c.id, lat: c.lat, lng: c.lng, color: '#2563eb', txt: '#fff', label: String(num) }
+            : { id: c.id, lat: c.lat, lng: c.lng, color: MAPA_COL[e], txt: '#fff', label: e === 'venta' ? '✓' : '✕', dim: true };
         return { id: c.id, lat: c.lat, lng: c.lng, color: MAPA_COL[e], txt: e === 'pend' ? '#1f2937' : '#fff', label: (c.nombre || '?').trim().charAt(0).toUpperCase() };
     });
     const sigPins = JSON.stringify(arrPins);
@@ -2109,10 +2167,16 @@ function refrescarMapaClientes(forzarFit) {
     const inp = $('buscador-clientes');
     const firma = diaFiltroClientes + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
     if (forzarFit || firma !== _mapaFirma) { _mapaFirma = firma; mapaClientes.tocado = false; mapaClientes.fit(); }
-    const n = { venta: 0, nocompro: 0, pend: 0 };
-    lista.forEach(c => n[estadoClienteHoy(c)]++);
+    mapaClientes.ruta = mapaRutaOn ? (miPos ? [{ lat: miPos.lat, lng: miPos.lng }] : []).concat(_mapaRuta.map(c => ({ lat: c.lat, lng: c.lng }))) : [];
+    mapaClientes._sched();
+    const chip = (on, col, txt, fn) => `<button type="button" onclick="${fn}" style="font-size:12px;font-weight:800;padding:7px 11px;border-radius:999px;border:1px solid ${on ? col : '#e5e7eb'};background:${on ? col : '#fff'};color:${on ? '#fff' : col}">${txt}</button>`;
     $('mapa-resumen').innerHTML =
-        `<span style="color:#a16207">● ${n.pend} sin venta</span><span style="color:#15803d">● ${n.venta} con venta</span><span style="color:#b91c1c">● ${n.nocompro} no compró</span><span style="color:#2563eb">● Tú</span>`;
+        chip(!mapaRutaOn && mapaFiltroEstado === 'todos', '#111827', 'Todos ' + lista.length, "setFiltroMapa('todos')") +
+        chip(!mapaRutaOn && mapaFiltroEstado === 'pend', '#a16207', '● ' + cnt.pend + ' sin venta', "setFiltroMapa('pend')") +
+        chip(!mapaRutaOn && mapaFiltroEstado === 'venta', '#15803d', '● ' + cnt.venta + ' con venta', "setFiltroMapa('venta')") +
+        chip(!mapaRutaOn && mapaFiltroEstado === 'nocompro', '#b91c1c', '● ' + cnt.nocompro + ' no compró', "setFiltroMapa('nocompro')") +
+        chip(mapaRutaOn, '#2563eb', '🧭 Ruta del día', 'toggleRutaMapa()');
+    pintarSigRuta();
     const box = $('mapa-sin-ubic');
     box.innerHTML = sin.length ? `<p style="font-size:11px;font-weight:800;color:#6b7280;margin:6px 0 2px">SIN UBICACIÓN (${sin.length}). Estando con el cliente toca "Estoy aquí".</p>` +
         sin.map(c => {
@@ -2131,6 +2195,7 @@ function cerrarPopupMapa() {
     mapaSelId = null;
     const b = $('mapa-popup'); if (b) b.classList.add('hidden');
     if (mapaClientes) { mapaClientes.sel = null; mapaClientes._sched(); }
+    pintarSigRuta();
 }
 function abrirPopupMapa(id, silencioso) {
     const c = buscarClientePorId(id), box = $('mapa-popup');
@@ -2151,6 +2216,7 @@ function abrirPopupMapa(id, silencioso) {
         <button type="button" onclick="mapaAccion('nocompro','${idA}')" style="background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:800;padding:10px;border-radius:12px">${e === 'nocompro' ? 'Quitar "No compró"' : '✕ No compró'}</button>
         <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
     box.classList.remove('hidden');
+    pintarSigRuta();
     if (!silencioso && mapaClientes && mapaTieneUbic(c)) mapaClientes.centrarArriba(c.lat, c.lng);
     actualizarDistanciaPopup();
 }
@@ -2177,6 +2243,8 @@ function mapaDist(a, b) {
 }
 function mapaDistTxt(m) { return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km'; }
 function actualizarDistanciaPopup() {
+    const sd = $('mapa-sig-dist'), sn = _mapaRuta[0];
+    if (sd) sd.innerText = sn && miPos ? '📏 A ' + mapaDistTxt(mapaDist(miPos, sn)) + ' de ti' : '';
     const el = $('mapa-popup-dist'); if (!el) return;
     const c = mapaSelId !== null ? buscarClientePorId(mapaSelId) : null;
     if (!c || !mapaTieneUbic(c)) { el.innerText = ''; return; }

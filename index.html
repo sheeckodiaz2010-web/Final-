@@ -266,8 +266,9 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div id="lista-clientes-inicio" class="space-y-2"></div>
             <div id="mapa-clientes-wrap" class="hidden space-y-2">
+                <div id="mapa-chips" style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px"></div>
                 <div style="position:relative">
-                    <div id="mapa-clientes" style="height:calc(100dvh - 400px);min-height:320px;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb"></div>
+                    <div id="mapa-clientes" style="height:calc(100dvh - 450px);min-height:320px;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb"></div>
                     <div id="mapa-popup" class="hidden" style="position:absolute;left:8px;right:8px;bottom:8px;z-index:20;background:#fff;border-radius:22px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.3)"></div>
                 </div>
                 <div id="mapa-resumen" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;font-weight:800"></div>
@@ -2080,6 +2081,16 @@ function mapaClientesFiltrados() {
     else if (diaFiltroClientes !== 'todos') lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes) && tocaEstaSemana(c));
     return lista;
 }
+let filtroMapa = 'todos'; // todos | venta | pend | nocompro
+function setFiltroMapa(f) { filtroMapa = f; refrescarMapaClientes(false); }
+function pintarChipsMapa(n) {
+    const box = $('mapa-chips'); if (!box) return;
+    const f = [['todos', 'Todos', '#6b7280', n.venta + n.pend + n.nocompro], ['venta', 'Con venta', '#16a34a', n.venta], ['pend', 'Sin venta', '#eab308', n.pend], ['nocompro', 'No compró', '#dc2626', n.nocompro]];
+    box.innerHTML = f.map(x => {
+        const on = filtroMapa === x[0];
+        return `<button type="button" onclick="setFiltroMapa('${x[0]}')" style="flex:none;display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:99px;font-size:13px;font-weight:800;border:1px solid ${on ? '#111827' : '#e5e7eb'};background:${on ? '#111827' : '#fff'};color:${on ? '#fff' : '#1f2937'};touch-action:manipulation"><i style="width:10px;height:10px;border-radius:50%;background:${x[2]};display:inline-block"></i>${x[1]} <span style="opacity:.7;font-weight:700">${x[3]}</span></button>`;
+    }).join('');
+}
 function estadoClienteHoy(c) { return clienteVisitadoHoy(c) ? 'venta' : (noComproHoy(c) ? 'nocompro' : 'pend'); }
 const MAPA_COL = { venta: '#16a34a', nocompro: '#dc2626', pend: '#eab308' };
 const MAPA_TXT = { venta: ['Con venta hoy', '#15803d'], nocompro: ['No compró hoy', '#b91c1c'], pend: ['Sin venta hoy', '#a16207'] };
@@ -2097,7 +2108,9 @@ function refrescarMapaClientes(forzarFit) {
         else { _mapaVisible = true; _gpsMapaSync(); }
     }
     const lista = mapaClientesFiltrados();
-    const con = lista.filter(mapaTieneUbic), sin = lista.filter(c => !mapaTieneUbic(c));
+    const pasaMapa = c => filtroMapa === 'todos' || estadoClienteHoy(c) === filtroMapa;
+    const listaF = lista.filter(pasaMapa);
+    const con = listaF.filter(mapaTieneUbic), sin = listaF.filter(c => !mapaTieneUbic(c));
     const arrPins = con.map(c => {
         const e = estadoClienteHoy(c);
         return { id: c.id, lat: c.lat, lng: c.lng, color: MAPA_COL[e], txt: e === 'pend' ? '#1f2937' : '#fff', label: (c.nombre || '?').trim().charAt(0).toUpperCase() };
@@ -2105,12 +2118,12 @@ function refrescarMapaClientes(forzarFit) {
     const sigPins = JSON.stringify(arrPins);
     if (sigPins !== mapaClientes._sig) { mapaClientes._sig = sigPins; mapaClientes.setPins(arrPins); }
     const inp = $('buscador-clientes');
-    const firma = diaFiltroClientes + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
+    const firma = diaFiltroClientes + '|' + filtroMapa + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
     if (forzarFit || firma !== _mapaFirma) { _mapaFirma = firma; mapaClientes.tocado = false; mapaClientes.fit(); }
     const n = { venta: 0, nocompro: 0, pend: 0 };
     lista.forEach(c => n[estadoClienteHoy(c)]++);
-    $('mapa-resumen').innerHTML =
-        `<span style="color:#a16207">● ${n.pend} sin venta</span><span style="color:#15803d">● ${n.venta} con venta</span><span style="color:#b91c1c">● ${n.nocompro} no compró</span><span style="color:#2563eb">● Tú</span>`;
+    pintarChipsMapa(n);
+    $('mapa-resumen').innerHTML = '<span style="color:#2563eb">● Tú</span>';
     const box = $('mapa-sin-ubic');
     box.innerHTML = sin.length ? `<p style="font-size:11px;font-weight:800;color:#6b7280;margin:6px 0 2px">SIN UBICACIÓN (${sin.length}). Estando con el cliente toca "Estoy aquí".</p>` +
         sin.map(c => {
@@ -2122,6 +2135,7 @@ function refrescarMapaClientes(forzarFit) {
                 <button type="button" onclick="toggleSinCompra('${id}')" style="background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:800;padding:8px 9px;border-radius:10px">${e === 'nocompro' ? 'Quitar' : '✕ No compró'}</button>
                 <button type="button" onclick="guardarUbicacionAqui('${id}')" style="background:#2563eb;color:#fff;font-size:11px;font-weight:800;padding:8px 9px;border-radius:10px">📍 Estoy aquí</button></div></div>`;
         }).join('') : '';
+    if (mapaSelId !== null) { const cs = buscarClientePorId(mapaSelId); if (cs && !pasaMapa(cs)) cerrarPopupMapa(); }
     if (mapaSelId !== null) abrirPopupMapa(mapaSelId, true);
     if (forzarFit) actualizarTxtMapaOffline();
 }
@@ -7078,7 +7092,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-24-h';
+const APP_BUILD = '2026-10-24-i';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

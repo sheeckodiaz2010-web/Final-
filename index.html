@@ -1,6 +1,6 @@
 <html lang="es"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DIGAR POS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f8080">
@@ -124,8 +124,9 @@ body{font-variant-numeric:tabular-nums;letter-spacing:-.005em;animation:appIn .3
 .rounded-xl{border-radius:14px}
 input,select,textarea{font-size:16px}
 .font-black,.font-extrabold{letter-spacing:-.01em}
-#banner-offline{position:fixed;top:var(--hdr-h,96px);left:0;right:0;z-index:25;padding:5px 12px;background:#b45309;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s}
-#banner-offline.on{opacity:1}
+#banner-offline{display:none;padding:4px 12px;background:#b45309;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-align:center}
+#banner-offline.on{display:block}
+@media all and (display-mode:standalone){#barra-reloj{padding-top:0 !important;padding-bottom:0 !important;height:max(env(safe-area-inset-top,0px),28px);align-items:center}}
 .mapd{position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;border:1px solid #d1d5db;border-radius:16px;-webkit-user-select:none;user-select:none}
 .mapd-grid{position:absolute;inset:0;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:48px 48px;opacity:.55}
 .mapd-tl,.mapd-pl{position:absolute;inset:0;overflow:hidden}
@@ -195,9 +196,10 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 
     <!-- BARRA SUPERIOR + HEADER (juntos y fijos arriba, así el reloj siempre se ve) -->
     <div id="barra-superior-fija" style="position:sticky;top:0;z-index:30;">
-    <div class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-center items-center">
+    <div id="barra-reloj" class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-center items-center">
         <span id="reloj-app" style="font-size:15px;font-weight:800;letter-spacing:.2px;font-variant-numeric:tabular-nums;" aria-label="Hora actual"></span>
     </div>
+    <div id="banner-offline">Sin conexión · la app sigue funcionando</div>
 
     <!-- HEADER -->
     <header class="bg-white border-b sticky top-0 z-20 px-4 py-3 flex justify-between items-center shadow-sm">
@@ -7359,7 +7361,7 @@ document.addEventListener('visibilitychange', () => {
     ultimo.set(b,n);
   },true);
   // Aviso de conexión
-  var bo=document.createElement('div');bo.id='banner-offline';bo.textContent='Sin conexión · la app sigue funcionando';document.body.appendChild(bo);
+  var bo=document.getElementById('banner-offline');
   function red(){bo.classList.toggle('on',!navigator.onLine)}
   window.addEventListener('offline',red);
   window.addEventListener('online',function(){red();window.toast('Conexión restablecida')});
@@ -7369,6 +7371,7 @@ document.addEventListener('visibilitychange', () => {
 <script>
 (function(){
   function medir(){var b=document.getElementById('barra-superior-fija');if(b)document.documentElement.style.setProperty('--hdr-h',b.offsetHeight+'px');}
+  (function(){var b=document.getElementById('barra-superior-fija');if(b&&window.ResizeObserver)new ResizeObserver(medir).observe(b);})();
   window.addEventListener('load',medir);window.addEventListener('resize',medir);
   document.addEventListener('DOMContentLoaded',medir);setTimeout(medir,500);setTimeout(medir,1500);
 })();

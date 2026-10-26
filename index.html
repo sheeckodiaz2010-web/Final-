@@ -161,6 +161,45 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 .mapd-pin{width:36px;height:36px;margin:-18px 0 0 -18px;font-size:14px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
 .mapd-pin.sel{width:46px;height:46px;margin:-23px 0 0 -23px;font-size:17px;border-color:#111827}
 </style>
+<style>
+.pm-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.pm-fab{width:38px;height:38px;border-radius:50%;background:#2563eb;color:#fff;font-size:22px;font-weight:700;box-shadow:0 3px 8px rgba(37,99,235,.35)}
+.pm-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-bottom:10px}
+.pm-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pm-name{font-weight:800;font-size:15px}.pm-sub{font-size:12px;color:#6b7280;margin-top:2px}
+.pm-tiers{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 6px}
+.pm-tier{background:#eff6ff;color:#2563eb;font-weight:800;font-size:15px;padding:6px 12px;border-radius:10px}
+.pm-save{font-size:12px;color:#059669;font-weight:700}
+.pm-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.pm-on{background:#ecfdf5;color:#059669}.pm-off{background:#e5e7eb;color:#6b7280}.pm-sch{background:#fffbeb;color:#b45309}.pm-exp{background:#fef2f2;color:#dc2626}
+.pm-mix{font-size:11px;font-weight:700;color:#9333ea;background:#faf5ff;padding:3px 9px;border-radius:99px}
+.pm-acts{display:flex;gap:8px;margin-top:10px;border-top:1px solid #e5e7eb;padding-top:10px}
+.pm-acts button{flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:700;background:#f9fafb;border:1px solid #e5e7eb}
+.pm-sw{position:relative;width:46px;height:28px;border-radius:99px;background:#e5e7eb;flex:none;transition:background .15s}
+.pm-sw:after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.pm-sw.on{background:#059669}.pm-sw.on:after{transform:translateX(18px)}
+.pm-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:60;align-items:flex-end;justify-content:center}
+.pm-ov.open{display:flex}
+.pm-sheet{background:#fff;width:100%;max-width:448px;max-height:92vh;overflow-y:auto;border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+.pm-lbl{display:block;font-size:12px;font-weight:700;color:#6b7280;margin:14px 0 6px}
+.pm-in{width:100%;padding:11px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;font-size:15px}
+.pm-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pm-chip{padding:7px 12px;border-radius:99px;border:1px solid #2563eb;background:#eff6ff;color:#2563eb;font-size:13px;font-weight:700}
+.pm-prods{max-height:170px;overflow-y:auto;margin-top:6px;border:1px solid #e5e7eb;border-radius:12px}
+.pm-prods button{display:flex;justify-content:space-between;width:100%;padding:10px 12px;font-size:13px;font-weight:600;text-align:left;border-bottom:1px solid #f3f4f6}
+.pm-opt{display:flex;gap:8px}
+.pm-opt button{flex:1;padding:10px 6px;border-radius:12px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:700}
+.pm-opt button.on{border:2px solid #9333ea;background:#faf5ff;color:#7e22ce}
+.pm-trow{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.pm-hint{grid-column:1/-1;font-size:11px;color:#6b7280;margin:-3px 0 2px}
+.pm-x{width:34px;height:34px;border-radius:10px;color:#dc2626;font-size:18px;background:#f9fafb}
+.pm-add{width:100%;padding:10px;border-radius:12px;border:2px dashed #e5e7eb;color:#2563eb;font-weight:700;font-size:13px}
+.pm-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pm-primary{width:100%;margin-top:18px;padding:14px;border-radius:14px;background:#2563eb;color:#fff;font-weight:800;font-size:15px}
+.pm-ghost{width:100%;margin-top:8px;padding:12px;border-radius:14px;color:#6b7280;font-weight:700;font-size:14px}
+.pm-err{color:#dc2626;font-size:12px;font-weight:700;margin-top:10px}
+.pm-empty{text-align:center;color:#6b7280;padding:30px 10px;font-size:14px}
+</style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 
@@ -240,7 +279,17 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <svg viewBox="0 0 64 48"><circle cx="32" cy="24" r="7"/><circle cx="32" cy="24" r="15"/><path d="M32 3v6M32 39v6M11 24h6M47 24h6M17 9l4 4M43 35l4 4M47 9l-4 4M21 35l-4 4"/></svg>
                     <div><div class="tn">Ajustes</div><div class="td" id="ini-sub-aju"> </div></div>
                 </button>
+                <button type="button" class="tile-d t-trx" onclick="cambiarVista('promos')">
+                    <svg viewBox="0 0 64 48"><path d="M8 24 28 4h24v24L32 44z"/><circle cx="42" cy="14" r="3"/><path d="M22 30l14-14"/></svg>
+                    <div><div class="tn">Promociones</div><div class="td" id="ini-sub-promo"> </div></div>
+                </button>
             </div>
+        </div>
+
+        <!-- VISTA PROMOCIONES -->
+        <div id="vista-promos" class="hidden">
+            <div class="pm-top"><h2 class="text-lg font-bold">Promociones</h2><button type="button" class="pm-fab" onclick="pmAbrir()" aria-label="Nueva promoción">+</button></div>
+            <div id="pm-lista"></div>
         </div>
 
         <!-- VISTA CLIENTES (antes Inicio) -->
@@ -1225,6 +1274,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <span>Piezas:</span>
                     <span id="modal-piezas" class="font-bold text-gray-700">0</span>
                 </div>
+                <div id="modal-promo-info" class="hidden" style="background:#ecfdf5;color:#059669;font-weight:700;font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:8px"></div>
                 <div class="flex justify-between font-bold text-lg">
                     <span>Total:</span>
                     <span id="modal-total" class="text-blue-600">$0.00</span>
@@ -1569,6 +1619,7 @@ function cargarTransacciones() {
 }
 
 let productos = cargarProductos();
+let promos = (function () { try { const l = JSON.parse(localStorage.getItem('digar_promos')); return Array.isArray(l) ? l : []; } catch (e) { return []; } })();
 let clientes = cargarClientes();
 let transacciones = cargarTransacciones();
 
@@ -1664,6 +1715,7 @@ let bluetoothCharacteristic = null;
 // -------------------- PERSISTENCIA --------------------
 function guardarTodo() {
     _escribirSiCambio('yimi_productos', productos);
+    _escribirSiCambio('digar_promos', promos);
     _escribirSiCambio('yimi_clientes', clientes);
     guardarTransacciones();
     _escribirSiCambio('yimi_config_ticket', configTicket);
@@ -2863,10 +2915,150 @@ async function guardarClienteRapido() {
 }
 
 // -------------------- NAVEGACIÓN --------------------
+// -------------------- PROMOCIONES --------------------
+function pmEstado(p) {
+    const h = hoy();
+    if (!p.on) return { k: 'off', t: 'Pausada' };
+    if (p.from && h < p.from) return { k: 'sch', t: 'Empieza ' + pmFd(p.from) };
+    if (p.to && h > p.to) return { k: 'exp', t: 'Vencida' };
+    return { k: 'on', t: 'Activa' };
+}
+function pmFd(s) { const a = s.split('-'); return a[2] + '/' + a[1]; }
+function pmVig(p) { return (p.from || p.to) ? 'Del ' + (p.from ? pmFd(p.from) : '…') + ' al ' + (p.to ? pmFd(p.to) : '…') : 'Sin fecha límite'; }
+function pmProd(id) { return productos.find(x => String(x.id) === String(id)); }
+function pmEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// Calcula el descuento de las promociones para una lista de líneas {id, cant, precioPersonalizado}.
+// opts.ids: solo esas promociones y sin revisar fechas (para editar ventas ya cobradas).
+function pmCalc(items, opts) {
+    const res = { desc: 0, detalle: [] };
+    if (!items || !items.length || !promos.length) return res;
+    const lista = opts && opts.ids ? promos.filter(p => opts.ids.includes(p.id)) : promos.filter(p => pmEstado(p).k === 'on');
+    const tomados = new Set();
+    lista.forEach(p => {
+        const pids = p.ids.filter(i => !tomados.has(String(i)));
+        const grupos = p.mix ? [pids] : pids.map(i => [i]);
+        grupos.forEach(g => {
+            const u = [];
+            g.forEach(i => { const it = items.find(x => String(x.id) === String(i)); if (it) for (let n = 0; n < it.cant; n++) u.push(Number(it.precioPersonalizado) || 0); });
+            if (!u.length) return;
+            g.forEach(i => tomados.add(String(i)));
+            u.sort((a, b) => b - a);
+            let i = 0, saved = 0; const partes = [];
+            [...p.tiers].sort((a, b) => b.q - a.q).forEach(t => {
+                let k = 0;
+                while (u.length - i >= t.q) {
+                    const normal = u.slice(i, i + t.q).reduce((a, b) => a + b, 0);
+                    if (t.p >= normal) break;
+                    i += t.q; saved += normal - t.p; k++;
+                }
+                if (k) partes.push((k > 1 ? k + ' × ' : '') + t.q + 'x' + t.p);
+            });
+            if (saved > 0) {
+                const nom = p.name || g.map(x => (pmProd(x) || {}).nombre).filter(Boolean).join(' + ');
+                res.detalle.push({ id: p.id, n: nom, d: partes.join(' + '), a: Math.round(saved * 100) / 100 });
+                res.desc += saved;
+            }
+        });
+    });
+    res.desc = Math.round(res.desc * 100) / 100;
+    return res;
+}
+function pmPintarInfoCarrito() {
+    const el = $('modal-promo-info');
+    if (!el) return;
+    const r = pmCalc(carrito);
+    el.classList.toggle('hidden', r.desc <= 0);
+    el.innerHTML = r.desc > 0 ? '🏷️ Promoción aplicada: ahorra ' + money(r.desc) + '<br><span style="font-weight:500;font-size:12px">' + r.detalle.map(d => pmEsc(d.n) + ' (' + d.d + ')').join(' · ') + '</span>' : '';
+}
+
+function pmRender() {
+    const v = $('pm-lista');
+    if (!v) return;
+    if (!promos.length) { v.innerHTML = '<div class="pm-empty">Aún no tienes promociones.<br>Toca + para crear la primera.</div>'; return; }
+    v.innerHTML = promos.map(p => {
+        const e = pmEstado(p), pr = p.ids.map(pmProd).filter(Boolean);
+        const nombres = pr.map(x => pmEsc(x.nombre)).join(' + ') || 'Producto eliminado';
+        const unico = pr.length === 1 ? Number(pr[0].precio) : null;
+        const tiers = [...p.tiers].sort((a, b) => a.q - b.q);
+        return `<div class="pm-card" style="${e.k === 'off' || e.k === 'exp' ? 'opacity:.7' : ''}">
+          <div class="pm-row"><div style="min-width:0"><div class="pm-name">${pmEsc(p.name || nombres)}</div><div class="pm-sub">${nombres}</div></div>
+          <button type="button" class="pm-sw ${p.on ? 'on' : ''}" onclick="pmToggle(${p.id})" aria-label="Activar o pausar"></button></div>
+          <div class="pm-tiers">${tiers.map(t => `<span class="pm-tier">${t.q} x ${money(t.p)}</span>`).join('')}</div>
+          ${unico ? `<div class="pm-sub">Precio normal: ${money(unico)} c/u</div>` + tiers.map(t => `<div class="pm-save">${t.q} pzs: ahorras ${money(unico * t.q - t.p)}</div>`).join('') : '<div class="pm-sub">Precio normal varía por producto</div>'}
+          <div class="pm-row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap"><span class="pm-badge pm-${e.k}">${e.t}</span>${p.mix ? '<span class="pm-mix">Mezclables</span>' : ''}<span class="pm-sub" style="margin:0">${pmVig(p)}</span></div>
+          <div class="pm-acts"><button type="button" onclick="pmAbrir(${p.id})">Editar</button><button type="button" style="color:#dc2626" onclick="pmEliminar(${p.id})">Eliminar</button></div></div>`;
+    }).join('');
+}
+function pmToggle(id) { const p = promos.find(x => x.id === id); if (!p) return; p.on = !p.on; guardarTodo(); pmRender(); actualizarTotalesCarrito(); }
+async function pmEliminar(id) {
+    if (!await confirmarPro('¿Eliminar esta promoción?')) return;
+    promos = promos.filter(x => x.id !== id); guardarTodo(); pmRender(); actualizarTotalesCarrito();
+}
+
+let pmEdit = null;
+function pmAbrir(id) {
+    pmEdit = id ? JSON.parse(JSON.stringify(promos.find(p => p.id === id))) : { id: 0, name: '', ids: [], mix: true, tiers: [{ q: 3, p: '' }], on: true, from: '', to: '' };
+    pmForm(); $('pm-ov').classList.add('open');
+}
+function pmCerrar() { $('pm-ov').classList.remove('open'); pmEdit = null; }
+function pmLeer() {
+    pmEdit.name = $('pm-n').value; pmEdit.from = $('pm-d1').value; pmEdit.to = $('pm-d2').value;
+    document.querySelectorAll('[data-pmq]').forEach(e => pmEdit.tiers[e.dataset.pmq].q = e.value === '' ? '' : +e.value);
+    document.querySelectorAll('[data-pmp]').forEach(e => pmEdit.tiers[e.dataset.pmp].p = e.value === '' ? '' : +e.value);
+}
+function pmForm(err) {
+    const p = pmEdit, sel = p.ids.map(pmProd).filter(Boolean);
+    const media = sel.length ? sel.reduce((a, x) => a + Number(x.precio), 0) / sel.length : 0;
+    $('pm-sheet').innerHTML = `
+    <div class="pm-row"><h2 class="text-lg font-bold">${p.id ? 'Editar' : 'Nueva'} promoción</h2><button type="button" class="pm-x" style="color:#6b7280" onclick="pmCerrar()">✕</button></div>
+    <label class="pm-lbl">Nombre (opcional)</label>
+    <input class="pm-in" id="pm-n" autocomplete="off" placeholder="Ej. Mazapán 3x100" value="${pmEsc(p.name)}">
+    <label class="pm-lbl">Productos incluidos (uno o varios)</label>
+    <div class="pm-chips">${sel.map(x => `<button type="button" class="pm-chip" onclick="pmQuitarProd('${x.id}')">${pmEsc(x.nombre)} ✕</button>`).join('')}</div>
+    <input class="pm-in" id="pm-buscar" autocomplete="off" placeholder="🔍 Buscar producto para agregar..." style="margin-top:8px" oninput="pmBuscar()">
+    <div class="pm-prods" id="pm-prods" style="display:none"></div>
+    ${sel.length > 1 ? `<label class="pm-lbl">¿Se pueden mezclar?</label><div class="pm-opt"><button type="button" class="${p.mix ? 'on' : ''}" onclick="pmMix(true)">Sí, cualquier combinación</button><button type="button" class="${!p.mix ? 'on' : ''}" onclick="pmMix(false)">No, del mismo producto</button></div>` : ''}
+    <label class="pm-lbl">Escalones de precio</label>
+    ${p.tiers.map((t, i) => `<div class="pm-trow"><input class="pm-in" type="number" inputmode="numeric" min="2" placeholder="Piezas" value="${t.q}" data-pmq="${i}"><input class="pm-in" type="number" inputmode="decimal" min="0" placeholder="Precio $" value="${t.p}" data-pmp="${i}">
+      <button type="button" class="pm-x" onclick="pmQuitarTier(${i})" ${p.tiers.length < 2 ? 'disabled style="opacity:.3"' : ''}>✕</button>
+      ${media && t.q && t.p ? `<div class="pm-hint">Normal: ${money(media * t.q)} · ahorra ${money(media * t.q - t.p)}</div>` : ''}</div>`).join('')}
+    <button type="button" class="pm-add" onclick="pmAddTier()">+ Agregar escalón (ej. 6 piezas)</button>
+    <label class="pm-lbl">Vigencia (opcional)</label>
+    <div class="pm-dates"><div><div class="pm-sub">Desde</div><input class="pm-in" type="date" id="pm-d1" value="${p.from}"></div><div><div class="pm-sub">Hasta</div><input class="pm-in" type="date" id="pm-d2" value="${p.to}"></div></div>
+    ${err ? `<div class="pm-err">${err}</div>` : ''}
+    <button type="button" class="pm-primary" onclick="pmGuardar()">Guardar promoción</button>
+    <button type="button" class="pm-ghost" onclick="pmCerrar()">Cancelar</button>`;
+}
+function pmBuscar() {
+    const q = ($('pm-buscar').value || '').trim().toLowerCase(), box = $('pm-prods');
+    if (!q) { box.style.display = 'none'; return; }
+    const res = productos.filter(x => !pmEdit.ids.some(i => String(i) === String(x.id)) && (x.nombre || '').toLowerCase().includes(q)).slice(0, 30);
+    box.style.display = 'block';
+    box.innerHTML = res.length ? res.map(x => `<button type="button" onclick="pmAgregarProd('${x.id}')"><span>${pmEsc(x.nombre)}</span><span>${money(x.precio)}</span></button>`).join('') : '<div class="pm-sub" style="padding:10px">Sin resultados</div>';
+}
+function pmAgregarProd(id) { pmLeer(); const p = pmProd(id); if (p) pmEdit.ids.push(p.id); pmForm(); }
+function pmQuitarProd(id) { pmLeer(); pmEdit.ids = pmEdit.ids.filter(i => String(i) !== String(id)); pmForm(); }
+function pmMix(v) { pmLeer(); pmEdit.mix = v; pmForm(); }
+function pmAddTier() { pmLeer(); pmEdit.tiers.push({ q: '', p: '' }); pmForm(); }
+function pmQuitarTier(i) { pmLeer(); pmEdit.tiers.splice(i, 1); pmForm(); }
+function pmGuardar() {
+    pmLeer();
+    const e = pmEdit;
+    if (!e.ids.length) return pmForm('Elige al menos un producto.');
+    if (e.tiers.some(t => !t.q || t.q < 2 || !t.p || t.p <= 0)) return pmForm('Cada escalón necesita piezas (2 o más) y un precio.');
+    if (new Set(e.tiers.map(t => t.q)).size < e.tiers.length) return pmForm('Hay dos escalones con las mismas piezas.');
+    if (e.from && e.to && e.to < e.from) return pmForm('La fecha final es antes que la inicial.');
+    if (e.ids.length < 2) e.mix = false;
+    if (e.id) promos = promos.map(p => p.id === e.id ? e : p);
+    else { e.id = Date.now(); promos.unshift(e); }
+    guardarTodo(); pmCerrar(); pmRender(); actualizarTotalesCarrito();
+}
+
 function cambiarVista(v) {
     desenfocarCampos();
     if (v === 'inicio' && typeof modoBotones === 'function' && !modoBotones()) v = 'clientes';
-    const vistas = ['inicio', 'clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas'];
+    const vistas = ['inicio', 'clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas', 'promos'];
     vistas.forEach(vista => {
         const el = $(`vista-${vista}`);
         const nav = $(`nav-${vista}`);
@@ -2887,7 +3079,7 @@ function cambiarVista(v) {
         navActivo.classList.remove('text-gray-700', 'font-medium');
     }
 
-    const labels = { inicio: 'Inicio', clientes: 'Clientes', mas: 'Ajustes', venta: 'Ventas', productos: 'Inventario', estadisticas: 'Estadísticas' };
+    const labels = { inicio: 'Inicio', clientes: 'Clientes', mas: 'Ajustes', venta: 'Ventas', productos: 'Inventario', estadisticas: 'Estadísticas', promos: 'Promociones' };
     $('txt-modo').innerText = labels[v] || (v.charAt(0).toUpperCase() + v.slice(1));
 
     if (v === 'clientes') renderListaClientesInicio();
@@ -2896,6 +3088,7 @@ function cambiarVista(v) {
     if (v === 'transacciones') { inicializarFiltrosFechas(); renderTransacciones(); }
     if (v === 'mas') { actualizarContadorClientesUI(); actualizarBadgeCreditos(); }
     if (v === 'estadisticas') renderEstadisticas();
+    if (v === 'promos') pmRender();
     if (v === 'inicio') renderInicio();
     ajustarCabecera(v);
 }
@@ -3197,7 +3390,7 @@ function renderVenta(filtro = '') {
 }
 
 function actualizarBadgeCarrito() {
-    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    const total = totalCarritoActual();
     const piezas = carrito.reduce((a, b) => a + (b.cant || 0), 0);
     const el = $('badge-carrito');
     if (el) el.innerText = `${piezas} pzs · ${money(total)}`;
@@ -3279,9 +3472,10 @@ function confirmarCantidadAlCarrito() {
 }
 
 function actualizarTotalesCarrito() {
-    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    const total = totalCarritoActual();
     const piezas = carrito.reduce((a, b) => a + (b.cant || 0), 0);
     $('modal-total').innerText = money(total);
+    pmPintarInfoCarrito();
     const elPiezas = $('modal-piezas');
     if (elPiezas) elPiezas.innerText = piezas;
     actualizarBadgeCarrito();
@@ -3415,9 +3609,10 @@ function abrirCarrito() {
         });
         contenedor.appendChild(frag);
     }
-    const total = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    const total = totalCarritoActual();
     const piezas = carrito.reduce((a, b) => a + (b.cant || 0), 0);
     $('modal-total').innerText = money(total);
+    pmPintarInfoCarrito();
     const elPiezas = $('modal-piezas');
     if (elPiezas) elPiezas.innerText = piezas;
     $('modal-carrito').classList.remove('hidden');
@@ -3532,7 +3727,8 @@ function generarBotonesBilletes(total) {
 }
 
 function totalCarritoActual() {
-    return carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    const bruto = carrito.reduce((a, b) => a + (b.precioPersonalizado * b.cant), 0);
+    return Math.round((bruto - pmCalc(carrito).desc) * 100) / 100;
 }
 
 function totalACobrar() {
@@ -3590,7 +3786,8 @@ async function ejecutarCobroFinal() {
     const ef = parseFloat($('pago-efectivo').value) || 0;
     if (!esCredito && ef < total) return alert('Efectivo insuficiente');
 
-    const gananciaTotal = carrito.reduce((a, b) => a + ((b.precioPersonalizado - (b.costo || 0)) * b.cant), 0);
+    const infoPromo = pmCalc(carrito);
+    const gananciaTotal = carrito.reduce((a, b) => a + ((b.precioPersonalizado - (b.costo || 0)) * b.cant), 0) - infoPromo.desc;
     const ahora = new Date();
     const fechaStr = hoy();
     const fechaFormateada = fechaBonita(ahora);
@@ -3608,6 +3805,8 @@ async function ejecutarCobroFinal() {
         montoTicket: totalTicket,
         ganancia: gananciaTotal,
         items: [...carrito],
+        promos: infoPromo.detalle,
+        descuentoPromos: infoPromo.desc,
         esCredito: esCredito,
         pagado: !esCredito,
         saldoPendiente: esCredito ? totalTicket : 0,
@@ -3642,7 +3841,10 @@ async function ejecutarCobroFinal() {
     [...carrito].sort(ordenAlfaItems).forEach(i => {
         containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
     });
-    $('recibo-subtotal').innerText = money(total);
+    infoPromo.detalle.forEach(d => {
+        containerRecibo.innerHTML += `<div class="flex justify-between font-bold" style="color:#059669"><span>Promo ${d.n}<br><span style="font-size:10px;font-weight:500">${d.d}</span></span><span>-${money(d.a)}</span></div>`;
+    });
+    $('recibo-subtotal').innerText = money(total + infoPromo.desc);
     $('recibo-total').innerText = money(total);
 
     // Resumen privado (no forma parte del ticket del cliente)
@@ -4860,8 +5062,11 @@ function guardarEdicionVenta() {
 
     // Actualizar la venta
     t.items = editItems.map(i => ({ ...i }));
-    t.monto = t.items.reduce((a, i) => a + i.precioPersonalizado * i.cant, 0);
-    t.ganancia = t.items.reduce((a, i) => a + ((i.precioPersonalizado - (i.costo || 0)) * i.cant), 0);
+    const _pi = pmCalc(t.items, { ids: (t.promos || []).map(p => p.id) });
+    t.promos = _pi.detalle;
+    t.descuentoPromos = _pi.desc;
+    t.monto = Math.round((t.items.reduce((a, i) => a + i.precioPersonalizado * i.cant, 0) - _pi.desc) * 100) / 100;
+    t.ganancia = t.items.reduce((a, i) => a + ((i.precioPersonalizado - (i.costo || 0)) * i.cant), 0) - _pi.desc;
 
     if (t.esCredito) {
         const abonado = (t.abonos || []).reduce((a, b) => a + (Number(b.monto) || 0), 0);
@@ -6014,6 +6219,15 @@ async function enviarImpresionTicketESC_POS(t, opciones) {
         cmds.push(enc(`${t.categoria}: ${t.descripcion}\n`));
     }
 
+    const descPromo = Number(t.descuentoPromos) || 0;
+    if (descPromo > 0 && t.promos) {
+        cmds.push(enc(`--------------------------------\n`));
+        t.promos.forEach(d => {
+            cmds.push(enc(`${('PROMO ' + d.n).slice(0, 32)}\n`));
+            cmds.push(enc(`${padLeft(String(d.d).slice(0, 18), 16)}${padLeft('-' + Number(d.a).toFixed(2), 16)}\n`));
+        });
+    }
+
     // Solo si se activó la suma de otro ticket al cobrar
     const extraTicket = Number(t.sumaOtrosTickets) || 0;
     if (extraTicket > 0) {
@@ -6030,10 +6244,11 @@ async function enviarImpresionTicketESC_POS(t, opciones) {
     const lineaTot = (etiqueta, valor) => enc(`${padLeft(etiqueta, 20)}${padLeft(valor, 12)}\n`);
     cmds.push(lineaTot('Piezas :', totalPiezas.toFixed(2)));
     cmds.push(enc(`\n`));
-    cmds.push(lineaTot('SubTotal :', totalTxt));
+    const brutoTxt = ((Number(t.monto) || 0) + descPromo + extraTicket).toFixed(2);
+    cmds.push(lineaTot('SubTotal :', brutoTxt));
     cmds.push(lineaTot('IEPS :', '0.00'));
-    cmds.push(lineaTot('Importe :', totalTxt));
-    cmds.push(lineaTot('Descuentos :', '0.00'));
+    cmds.push(lineaTot('Importe :', brutoTxt));
+    cmds.push(lineaTot('Descuentos :', descPromo.toFixed(2)));
     cmds.push(lineaTot('Total :', totalTxt));
     cmds.push(enc(`================================\n`));
     cmds.push(lineaTot('Total a Pagar :', totalTxt));
@@ -7653,4 +7868,5 @@ setTimeout(driveRevisar, 20000);
 })();
 </script>
 <script src="asistente.js?v=2026-10-24-b"></script>
+<div class="pm-ov" id="pm-ov"><div class="pm-sheet" id="pm-sheet"></div></div>
 </body></html>

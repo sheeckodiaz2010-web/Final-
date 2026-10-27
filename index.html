@@ -61,6 +61,16 @@
 .ajuste-sub{display:block;margin-top:3px;font-size:11px;font-weight:700;color:#9ca3af;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
 .ajuste-sub:empty{display:none;}
 </style>
+<style id="cuadrado-clientes">
+/* Botones y tarjetas de clientes con esquinas cuadradas (puntiagudas) */
+#vista-clientes .rounded-xl,#vista-clientes .rounded-full,#vista-clientes .rounded-2xl,
+#lista-clientes-inicio>div,#lista-clientes-seleccion>div,
+#mapa-chips button,#mapa-popup,#mapa-popup button,#mapa-sin-ubic button,#mapa-sin-ubic>div,
+#modal-seleccionar-cliente button,#modal-seleccionar-cliente input,
+#vc-lista,#vc-mapa,#chips-dias-clientes select,#buscador-clientes{border-radius:3px!important}
+#lista-transacciones>*{content-visibility:auto;contain-intrinsic-size:auto 64px}
+#chips-dias-clientes select{width:100%;padding:11px 12px;border:1px solid #d1d5db;background:#fff;font-weight:800;font-size:15px;color:#111827;appearance:auto}
+</style>
 <style id="pulido-pro">
 /* ===== Capa de fluidez / acabado tipo app nativa ===== */
 html{-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
@@ -96,7 +106,7 @@ img{content-visibility:auto}
 #toast-pro.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 /* ===== Ventanas: fondo bloqueado + título fijo ===== */
-html:has([id^="modal-"].fixed:not(.hidden)),body:has([id^="modal-"].fixed:not(.hidden)),html:has(#dlg-pro),body:has(#dlg-pro){overflow:hidden!important;overscroll-behavior:none}
+html.modal-open,body.modal-open{overflow:hidden!important;overscroll-behavior:none}
 [id^="modal-"].fixed:not(.hidden){touch-action:none}
 [id^="modal-"].fixed .overflow-y-auto,[id^="modal-"].fixed>.bg-white{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
 [id^="modal-"].fixed>.bg-white:not([class*="max-h-"]){max-height:90vh;max-height:90dvh;overflow-y:auto}
@@ -311,7 +321,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <div class="relative">
                     <input autocomplete="off" type="text" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
                 </div>
-                <div id="chips-dias-clientes" style="display:flex;gap:6px;overflow-x:auto;padding-top:8px;padding-bottom:2px"></div>
+                <div id="chips-dias-clientes" style="padding-top:8px;padding-bottom:2px"></div>
             </div>
             <div id="lista-clientes-inicio" class="space-y-2"></div>
             <div id="mapa-clientes-wrap" class="hidden space-y-2">
@@ -1457,6 +1467,19 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <button onclick="cancelarEdicionVenta()" class="text-gray-400 text-xl font-bold px-2">×</button>
             </div>
 
+            <div class="bg-gray-50 border rounded-2xl p-3 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[11px] text-gray-500">Cliente</p>
+                        <p class="font-bold text-sm text-gray-800 truncate" id="edit-venta-cliente-sel">—</p>
+                    </div>
+                    <button type="button" onclick="editarCambiarCliente()" class="bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl">Cambiar</button>
+                </div>
+                <label class="flex items-center justify-between gap-2 cursor-pointer">
+                    <span class="font-bold text-sm text-gray-800">💳 Venta a crédito</span>
+                    <input type="checkbox" id="edit-venta-credito" onchange="editCreditoCambio()" style="width:24px;height:24px">
+                </label>
+            </div>
             <div id="edit-venta-items" class="space-y-2"></div>
 
             <button onclick="toggleAgregarEditVenta()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-2xl text-sm">➕ Agregar producto</button>
@@ -1578,6 +1601,7 @@ function cargarClientes() {
 // Solo se escribe en el teléfono lo que realmente cambió, y las ventas/movimientos de más de
 // ARCHIVO_DIAS días se guardan aparte (yimi_trans_archivo) para no reescribirlos en cada venta.
 // En memoria sigue todo junto, así que reportes, filtros y totales no cambian.
+var _vhCache = { dia: '', set: null }; // nombres con venta hoy (se recalcula solo cuando cambian las ventas)
 const ARCHIVO_DIAS = 90;
 const _ultimoGuardado = {};
 let _avisoLlenoMostrado = false;
@@ -1596,6 +1620,7 @@ function _escribirSiCambio(clave, valor) {
     }
 }
 function guardarTransacciones() {
+    _vhCache.set = null;
     const d = new Date();
     d.setDate(d.getDate() - ARCHIVO_DIAS);
     const corte = fechaLocal(d);
@@ -1844,9 +1869,11 @@ function escucharCambiosNube() {
     }, err => console.error('Error escuchando la nube:', err));
 }
 
-let _nubeLista = false, _avisoPesoNube = false;
+let _nubeLista = false, _avisoPesoNube = false, _ultPesoCheck = 0;
 function avisarPesoNube() {
     if (_avisoPesoNube) return;
+    if (Date.now() - _ultPesoCheck < 60000) return;
+    _ultPesoCheck = Date.now();
     try {
         if (JSON.stringify({ productos, clientes, transacciones, configTicket }).length > 800000) {
             _avisoPesoNube = true;
@@ -1872,6 +1899,7 @@ const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
 
 // ==================== MAPA DE CLIENTES (propio, sin librerías: funciona sin internet) ====================
 const MAPA_BASE = { lat: 27.85, lng: -101.117 };
+const MAPA_ZMIN = 11, MAPA_ZMAX = 16; // no se acerca más de lo que se descarga: así nunca hay partes borrosas ni vacías
 const MAPA_TILE_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
 const mapaLngX = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * 256;
@@ -2005,8 +2033,8 @@ class MapaDigar {
         this.c = { lat: Math.max(-84, Math.min(84, mapaYLat(y, z))), lng: mapaXLng(x, z) };
         this._sched();
     }
-    zoomBy(n) { this.tocado = true; this.z = Math.max(11, Math.min(18, this.z + n)); this._sched(); }
-    setView(lat, lng, z) { this.c = { lat, lng }; if (z) this.z = Math.max(11, Math.min(18, z)); this._sched(); }
+    zoomBy(n) { this.tocado = true; this.z = Math.max(MAPA_ZMIN, Math.min(MAPA_ZMAX, this.z + n)); this._sched(); }
+    setView(lat, lng, z) { this.c = { lat, lng }; if (z) this.z = Math.max(MAPA_ZMIN, Math.min(MAPA_ZMAX, z)); this._sched(); }
     setYo(lat, lng, prec) { this.yo = { lat, lng }; this.yoAcc = prec || 0; this._sched(); }
     locate(cb) {
         if (typeof miPos !== 'undefined' && miPos) {
@@ -2034,8 +2062,8 @@ class MapaDigar {
         let n = -90, s = 90, e = -180, o = 180;
         ps.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lng); o = Math.min(o, p.lng); });
         if (this.yo && this.yo.lat < n + 0.03 && this.yo.lat > s - 0.03 && this.yo.lng < e + 0.03 && this.yo.lng > o - 0.03) { n = Math.max(n, this.yo.lat); s = Math.min(s, this.yo.lat); e = Math.max(e, this.yo.lng); o = Math.min(o, this.yo.lng); }
-        let z = 11;
-        for (let k = 18; k >= 11; k--) {
+        let z = MAPA_ZMIN;
+        for (let k = MAPA_ZMAX; k >= MAPA_ZMIN; k--) {
             if (mapaLngX(e, k) - mapaLngX(o, k) <= w - 90 && mapaLatY(s, k) - mapaLatY(n, k) <= h - 90) { z = k; break; }
         }
         const cx = (mapaLngX(e, z) + mapaLngX(o, z)) / 2, cy = (mapaLatY(n, z) + mapaLatY(s, z)) / 2;
@@ -2209,7 +2237,6 @@ function abrirPopupMapa(id, silencioso) {
         <button type="button" onclick="cerrarPopupMapa()" style="font-size:24px;line-height:1;color:#9ca3af;padding:4px 6px">×</button></div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:6px"><span style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]}">● ${MAPA_TXT[e][0]}</span><span id="mapa-popup-dist" style="font-size:12px;font-weight:800;color:#2563eb"></span></div>
         <div style="display:flex;gap:10px;margin-top:10px">
-        <a href="${mapaUrlComoLlegar(c)}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;background:#f3f4f6;border:1px solid #e5e7eb;color:#111827;font-size:15px;font-weight:800;text-decoration:none">🧭 Cómo llegar</a>
         <button type="button" onclick="mapaAccion('venta','${idA}')" style="flex:1;min-height:48px;border-radius:14px;background:#1fa971;color:#fff;font-size:15px;font-weight:800">🛒 Vender</button></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
         <button type="button" onclick="mapaAccion('nocompro','${idA}')" style="background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:800;padding:10px;border-radius:12px">${e === 'nocompro' ? 'Quitar "No compró"' : '✕ No compró'}</button>
@@ -2328,15 +2355,30 @@ function mapaCajaDescarga() {
     pts.forEach(p => { n = Math.max(n, p.lat); s = Math.min(s, p.lat); e = Math.max(e, p.lng); o = Math.min(o, p.lng); });
     return { n: n + 0.025, s: s - 0.025, e: e + 0.03, o: o - 0.03 };
 }
-function mapaListaTiles(b, zmax) {
-    const out = [];
-    for (let z = 12; z <= zmax; z++) {
+function mapaListaTiles() {
+    // Toda la ruta con poco detalle (zoom 11-14) + detalle (zoom 15-16) solo alrededor de cada cliente.
+    // Así se descarga muchísimo menos que cubrir todo el rectángulo de la ruta.
+    const b = mapaCajaDescarga();
+    const mapa = new Map();
+    const add = (z, x, y) => {
         const max = Math.pow(2, z) - 1;
-        const x0 = Math.max(0, Math.floor(mapaLngX(b.o, z) / 256)), x1 = Math.min(max, Math.floor(mapaLngX(b.e, z) / 256));
-        const y0 = Math.max(0, Math.floor(mapaLatY(b.n, z) / 256)), y1 = Math.min(max, Math.floor(mapaLatY(b.s, z) / 256));
-        for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push([z, x, y]);
+        if (x < 0 || y < 0 || x > max || y > max) return;
+        mapa.set(z + '/' + x + '/' + y, [z, x, y]);
+    };
+    for (let z = MAPA_ZMIN; z <= 14; z++) {
+        const x0 = Math.floor(mapaLngX(b.o, z) / 256), x1 = Math.floor(mapaLngX(b.e, z) / 256);
+        const y0 = Math.floor(mapaLatY(b.n, z) / 256), y1 = Math.floor(mapaLatY(b.s, z) / 256);
+        for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) add(z, x, y);
     }
-    return out;
+    let pts = clientes.filter(mapaTieneUbic).map(c => ({ lat: c.lat, lng: c.lng }));
+    if (!pts.length) pts = [{ lat: MAPA_BASE.lat, lng: MAPA_BASE.lng }];
+    for (let z = 15; z <= MAPA_ZMAX; z++) {
+        pts.forEach(p => {
+            const cx = Math.floor(mapaLngX(p.lng, z) / 256), cy = Math.floor(mapaLatY(p.lat, z) / 256);
+            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) add(z, cx + dx, cy + dy);
+        });
+    }
+    return [...mapa.values()].sort((a, c) => a[0] - c[0]);
 }
 async function actualizarTxtMapaOffline() {
     const t = $('mapa-offline-txt'); if (!t) return;
@@ -2349,11 +2391,9 @@ async function descargarMapaOffline() {
     const btn = $('btn-mapa-offline');
     if (_mapaDescargando) { _mapaCancelar = true; return; }
     if (navigator.onLine === false) { alert('Necesitas internet para descargar el mapa.'); return; }
-    const b = mapaCajaDescarga();
-    let zmax = 17, tiles = mapaListaTiles(b, zmax);
-    while (tiles.length > 1800 && zmax > 15) { zmax--; tiles = mapaListaTiles(b, zmax); }
-    if (tiles.length > 1800) { alert('La zona de tus clientes es muy grande para descargarla.'); return; }
-    const mb = Math.max(1, Math.round(tiles.length * 0.02));
+    const tiles = mapaListaTiles();
+    if (tiles.length > 2500) { alert('La zona de tus clientes es muy grande para descargarla.'); return; }
+    const mb = Math.max(1, Math.round(tiles.length * 0.015));
     if (!(await confirmarPro(`Se descargarán ${tiles.length} piezas del mapa (unos ${mb} MB) de la zona de tus clientes para verlo sin internet. Mejor con WiFi. ¿Continuar?`))) return;
     _mapaDescargando = true; _mapaCancelar = false;
     let hechos = 0, fallos = 0, i = 0;
@@ -2370,7 +2410,7 @@ async function descargarMapaOffline() {
             if (btn && hechos % 4 === 0) btn.innerText = `Descargando ${hechos}/${tiles.length} · toca para cancelar`;
         }
     }
-    await Promise.all([worker(), worker(), worker()]);
+    await Promise.all([worker(), worker()]);
     _mapaDescargando = false;
     if (btn) btn.innerText = '⬇️ Descargar mapa para usar sin internet';
     mapaAviso(_mapaCancelar ? 'Descarga cancelada' : (fallos > tiles.length / 2 ? 'No se pudo descargar bien. Revisa tu internet' : 'Mapa guardado en el teléfono'));
@@ -2420,10 +2460,17 @@ let ultimoDiaRevisado = new Date().toDateString();
 function quitarAcentos(t) { return (t || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 function esClienteGeneral(c) { return (c.nombre || '').trim().toLowerCase() === 'cliente general'; } // solo para limpiar datos viejos
 // Visitado = ya tiene una venta registrada HOY. Se calcula con la fecha, así que mañana (o la próxima semana) vuelve a salir pendiente solo.
-function clienteVisitadoHoy(c) {
+function _nombresVentaHoy() {
     const f = hoy();
-    const nom = (c.nombre || '').trim().toLowerCase();
-    return transacciones.some(t => t.tipo === 'Venta' && t.fechaStr === f && (t.clienteNombre || '').trim().toLowerCase() === nom);
+    if (!_vhCache.set || _vhCache.dia !== f) {
+        const st = new Set();
+        transacciones.forEach(t => { if (t.tipo === 'Venta' && t.fechaStr === f) st.add((t.clienteNombre || '').trim().toLowerCase()); });
+        _vhCache = { dia: f, set: st };
+    }
+    return _vhCache.set;
+}
+function clienteVisitadoHoy(c) {
+    return _nombresVentaHoy().has((c.nombre || '').trim().toLowerCase());
 }
 function esClienteActivo(c) { return !!clienteSeleccionado && normalizarId(clienteSeleccionado.id) === normalizarId(c.id); }
 function actualizarEtiquetaCliente() {
@@ -2491,26 +2538,27 @@ function leerSelectorDias(contId) {
 function renderChipsDiasClientes() {
     const cont = $('chips-dias-clientes');
     if (!cont) return;
-    const hoy = diaHoy();
+    const hoyN = diaHoy();
     const sinDia = clientes.filter(c => !c.dias || c.dias.length === 0).length;
     const items = DIAS_SEM.map(d => ({
         k: d.n,
-        label: d.corto + (hoy === d.n ? ' •' : ''),
+        label: d.largo + (hoyN === d.n ? ' (hoy)' : ''),
         n: clientes.filter(c => (c.dias || []).includes(d.n) && tocaEstaSemana(c)).length
     }));
     items.push({ k: 'todos', label: 'Todos', n: clientes.length });
     if (sinDia > 0) items.push({ k: 'sin', label: 'Sin día', n: sinDia });
-    cont.innerHTML = '';
-    items.forEach(it => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        const on = diaFiltroClientes === it.k;
-        b.className = 'px-3 py-1.5 rounded-full text-xs font-bold border ' + (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200');
-        b.style.flexShrink = '0';
-        b.innerText = `${it.label} (${it.n})`;
-        b.addEventListener('click', () => { diaFiltroClientes = it.k; renderListaClientesInicio(); });
-        cont.appendChild(b);
-    });
+    let sel = cont.querySelector('select');
+    if (!sel) {
+        cont.innerHTML = '<select aria-label="Día de la ruta"></select>';
+        sel = cont.querySelector('select');
+        sel.addEventListener('change', () => {
+            const v = sel.value;
+            diaFiltroClientes = (v === 'todos' || v === 'sin') ? v : Number(v);
+            renderListaClientesInicio();
+        });
+    }
+    if (sel === document.activeElement) return;
+    sel.innerHTML = items.map(it => `<option value="${it.k}"${String(it.k) === String(diaFiltroClientes) ? ' selected' : ''}>${it.label} · ${it.n} cliente${it.n === 1 ? '' : 's'}</option>`).join('');
 }
 
 function renderListaClientesInicio(filtro) {
@@ -2810,6 +2858,7 @@ function abrirModalSeleccionarCliente(desdePago) {
 
 function cerrarSelectorCliente() {
     pagoPendienteCliente = false;
+    seleccionEditVenta = false;
     cerrarModal('modal-seleccionar-cliente');
 }
 
@@ -2875,6 +2924,14 @@ function renderSeleccionClientes(filtro) {
 }
 
 function seleccionarClienteVenta(id) {
+    if (seleccionEditVenta) {
+        seleccionEditVenta = false;
+        const cEd = buscarClientePorId(id);
+        if (cEd) { editClienteNombre = cEd.nombre; editClienteDir = cEd.direccion || 'Mostrador'; }
+        cerrarModal('modal-seleccionar-cliente');
+        renderEditarVenta();
+        return;
+    }
     seleccionarClienteVentaDesdeInicio(id);
     cerrarModal('modal-seleccionar-cliente');
     continuarPagoSiPendiente();
@@ -2907,6 +2964,14 @@ async function guardarClienteRapido() {
     const nuevo = { id: Date.now(), nombre, direccion: dir, telefono: tel, dias: (typeof diaHoy() === 'number') ? [diaHoy()] : [] };
     clientes.push(nuevo);
     guardarTodo();
+    if (seleccionEditVenta) {
+        seleccionEditVenta = false;
+        editClienteNombre = nuevo.nombre; editClienteDir = nuevo.direccion || 'Mostrador';
+        cerrarModal('modal-cliente-rapido');
+        cerrarModal('modal-seleccionar-cliente');
+        renderEditarVenta();
+        return;
+    }
     seleccionarClienteVentaDesdeInicio(nuevo.id);
     cerrarModal('modal-cliente-rapido');
     cerrarModal('modal-seleccionar-cliente');
@@ -2930,7 +2995,18 @@ function pmEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({
 
 // Calcula el descuento de las promociones para una lista de líneas {id, cant, precioPersonalizado}.
 // opts.ids: solo esas promociones y sin revisar fechas (para editar ventas ya cobradas).
+let _pmMemo = { k: '', r: null };
 function pmCalc(items, opts) {
+    if (items === carrito && !opts) {
+        const k = carrito.map(i => i.id + ':' + i.cant + ':' + i.precioPersonalizado).join('|') + '#' + hoy() + '#' + JSON.stringify(promos);
+        if (_pmMemo.k === k && _pmMemo.r) return _pmMemo.r;
+        const r = pmCalcBase(items, opts);
+        _pmMemo = { k, r };
+        return r;
+    }
+    return pmCalcBase(items, opts);
+}
+function pmCalcBase(items, opts) {
     const res = { desc: 0, detalle: [] };
     if (!items || !items.length || !promos.length) return res;
     const lista = opts && opts.ids ? promos.filter(p => opts.ids.includes(p.id)) : promos.filter(p => pmEstado(p).k === 'on');
@@ -3085,7 +3161,7 @@ function cambiarVista(v) {
     if (v === 'clientes') renderListaClientesInicio();
     if (v === 'venta') renderVenta();
     if (v === 'productos') renderInventario();
-    if (v === 'transacciones') { inicializarFiltrosFechas(); renderTransacciones(); }
+    if (v === 'transacciones') { limiteTrans = 80; inicializarFiltrosFechas(); renderTransacciones(); }
     if (v === 'mas') { actualizarContadorClientesUI(); actualizarBadgeCreditos(); }
     if (v === 'estadisticas') renderEstadisticas();
     if (v === 'promos') pmRender();
@@ -3396,6 +3472,11 @@ function actualizarBadgeCarrito() {
     if (el) el.innerText = `${piezas} pzs · ${money(total)}`;
 }
 
+let _tRV = 0;
+function renderVentaPronto() {
+    clearTimeout(_tRV);
+    _tRV = setTimeout(() => renderVenta($('buscador-venta') ? $('buscador-venta').value : ''), 250);
+}
 const filtrarVentaDebounced = debounce(val => renderVenta(val), 180);
 function filtrarVenta(val) { filtrarVentaDebounced(val); }
 
@@ -3498,7 +3579,7 @@ function fijarCantidadCarrito(idx, nueva) {
     }
     if (p) p.stock -= (n - item.cant);
     item.cant = n;
-    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+    renderVentaPronto();
     return n;
 }
 
@@ -3510,7 +3591,7 @@ function quitarDelCarrito(idx) {
     carrito.splice(idx, 1);
     abrirCarrito();
     actualizarBadgeCarrito();
-    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+    renderVentaPronto();
 }
 
 function abrirCarrito() {
@@ -3837,13 +3918,14 @@ async function ejecutarCobroFinal() {
     $('recibo-resumen-cant').innerText = `${carrito.reduce((a, b) => a + b.cant, 0)} artículos`;
 
     const containerRecibo = $('recibo-lista-items');
-    containerRecibo.innerHTML = '';
+    let _htmlRecibo = '';
     [...carrito].sort(ordenAlfaItems).forEach(i => {
-        containerRecibo.innerHTML += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
+        _htmlRecibo += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
     });
     infoPromo.detalle.forEach(d => {
-        containerRecibo.innerHTML += `<div class="flex justify-between font-bold" style="color:#059669"><span>Promo ${d.n}<br><span style="font-size:10px;font-weight:500">${d.d}</span></span><span>-${money(d.a)}</span></div>`;
+        _htmlRecibo += `<div class="flex justify-between font-bold" style="color:#059669"><span>Promo ${d.n}<br><span style="font-size:10px;font-weight:500">${d.d}</span></span><span>-${money(d.a)}</span></div>`;
     });
+    containerRecibo.innerHTML = _htmlRecibo;
     $('recibo-subtotal').innerText = money(total + infoPromo.desc);
     $('recibo-total').innerText = money(total);
 
@@ -3879,7 +3961,8 @@ function cerrarExitoNuevaVenta() {
     // Nueva venta: se vuelve a pedir cliente
     clienteSeleccionado = null;
     actualizarEtiquetaCliente();
-    renderListaClientesInicio();
+    diaFiltroClientes = diaHoy();
+    cambiarVista('clientes');
 }
 
 // -------------------- CREDITOS --------------------
@@ -4702,6 +4785,7 @@ function renderDineroAcumulado() {
     el.style.color = total < 0 ? '#f87171' : '#fff';
 }
 
+let limiteTrans = 80;
 function renderTransacciones() {
     renderDineroAcumulado();
     const lista = $('lista-transacciones');
@@ -4719,6 +4803,7 @@ function renderTransacciones() {
         else if (esTarjeta) tarjeta += t.monto;
         else gastos += t.monto;
 
+        if (count > limiteTrans) return; // los totales cuentan todo, pero solo se dibujan las más recientes
         const color = esTarjeta ? 'bg-purple-50 text-purple-600' : (t.tipo === 'Gasto' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600');
         const subLabel = t.tipo === 'Venta'
             ? `${t.clienteNombre || 'General'} (${t.clienteDir || 'Mostrador'})`
@@ -4745,6 +4830,14 @@ function renderTransacciones() {
         lista.innerHTML = '<p class="text-center text-gray-400 text-xs py-6">No hay transacciones</p>';
     } else {
         lista.appendChild(frag);
+        if (count > limiteTrans) {
+            const mas = document.createElement('button');
+            mas.type = 'button';
+            mas.className = 'w-full py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700';
+            mas.textContent = `Ver más (${count - limiteTrans} restantes)`;
+            mas.addEventListener('click', () => { limiteTrans += 80; renderTransacciones(); });
+            lista.appendChild(mas);
+        }
     }
 
     $('fin-ingresos').innerText = money(ingresos);
@@ -4765,17 +4858,19 @@ function abrirDetalleVenta(id) {
 
     const container = $('det-venta-items');
     container.innerHTML = '';
+    let _h = '';
     if (t.items) {
         [...t.items].sort(ordenAlfaItems).forEach(i => {
-            container.innerHTML += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre}</span><span class="font-bold">${money(i.precioPersonalizado * i.cant)}</span></div>`;
+            _h += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre}</span><span class="font-bold">${money(i.precioPersonalizado * i.cant)}</span></div>`;
         });
     } else if (t.itemsCompra) {
         t.itemsCompra.forEach(i => {
-            container.innerHTML += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre} (Costo: ${money(i.costoUnitario)})</span><span class="font-bold">${money(i.cant * i.costoUnitario)}</span></div>`;
+            _h += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre} (Costo: ${money(i.costoUnitario)})</span><span class="font-bold">${money(i.cant * i.costoUnitario)}</span></div>`;
         });
     } else {
         container.innerHTML = `<p class="text-xs text-gray-600">${t.descripcion} (Categoría: ${t.categoria})</p>`;
     }
+    if (_h) container.innerHTML = _h;
     const btnEd = $('btn-editar-ticket');
     if (btnEd) btnEd.classList.toggle('hidden', !(t.tipo === 'Venta' && Array.isArray(t.items)));
     $('modal-detalle-venta').classList.remove('hidden');
@@ -4878,6 +4973,7 @@ async function cancelarOrdenActual() {
 
 // -------------------- EDITAR TICKET --------------------
 let editVentaId = null;
+let editClienteNombre = '', editClienteDir = '', editEsCredito = false, seleccionEditVenta = false;
 let editItems = [];
 let editOriginal = [];
 
@@ -4890,8 +4986,12 @@ function abrirEditarVenta() {
     editVentaId = t.id;
     editOriginal = t.items.map(i => ({ ...i }));
     editItems = t.items.map(i => ({ ...i }));
+    editClienteNombre = t.clienteNombre || '';
+    editClienteDir = t.clienteDir || 'Mostrador';
+    editEsCredito = !!t.esCredito;
+    seleccionEditVenta = false;
     $('edit-venta-titulo').innerText = `Editar ticket #${String(t.id).slice(-3)}`;
-    $('edit-venta-cliente').innerText = t.clienteNombre || 'General';
+    $('edit-venta-cliente').innerText = '';
     $('edit-venta-buscar').value = '';
     $('edit-venta-panel-agregar').classList.add('hidden');
     cerrarModal('modal-detalle-venta');
@@ -4902,6 +5002,7 @@ function abrirEditarVenta() {
 function cancelarEdicionVenta() {
     const id = editVentaId;
     cerrarModal('modal-editar-venta');
+    seleccionEditVenta = false;
     editVentaId = null; editItems = []; editOriginal = [];
     if (id != null) abrirDetalleVenta(id);
 }
@@ -4968,11 +5069,20 @@ function renderEditarVenta() {
     $('edit-venta-total-ant').innerText = money(t.monto);
     $('edit-venta-total-nuevo').innerText = money(totalNuevo);
 
+    const selCli = $('edit-venta-cliente-sel');
+    if (selCli) selCli.innerText = editClienteNombre || 'General';
+    const chkCred = $('edit-venta-credito');
+    if (chkCred) chkCred.checked = editEsCredito;
     const aviso = $('edit-venta-aviso-credito');
-    if (t.esCredito) {
-        const abonado = (t.abonos || []).reduce((a, b) => a + (Number(b.monto) || 0), 0);
+    const abonado = (t.abonos || []).reduce((a, b) => a + (Number(b.monto) || 0), 0);
+    if (editEsCredito) {
         const saldoNuevo = Math.max(0, totalNuevo - abonado);
-        aviso.innerText = `Crédito: el saldo pendiente pasará de ${money(t.saldoPendiente)} a ${money(saldoNuevo)}`;
+        aviso.innerText = t.esCredito
+            ? `Crédito: el saldo pendiente pasará de ${money(t.saldoPendiente)} a ${money(saldoNuevo)}`
+            : `Pasará a crédito: el cliente quedará debiendo ${money(saldoNuevo)}`;
+        aviso.classList.remove('hidden');
+    } else if (t.esCredito) {
+        aviso.innerText = 'Pasará a contado: se marcará como pagado completo';
         aviso.classList.remove('hidden');
     } else {
         aviso.classList.add('hidden');
@@ -4990,6 +5100,17 @@ function renderEditarVenta() {
         box.classList.remove('hidden');
     }
     renderListaAgregarEdit();
+}
+
+function editCreditoCambio() {
+    editEsCredito = !!$('edit-venta-credito').checked;
+    renderEditarVenta();
+}
+function editarCambiarCliente() {
+    seleccionEditVenta = true;
+    abrirModalSeleccionarCliente(false);
+    verTodosSeleccion = true;
+    renderSeleccionClientes('');
 }
 
 function toggleAgregarEditVenta() {
@@ -5044,6 +5165,12 @@ function guardarEdicionVenta() {
 
     const cambios = calcularCambiosEdit();
 
+    const cambioCliente = editClienteNombre !== (t.clienteNombre || '');
+    const tieneAbonos = Array.isArray(t.abonos) && t.abonos.length > 0;
+    if (tieneAbonos && (cambioCliente || editEsCredito !== !!t.esCredito)) {
+        return alert('Este ticket ya tiene abonos. Elimina primero esos abonos para poder cambiar el cliente o quitar el crédito.');
+    }
+
     // Validar stock antes de tocar nada
     for (const c of cambios) {
         if (c.delta > 0) {
@@ -5068,10 +5195,20 @@ function guardarEdicionVenta() {
     t.monto = Math.round((t.items.reduce((a, i) => a + i.precioPersonalizado * i.cant, 0) - _pi.desc) * 100) / 100;
     t.ganancia = t.items.reduce((a, i) => a + ((i.precioPersonalizado - (i.costo || 0)) * i.cant), 0) - _pi.desc;
 
-    if (t.esCredito) {
+    if (editClienteNombre) { t.clienteNombre = editClienteNombre; t.clienteDir = editClienteDir || 'Mostrador'; }
+    if (editEsCredito) {
         const abonado = (t.abonos || []).reduce((a, b) => a + (Number(b.monto) || 0), 0);
+        t.esCredito = true;
         t.saldoPendiente = Math.max(0, Math.round((t.monto - abonado) * 100) / 100);
         t.pagado = t.saldoPendiente <= 0;
+        if (!abonado) { t.pagoEfectivo = 0; t.cambio = 0; }
+    } else if (t.esCredito) {
+        t.esCredito = false;
+        t.pagado = true;
+        t.saldoPendiente = 0;
+        t.abonos = [];
+        t.pagoEfectivo = t.monto;
+        t.cambio = 0;
     } else if (t.pagoEfectivo > 0) {
         t.cambio = Math.max(0, t.pagoEfectivo - t.monto - (Number(t.sumaOtrosTickets) || 0));
     }
@@ -7307,7 +7444,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-24-i';
+const APP_BUILD = '2026-10-26-a';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {
@@ -7453,9 +7590,10 @@ document.addEventListener('visibilitychange', () => {
   var keys=Object.keys(I).sort(function(a,b){return b.length-a.length});
   var RX=new RegExp('('+keys.join('|')+')\\uFE0F?','g');
   var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,OPTION:1,SELECT:1,TITLE:1,NOSCRIPT:1};
+  var HAY=/[\u2190-\u2BFF\uD83C-\uD83E]/;
   function nodo(n){
     var p=n.parentNode;if(!p||SKIP[p.nodeName]||(p.classList&&p.classList.contains('ic-pro')))return;
-    var t=n.nodeValue;if(!t||t.search(RX)<0)return;
+    var t=n.nodeValue;if(!t||!HAY.test(t)||t.search(RX)<0)return;
     RX.lastIndex=0;var f=document.createDocumentFragment(),u=0,m;
     while((m=RX.exec(t))){
       if(m.index>u)f.appendChild(document.createTextNode(t.slice(u,m.index)));
@@ -7481,7 +7619,7 @@ document.addEventListener('visibilitychange', () => {
       else m.addedNodes.forEach(function(n){if(!(n.classList&&n.classList.contains('ic-pro')))cola.push(n)});
     });
     if(!prog){prog=true;(window.requestAnimationFrame||setTimeout)(proc)}
-  }).observe(document.body,{childList:true,subtree:true,characterData:true});
+  }).observe(document.body,{childList:true,subtree:true});
   barrer(document.body);
 })();
 </script>
@@ -7544,6 +7682,27 @@ document.addEventListener('visibilitychange', () => {
   }
   window.confirmarPro=function(msg){return abrir(msg,{})};
   window.pedirPro=function(msg,def,o){return abrir(msg,{pedir:true,def:def,multi:!!(o&&o.multi)})};
+})();
+</script>
+<script id="modal-open-js">
+(function () {
+  var htm = document.documentElement;
+  function sync() {
+    var abierto = false, ms = document.querySelectorAll('[id^="modal-"].fixed');
+    for (var i = 0; i < ms.length; i++) { if (!ms[i].classList.contains('hidden')) { abierto = true; break; } }
+    if (!abierto && document.getElementById('dlg-pro')) abierto = true;
+    htm.classList.toggle('modal-open', abierto);
+    document.body.classList.toggle('modal-open', abierto);
+  }
+  var obs = new MutationObserver(sync);
+  document.querySelectorAll('[id^="modal-"].fixed').forEach(function (m) { obs.observe(m, { attributes: true, attributeFilter: ['class'] }); });
+  new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) {
+      var l = Array.prototype.slice.call(ms[i].addedNodes).concat(Array.prototype.slice.call(ms[i].removedNodes));
+      for (var j = 0; j < l.length; j++) if (l[j].id === 'dlg-pro') { sync(); return; }
+    }
+  }).observe(document.body, { childList: true });
+  sync();
 })();
 </script>
 <script id="pulido-pro-js">
@@ -7731,7 +7890,7 @@ function abrirMenuInicio() { const m = document.getElementById('menu-inicio'); i
 function cerrarMenuInicio() { const m = document.getElementById('menu-inicio'); if (m) m.classList.add('hidden'); }
 (function () {
     aplicarModoBotones();
-    setInterval(function () { const v = document.getElementById('vista-inicio'); if (v && !v.classList.contains('hidden')) renderInicio(); }, 4000);
+    setInterval(function () { const v = document.getElementById('vista-inicio'); if (!document.hidden && v && !v.classList.contains('hidden')) renderInicio(); }, 15000);
 })();
 </script>
 <script>

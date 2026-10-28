@@ -4639,7 +4639,9 @@ function compraConfirmarPrecio() {
     }
 }
 
-function guardarFacturaCompraFinal() {
+let _guardandoCompra = false;
+async function guardarFacturaCompraFinal() {
+    if (_guardandoCompra) return;
     if (facturaCompraItems.length === 0) return alert('La factura está vacía');
     const fechaInput = $('compra-fecha-input').value || hoy();
     const folio = ($('compra-folio-input') && $('compra-folio-input').value.trim()) || '';
@@ -4665,14 +4667,40 @@ function guardarFacturaCompraFinal() {
         item.precioVentaFinal = preciosMap[String(item.id)];
     });
 
+    // Detectar productos cuyo costo cambió respecto al que ya tenían (con piezas en stock) y preguntar si se promedia
+    const cambiosCosto = [];
+    facturaCompraItems.forEach(item => {
+        const prod = productos.find(x => String(x.id) === String(item.id));
+        if (!prod) return;
+        const sa = Math.max(0, Number(prod.stock) || 0);
+        const ca = Number(prod.costo) || 0;
+        const cn = Number(item.costoReal) || Number(item.costoUnitario) || 0;
+        const cant = Math.max(0, Number(item.cant) || 0);
+        if (sa > 0 && ca > 0 && cn > 0 && cant > 0 && Math.abs(cn - ca) > 0.005) {
+            cambiosCosto.push({ id: String(prod.id), nombre: prod.nombre, ca, cn, prom: Math.round(((sa * ca + cant * cn) / (sa + cant)) * 100) / 100 });
+        }
+    });
+    let promediar = false;
+    if (cambiosCosto.length) {
+        const lineas = cambiosCosto.slice(0, 8).map(c => `• ${c.nombre}: ${money(c.ca)} → ${money(c.cn)} (promedio ${money(c.prom)})`).join('\n');
+        const extra = cambiosCosto.length > 8 ? `\n… y ${cambiosCosto.length - 8} más` : '';
+        _guardandoCompra = true;
+        try {
+            promediar = await confirmarPro(`Cambió el costo de ${cambiosCosto.length} producto(s):\n${lineas}${extra}\n\n¿Promediar el costo con lo que ya tienes en stock?\nAceptar = promediar · Cancelar = dejar el costo nuevo`);
+        } finally { _guardandoCompra = false; }
+    }
+    const promPorId = {};
+    if (promediar) cambiosCosto.forEach(c => { promPorId[c.id] = c.prom; });
+
     facturaCompraItems.forEach(item => {
         const prod = productos.find(x => String(x.id) === String(item.id));
         if (!prod) return;
         const stockAnterior = Number(prod.stock) || 0;
         const stockNuevo = Math.max(0, Number(item.cant) || 0);
         const costoNuevo = Number(item.costoReal) || Number(item.costoUnitario) || 0;
-        // El costo siempre es el de la factura más reciente (ya no se promedia con el anterior)
-        if (costoNuevo > 0) prod.costo = costoNuevo;
+        // Costo de la factura más reciente; si dijiste que sí, se promedia con el anterior
+        if (promPorId[String(prod.id)] != null) prod.costo = promPorId[String(prod.id)];
+        else if (costoNuevo > 0) prod.costo = costoNuevo;
         prod.stock = stockAnterior + stockNuevo;
         if (item.precioVentaFinal != null && !isNaN(item.precioVentaFinal)) {
             prod.precio = item.precioVentaFinal;
@@ -7444,7 +7472,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-26-a';
+const APP_BUILD = '2026-10-26-b';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

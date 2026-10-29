@@ -5311,11 +5311,53 @@ async function fotosBorrar(codes) {
     await terminarTx(tx);
 }
 
+// Achica las fotos (máx. 420 px, JPEG): cada una pasa de cientos de KB a unos 20-40 KB. Menos memoria y menos trabas en el teléfono.
+async function reducirFoto(src, maxLado, calidad) {
+    maxLado = maxLado || 420; calidad = calidad || 0.72;
+    if (typeof src !== 'string' || src.indexOf('data:image/') !== 0) return src;
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return src;
+    const k = Math.min(1, maxLado / Math.max(w, h));
+    const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+    const cv = document.createElement('canvas');
+    cv.width = cw; cv.height = ch;
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch);
+    cx.drawImage(img, 0, 0, cw, ch);
+    const out = cv.toDataURL('image/jpeg', calidad);
+    return out.length < src.length ? out : src;
+}
+let _reduciendoFotos = false;
+async function reducirFotosGuardadas() {
+    if (_reduciendoFotos) return;
+    _reduciendoFotos = true;
+    try {
+        const codes = Object.keys(fotosCatalogo).filter(c => { const f = fotosCatalogo[c] || ''; return f.length > 45000 && f.indexOf('data:image/') === 0; });
+        let hechos = 0;
+        for (const c of codes) {
+            while (document.hidden) await new Promise(r => setTimeout(r, 2000));
+            const orig = fotosCatalogo[c];
+            try {
+                const nueva = await reducirFoto(orig);
+                if (nueva !== orig && fotosCatalogo[c] === orig) { // si mientras tanto se bajó una foto nueva, no la pisa
+                    await fotosGuardar([{ code: c, image: nueva, updateTime: fotosMeta[c] }]);
+                    fotosCatalogo[c] = nueva;
+                    hechos++;
+                }
+            } catch (e) { /* esa foto se deja como está */ }
+            await new Promise(r => setTimeout(r, 40));
+        }
+        if (hechos && modoVistaCatalogo) renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+    } finally { _reduciendoFotos = false; }
+}
+
 async function cargarFotosGuardadas() {
     try {
         const todas = await fotosLeerTodas();
         todas.forEach(f => { fotosCatalogo[f.code] = f.image; fotosMeta[f.code] = f.updateTime; });
         if (modoVistaCatalogo) renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
+        setTimeout(reducirFotosGuardadas, 4000);
     } catch (e) { console.warn('No se pudieron leer las fotos guardadas', e); }
 }
 
@@ -5370,6 +5412,7 @@ async function sincronizarFotosCatalogo(manual) {
                 const img = valorFirestore(f.image);
                 if (code) guardar.push({ code, image: (typeof img === 'string' && /^(data:image\/|https?:\/\/)/i.test(img)) ? img : '', updateTime: it.found.updateTime });
             });
+            for (const g of guardar) { try { g.image = await reducirFoto(g.image); } catch (e) {} }
             await fotosGuardar(guardar);
             guardar.forEach(g => { fotosCatalogo[g.code] = g.image; fotosMeta[g.code] = g.updateTime; });
             hechos += grupo.length;
@@ -7477,7 +7520,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-26-c';
+const APP_BUILD = '2026-10-26-d';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

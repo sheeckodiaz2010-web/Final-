@@ -933,6 +933,13 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <div class="flex justify-between text-sm"><span class="text-gray-500">+ Impuestos auto</span><span id="compra-p-imp">$0</span></div>
                     <div class="flex justify-between text-sm"><span class="text-gray-500">+ Flete</span><span id="compra-p-flete">$0</span></div>
                     <div class="flex justify-between text-sm border-t pt-1"><span class="font-bold">Costo real</span><span class="font-black text-purple-600" id="compra-p-real">$0</span></div>
+                    <div id="compra-p-prom-box" class="hidden bg-amber-50 border border-amber-300 rounded-xl p-2 space-y-2">
+                        <p class="text-[11px] font-bold text-amber-800" id="compra-p-prom-txt"></p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="compra-btn-prom" onclick="compraSetPromedio(true)" class="py-2 rounded-lg text-xs font-bold border">Promediar</button>
+                            <button type="button" id="compra-btn-nuevo" onclick="compraSetPromedio(false)" class="py-2 rounded-lg text-xs font-bold border">Costo nuevo</button>
+                        </div>
+                    </div>
                     <div class="flex justify-between text-sm"><span class="text-gray-500">Precio actual POS</span><span id="compra-p-act">$0</span></div>
                     <div class="space-y-1 pt-1">
                         <label class="text-[10px] font-semibold text-gray-500">Margen de ganancia</label>
@@ -4338,10 +4345,18 @@ function compraCalcularItem(item) {
     const pctFlete = compraFletePctActual();
     const flete = conImp * pctFlete;
     const costoReal = conImp * (1 + pctFlete);
-    const sugerido = Math.round(costoReal * (1 + compraMargenPct) * 2) / 2;
     const prod = productos.find(x => String(x.id) === String(item.id));
     const precioAct = prod ? (Number(prod.precio) || 0) : 0;
-    return { ...item, conImp, imp, flete, costoReal, sugerido, precioAct };
+    // ¿Cambió el costo respecto al que ya tenía el producto (con piezas en stock)? -> opción de promediar
+    const sa = Math.max(0, Number(prod && prod.stock) || 0);
+    const ca = Number(prod && prod.costo) || 0;
+    const cant = Math.max(0, Number(item.cant) || 0);
+    const hayCambio = !!prod && sa > 0 && ca > 0 && costoReal > 0 && cant > 0 && Math.abs(costoReal - ca) > 0.005;
+    const prom = hayCambio ? Math.round(((sa * ca + cant * costoReal) / (sa + cant)) * 100) / 100 : costoReal;
+    const usaProm = hayCambio && item.usarPromedio !== false;
+    const costoEfectivo = usaProm ? prom : costoReal;
+    const sugerido = Math.round(costoEfectivo * (1 + compraMargenPct) * 2) / 2;
+    return { ...item, conImp, imp, flete, costoReal, sugerido, precioAct, hayCambio, prom, usaProm, costoEfectivo, ca, sa };
 }
 
 function abrirModalCompra() {
@@ -4550,12 +4565,22 @@ function renderCompraPaso3() {
     $('compra-p-fact').innerText = money(c.costoUnitario);
     $('compra-p-imp').innerText = money(c.imp);
     $('compra-p-flete').innerText = money(c.flete);
-    $('compra-p-real').innerText = money(c.costoReal);
+    $('compra-p-real').innerText = money(c.costoEfectivo);
+    const pbox = $('compra-p-prom-box');
+    if (pbox) {
+        pbox.classList.toggle('hidden', !c.hayCambio);
+        if (c.hayCambio) {
+            $('compra-p-prom-txt').innerText = `El costo cambió: tenías ${c.sa} pza a ${money(c.ca)} y entran ${c.cant} a ${money(c.costoReal)}. Promedio: ${money(c.prom)}. ¿Con cuál sacas el margen?`;
+            const on = 'background:#d97706;color:#fff;border-color:#d97706', off = 'background:#fff;color:#92400e;border-color:#fcd34d';
+            $('compra-btn-prom').style.cssText = c.usaProm ? on : off;
+            $('compra-btn-nuevo').style.cssText = c.usaProm ? off : on;
+        }
+    }
     $('compra-p-act').innerText = money(c.precioAct);
     $('compra-p-sug').innerText = money(c.sugerido);
     $('compra-p-input').value = c.sugerido.toFixed(2);
     $('compra-p-sug-label').innerText = `Sugerido (+${Math.round(compraMargenPct * 1000) / 10}%)`;
-    $('compra-p-gana').innerText = `Ganas ${money(c.sugerido - c.costoReal)} por pieza`;
+    $('compra-p-gana').innerText = `Ganas ${money(c.sugerido - c.costoEfectivo)} por pieza`;
     document.querySelectorAll('.btn-mg').forEach(b => b.classList.toggle('activo', Math.abs(parseFloat(b.dataset.mg) - compraMargenPct) < 0.0001));
     actualizarMargenRealCompra();
 
@@ -4583,6 +4608,12 @@ function renderCompraPaso3() {
     }
 }
 
+function compraSetPromedio(v) {
+    const it = facturaCompraItems[compraIdxPrecio];
+    if (!it) return;
+    it.usarPromedio = !!v;
+    renderCompraPaso3();
+}
 function compraUsarSugerido() {
     const c = compraCalcularItem(facturaCompraItems[compraIdxPrecio]);
     $('compra-p-input').value = c.sugerido.toFixed(2);
@@ -4605,9 +4636,9 @@ function actualizarMargenRealCompra() {
     if (!el || !item) return;
     const c = compraCalcularItem(item);
     const precio = parseFloat($('compra-p-input').value);
-    if (isNaN(precio) || c.costoReal <= 0) { el.innerText = ''; return; }
-    const pct = (precio / c.costoReal - 1) * 100;
-    el.innerText = `Con ese precio: ganas ${money(precio - c.costoReal)} por pieza · margen ${Math.round(pct)}%`;
+    if (isNaN(precio) || c.costoEfectivo <= 0) { el.innerText = ''; return; }
+    const pct = (precio / c.costoEfectivo - 1) * 100;
+    el.innerText = `Con ese precio: ganas ${money(precio - c.costoEfectivo)} por pieza · margen ${Math.round(pct)}%`;
 }
 function compraDejarActual() {
     const c = compraCalcularItem(facturaCompraItems[compraIdxPrecio]);
@@ -4639,9 +4670,7 @@ function compraConfirmarPrecio() {
     }
 }
 
-let _guardandoCompra = false;
-async function guardarFacturaCompraFinal() {
-    if (_guardandoCompra) return;
+function guardarFacturaCompraFinal() {
     if (facturaCompraItems.length === 0) return alert('La factura está vacía');
     const fechaInput = $('compra-fecha-input').value || hoy();
     const folio = ($('compra-folio-input') && $('compra-folio-input').value.trim()) || '';
@@ -4667,39 +4696,15 @@ async function guardarFacturaCompraFinal() {
         item.precioVentaFinal = preciosMap[String(item.id)];
     });
 
-    // Detectar productos cuyo costo cambió respecto al que ya tenían (con piezas en stock) y preguntar si se promedia
-    const cambiosCosto = [];
-    facturaCompraItems.forEach(item => {
-        const prod = productos.find(x => String(x.id) === String(item.id));
-        if (!prod) return;
-        const sa = Math.max(0, Number(prod.stock) || 0);
-        const ca = Number(prod.costo) || 0;
-        const cn = Number(item.costoReal) || Number(item.costoUnitario) || 0;
-        const cant = Math.max(0, Number(item.cant) || 0);
-        if (sa > 0 && ca > 0 && cn > 0 && cant > 0 && Math.abs(cn - ca) > 0.005) {
-            cambiosCosto.push({ id: String(prod.id), nombre: prod.nombre, ca, cn, prom: Math.round(((sa * ca + cant * cn) / (sa + cant)) * 100) / 100 });
-        }
-    });
-    let promediar = false;
-    if (cambiosCosto.length) {
-        const lineas = cambiosCosto.slice(0, 8).map(c => `• ${c.nombre}: ${money(c.ca)} → ${money(c.cn)} (promedio ${money(c.prom)})`).join('\n');
-        const extra = cambiosCosto.length > 8 ? `\n… y ${cambiosCosto.length - 8} más` : '';
-        _guardandoCompra = true;
-        try {
-            promediar = await confirmarPro(`Cambió el costo de ${cambiosCosto.length} producto(s):\n${lineas}${extra}\n\n¿Promediar el costo con lo que ya tienes en stock?\nAceptar = promediar · Cancelar = dejar el costo nuevo`);
-        } finally { _guardandoCompra = false; }
-    }
-    const promPorId = {};
-    if (promediar) cambiosCosto.forEach(c => { promPorId[c.id] = c.prom; });
-
     facturaCompraItems.forEach(item => {
         const prod = productos.find(x => String(x.id) === String(item.id));
         if (!prod) return;
         const stockAnterior = Number(prod.stock) || 0;
         const stockNuevo = Math.max(0, Number(item.cant) || 0);
         const costoNuevo = Number(item.costoReal) || Number(item.costoUnitario) || 0;
-        // Costo de la factura más reciente; si dijiste que sí, se promedia con el anterior
-        if (promPorId[String(prod.id)] != null) prod.costo = promPorId[String(prod.id)];
+        // Costo de la factura más reciente; si en el paso del margen elegiste promediar, se promedia con el anterior
+        const cc = compraCalcularItem(item);
+        if (cc.usaProm) prod.costo = cc.prom;
         else if (costoNuevo > 0) prod.costo = costoNuevo;
         prod.stock = stockAnterior + stockNuevo;
         if (item.precioVentaFinal != null && !isNaN(item.precioVentaFinal)) {
@@ -7472,7 +7477,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-26-b';
+const APP_BUILD = '2026-10-26-c';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

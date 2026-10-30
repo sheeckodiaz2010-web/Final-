@@ -138,12 +138,12 @@ input,select,textarea{font-size:16px}
 #banner-offline.on{opacity:1}
 .mapd{position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;border:1px solid #d1d5db;border-radius:16px;-webkit-user-select:none;user-select:none}
 .mapd-grid{position:absolute;inset:0;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:48px 48px;opacity:.55}
-.mapd-tl,.mapd-pl{position:absolute;inset:0;overflow:hidden}
-.mapd-t{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none;-webkit-user-drag:none;transition:opacity .15s}
-.mapd-pin{position:absolute;left:0;top:0;will-change:transform;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 12px/1 system-ui,sans-serif;cursor:pointer;z-index:2}
+.mapd-tl,.mapd-pl{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform}
+.mapd-t{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none;-webkit-user-drag:none;transition:opacity .15s;backface-visibility:hidden}
+.mapd-pin{position:absolute;left:0;top:0;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font:800 12px/1 system-ui,sans-serif;cursor:pointer;z-index:2}
 .mapd-pin.sel{width:38px;height:38px;margin:-19px 0 0 -19px;border-color:#111827;z-index:3;font-size:14px}
-.mapd-yo{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25);z-index:1;pointer-events:none}
-.mapd-yoacc{position:absolute;border-radius:50%;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.35);pointer-events:none;z-index:1}
+.mapd-yo{position:absolute;left:0;top:0;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25);z-index:1;pointer-events:none}
+.mapd-yoacc{position:absolute;left:0;top:0;border-radius:50%;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.35);pointer-events:none;z-index:1}
 .mapd-ctl{position:absolute;right:8px;top:8px;z-index:6;display:flex;flex-direction:column;gap:6px}
 .mapd-ctl button{width:40px;height:40px;border-radius:12px;background:#fff;color:#111827;font-size:20px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);line-height:1}
 .mapd-attr{position:absolute;left:6px;bottom:4px;z-index:6;font:10px system-ui,sans-serif;color:#374151;background:rgba(255,255,255,.8);padding:1px 5px;border-radius:5px;pointer-events:none}
@@ -1907,7 +1907,13 @@ const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
 // ==================== MAPA DE CLIENTES (propio, sin librerías: funciona sin internet) ====================
 const MAPA_BASE = { lat: 27.85, lng: -101.117 };
 const MAPA_ZMIN = 11, MAPA_ZMAX = 16; // no se acerca más de lo que se descarga: así nunca hay partes borrosas ni vacías
-const MAPA_TILE_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+// Proveedor del mapa: con clave de CARTO usa CARTO (más rápido); sin clave usa OpenStreetMap.
+// Clave gratis en https://carto.com/basemaps/apikey (llega por correo). Pégala entre las comillas:
+const MAPA_CARTO_KEY = 'cb1_4y3c_1_15f8786f0f182a683f7d89a3';
+const MAPA_OSM_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+const MAPA_CARTO_URL = (z, x, y) => `https://basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png?key=${encodeURIComponent(MAPA_CARTO_KEY)}`;
+const MAPA_PREF = MAPA_CARTO_KEY ? 'c/' : ''; // prefijo para no mezclar piezas guardadas de cada proveedor
+const MAPA_TILE_URL = MAPA_CARTO_KEY ? MAPA_CARTO_URL : MAPA_OSM_URL;
 function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
 const mapaLngX = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * 256;
 const mapaLatY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * Math.pow(2, z) * 256; };
@@ -1943,18 +1949,16 @@ function mapaTileCount() {
         try { const rq = db.transaction('tiles').objectStore('tiles').count(); rq.onsuccess = () => res(rq.result || 0); rq.onerror = () => res(0); } catch (e) { res(0); }
     })).catch(() => 0);
 }
-async function mapaTileBlob(z, x, y) {
-    const key = z + '/' + x + '/' + y;
-    const g = await mapaTileGet(key);
-    if (g) return g;
-    if (navigator.onLine === false) return null;
+// Baja una pieza del proveedor principal; si falla, intenta OpenStreetMap. Devuelve null si no hubo respuesta buena.
+async function mapaBajarTile(z, x, y, signal) {
+    const op = signal ? { signal } : undefined;
     try {
-        const r = await fetch(MAPA_TILE_URL(z, x, y));
-        if (!r.ok) return null;
-        const b = await r.blob();
-        mapaTilePut(key, b);
-        return b;
-    } catch (e) { return null; }
+        const r = await fetch(MAPA_TILE_URL(z, x, y), op);
+        if (r.ok) return { b: await r.blob(), osm: false };
+    } catch (e) { if (signal && signal.aborted) throw e; if (!MAPA_PREF && navigator.onLine === false) throw e; }
+    if (!MAPA_PREF) return null;
+    const r = await fetch(MAPA_OSM_URL(z, x, y), op);
+    return r.ok ? { b: await r.blob(), osm: true } : null;
 }
 
 // ---- GPS ----
@@ -1972,17 +1976,79 @@ function gpsError(e) {
     return 'No pude obtener tu ubicación. Revisa que el GPS esté encendido y vuelve a intentar.';
 }
 
+// ---- Piezas del mapa: memoria + cola de descarga con prioridad ----
+const MAPA_MEM_MAX = 300, MAPA_CONC = 6;
+const _mapaMem = new Map(), _mapaVivos = new Set(), _mapaCola = [];
+let _mapaActivas = 0;
+function mapaEnUso() {
+    const s = new Set();
+    _mapaVivos.forEach(m => {
+        m.tiles.forEach(img => { if (img.dataset.k) s.add(img.dataset.k); });
+        m.ghosts.forEach(g => g.querySelectorAll('img').forEach(img => { if (img.dataset.k) s.add(img.dataset.k); }));
+    });
+    return s;
+}
+function mapaMemPut(key, url) {
+    _mapaMem.delete(key); _mapaMem.set(key, url);
+    if (_mapaMem.size <= MAPA_MEM_MAX) return;
+    const uso = mapaEnUso();
+    for (const [k, u] of _mapaMem) {
+        if (_mapaMem.size <= MAPA_MEM_MAX) break;
+        if (uso.has(k)) continue;
+        try { URL.revokeObjectURL(u); } catch (e) {}
+        _mapaMem.delete(k);
+    }
+}
+function mapaBombear() {
+    for (let i = _mapaCola.length - 1; i >= 0; i--) if (_mapaCola[i].cancel) _mapaCola.splice(i, 1);
+    while (_mapaActivas < MAPA_CONC && _mapaCola.length) {
+        let bi = 0, bp = Infinity;
+        for (let i = 0; i < _mapaCola.length; i++) {
+            const p = _mapaCola[i].owner.prioTile(_mapaCola[i]);
+            if (p < bp) { bp = p; bi = i; }
+        }
+        const t = _mapaCola.splice(bi, 1)[0];
+        _mapaActivas++;
+        mapaRed(t).then(() => { _mapaActivas--; mapaBombear(); }, () => { _mapaActivas--; mapaBombear(); });
+    }
+}
+async function mapaRed(t) {
+    if (t.cancel) return;
+    t.ctrl = window.AbortController ? new AbortController() : null;
+    try {
+        const res = await mapaBajarTile(t.z, t.x, t.y, t.ctrl ? t.ctrl.signal : null);
+        if (!res) { if (!t.cancel) t.done(null); return; }
+        mapaTilePut(res.osm ? t.key.slice(MAPA_PREF.length) : t.key, res.b); // se guarda aunque ya no se necesite: sirve para la próxima vez
+        if (t.cancel) return;
+        const u = URL.createObjectURL(res.b); mapaMemPut(t.key, u); t.done(u);
+    } catch (e) { if (!t.cancel) t.done(null); }
+}
+function mapaTileUrl(t) {
+    const m = _mapaMem.get(t.key);
+    if (m) { _mapaMem.delete(t.key); _mapaMem.set(t.key, m); t.done(m); return; }
+    mapaTileGet(t.key).then(b => b || (MAPA_PREF ? mapaTileGet(t.key.slice(MAPA_PREF.length)) : null)).then(b => {
+        if (t.cancel) return;
+        if (b) { const u = URL.createObjectURL(b); mapaMemPut(t.key, u); t.done(u); return; }
+        if (navigator.onLine === false) { t.done(null); return; }
+        _mapaCola.push(t); mapaBombear();
+    });
+}
+
 // ---- Mapa ----
+// Una sola transformación mueve todas las piezas y pines (antes se movían uno por uno en cada cuadro).
+// Al cambiar de zoom, las piezas viejas se quedan escaladas de fondo hasta que llegan las nuevas (sin pantalla en blanco).
 class MapaDigar {
     constructor(el) {
         this.el = el; this.z = 15; this.c = { lat: MAPA_BASE.lat, lng: MAPA_BASE.lng };
-        this.tiles = new Map(); this.pins = []; this.pinEls = []; this.sel = null; this.yo = null; this.yoEl = null;
-        this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0; this.tocado = false; this.yoAcc = 0; this.yoAccEl = null;
+        this.tiles = new Map(); this.ghosts = []; this.pins = []; this.pinEls = []; this._idx = new Map();
+        this.sel = null; this._selPrev = null; this.yo = null; this.yoEl = null; this.yoAccEl = null; this.yoAcc = 0;
+        this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0; this.tocado = false;
+        this.az = null; this.bx = 0; this.by = 0; this._rk = ''; this._pinsSucio = true; this._yoSucio = true; this._cx = 0; this._cy = 0; this._gt = 0;
         el.classList.add('mapd');
         el.innerHTML = '<div class="mapd-grid"></div><div class="mapd-tl"></div><div class="mapd-pl"></div>' +
             '<div class="mapd-msg">Sin mapa guardado en esta zona. Se ven solo los pines.</div>' +
             '<div class="mapd-ctl"><button type="button" data-a="in" aria-label="Acercar">+</button><button type="button" data-a="out" aria-label="Alejar">−</button><button type="button" data-a="yo" aria-label="Mi ubicación">◎</button></div>' +
-            '<div class="mapd-attr">© OpenStreetMap</div>';
+            '<div class="mapd-attr">© OpenStreetMap' + (MAPA_PREF ? ', © CARTO' : '') + '</div>';
         this.tl = el.querySelector('.mapd-tl'); this.pl = el.querySelector('.mapd-pl');
         el.querySelectorAll('.mapd-ctl button').forEach(b => b.addEventListener('click', () => {
             const a = b.dataset.a;
@@ -1994,6 +2060,7 @@ class MapaDigar {
         el.addEventListener('pointercancel', e => this._up(e, true));
         el.addEventListener('wheel', e => { e.preventDefault(); this.zoomBy(e.deltaY < 0 ? 1 : -1); }, { passive: false });
         if (window.ResizeObserver) new ResizeObserver(() => this._sched()).observe(el);
+        _mapaVivos.add(this);
         this._sched();
     }
     _sched() { if (this._raf) return; this._raf = requestAnimationFrame(() => { this._raf = 0; this.render(); }); }
@@ -2019,7 +2086,7 @@ class MapaDigar {
             if (this.tap && this.tap.moved) this._pan(-(cur.x - prev.x), -(cur.y - prev.y));
         } else if (this.ptrs.size === 2 && this.pd) {
             const d = this._dist(), r = d / this.pd;
-            if (r > 1.5) { this.zoomBy(1); this.pd = d; } else if (r < 0.67) { this.zoomBy(-1); this.pd = d; }
+            if (r > 1.35) { this.zoomBy(1); this.pd = d; } else if (r < 0.74) { this.zoomBy(-1); this.pd = d; }
         }
     }
     _up(e, cancel) {
@@ -2040,9 +2107,9 @@ class MapaDigar {
         this.c = { lat: Math.max(-84, Math.min(84, mapaYLat(y, z))), lng: mapaXLng(x, z) };
         this._sched();
     }
-    zoomBy(n) { this.tocado = true; this.z = Math.max(MAPA_ZMIN, Math.min(MAPA_ZMAX, this.z + n)); this._sched(); }
+    zoomBy(n) { this.tocado = true; const nz = Math.max(MAPA_ZMIN, Math.min(MAPA_ZMAX, this.z + n)); if (nz === this.z) return; this.z = nz; this._sched(); }
     setView(lat, lng, z) { this.c = { lat, lng }; if (z) this.z = Math.max(MAPA_ZMIN, Math.min(MAPA_ZMAX, z)); this._sched(); }
-    setYo(lat, lng, prec) { this.yo = { lat, lng }; this.yoAcc = prec || 0; this._sched(); }
+    setYo(lat, lng, prec) { this.yo = { lat, lng }; this.yoAcc = prec || 0; this._yoSucio = true; this._sched(); }
     locate(cb) {
         if (typeof miPos !== 'undefined' && miPos) {
             this.setYo(miPos.lat, miPos.lng, miPos.prec); this.setView(miPos.lat, miPos.lng, Math.max(this.z, 16));
@@ -2053,13 +2120,16 @@ class MapaDigar {
             .catch(e => alert(gpsError(e)));
     }
     setPins(arr) {
-        this.pins = arr; this.pl.innerHTML = ''; this.pinEls = []; this.yoEl = null; this.yoAccEl = null;
+        this.pins = arr; this.pl.innerHTML = ''; this.pinEls = []; this.yoEl = null; this.yoAccEl = null; this._idx = new Map();
+        const fr = document.createDocumentFragment();
         arr.forEach((p, i) => {
             const d = document.createElement('div');
             d.className = 'mapd-pin'; d.dataset.i = i;
             d.style.background = p.color; d.style.color = p.txt || '#fff'; d.textContent = p.label || '';
-            this.pl.appendChild(d); this.pinEls.push(d);
+            fr.appendChild(d); this.pinEls.push(d); this._idx.set(String(p.id), i);
         });
+        this.pl.appendChild(fr);
+        this._selPrev = null; this._pinsSucio = true; this._yoSucio = true;
         this._sched();
     }
     fit() {
@@ -2080,54 +2150,135 @@ class MapaDigar {
         const h = this.el.clientHeight, z = this.z;
         this.setView(mapaYLat(mapaLatY(lat, z) + h * 0.22, z), mapaXLng(mapaLngX(lng, z), z));
     }
-    reload() { this.tiles.forEach(img => img.remove()); this.tiles.clear(); this._sched(); }
+    reload() {
+        this.tiles.forEach(img => this._soltar(img)); this.tiles.clear();
+        this.ghosts.forEach(g => g.remove()); this.ghosts = [];
+        this._rk = ''; this.el.classList.remove('sin-tiles'); this._sched();
+    }
+    prioTile(t) { return t.z !== this.z ? 1e9 : Math.hypot(t.tx + 0.5 - this._cx, t.ty + 0.5 - this._cy); }
+    _soltar(img) {
+        const t = img._t;
+        if (t) { t.cancel = true; if (t.ctrl && !img.dataset.ok) { try { t.ctrl.abort(); } catch (e) {} } }
+        img.onload = null; img.onerror = null; img.remove();
+    }
+    _sinPiezas() { if (![...this.tiles.values()].some(i => i.dataset.ok)) this.el.classList.add('sin-tiles'); }
+    _quitarGhosts(forzar) {
+        if (!this.ghosts.length) return;
+        if (!forzar) { for (const img of this.tiles.values()) if (img._vis && !img.dataset.ok && !img.dataset.f) return; }
+        clearTimeout(this._gt);
+        this.ghosts.forEach(g => g.remove()); this.ghosts = [];
+    }
+    _anclar(ox, oy) {
+        this.az = this.z; this.bx = Math.round(ox); this.by = Math.round(oy);
+        this.tiles.forEach(img => { img.style.transform = 'translate(' + (img._tx * 256 - this.bx) + 'px,' + (img._ty * 256 - this.by) + 'px)'; });
+        this._pinsSucio = true; this._yoSucio = true;
+    }
+    _cambiarZoom(ox, oy) {
+        if (this.az !== null) {
+            this.tiles.forEach(img => { if (!img.dataset.ok) this._soltar(img); });
+            const old = this.tl;
+            old._z = this.az; old._bx = this.bx; old._by = this.by;
+            this.ghosts.push(old);
+            while (this.ghosts.length > 2) this.ghosts.shift().remove();
+            const nl = document.createElement('div'); nl.className = 'mapd-tl';
+            this.el.insertBefore(nl, this.pl); this.tl = nl;
+            this.tiles = new Map(); this._rk = '';
+            clearTimeout(this._gt); this._gt = setTimeout(() => this._quitarGhosts(true), 4000);
+        }
+        this._anclar(ox, oy);
+    }
+    _nuevaPieza(tx, ty, wx, z, key) {
+        const img = document.createElement('img');
+        img.className = 'mapd-t'; img.alt = ''; img.draggable = false; img.decoding = 'async'; img.style.opacity = 0;
+        img.dataset.k = MAPA_PREF + z + '/' + wx + '/' + ty; img._tx = tx; img._ty = ty;
+        img.style.transform = 'translate(' + (tx * 256 - this.bx) + 'px,' + (ty * 256 - this.by) + 'px)';
+        this.tl.appendChild(img); this.tiles.set(key, img);
+        const t = { key: img.dataset.k, z, x: wx, y: ty, tx, ty, owner: this, cancel: false, ctrl: null, reint: 0 };
+        img._t = t;
+        t.done = u => {
+            if (t.cancel) return;
+            if (!u) {
+                if (t.reint < 2 && navigator.onLine !== false) { t.reint++; setTimeout(() => { if (!t.cancel) mapaTileUrl(t); }, 1500 * t.reint); }
+                else { img.dataset.f = '1'; this._sinPiezas(); this._quitarGhosts(false); }
+                return;
+            }
+            img.onload = () => { img.style.opacity = 1; img.dataset.ok = '1'; this.el.classList.remove('sin-tiles'); this._quitarGhosts(false); };
+            img.onerror = () => { img.dataset.f = '1'; this._sinPiezas(); this._quitarGhosts(false); };
+            img.src = u;
+        };
+        mapaTileUrl(t);
+        return img;
+    }
+    _piezas(ox, oy, w, h, z, max) {
+        const M = 128; // medio tramo extra alrededor para que al arrastrar no se vean huecos
+        const x0 = Math.floor((ox - M) / 256), x1 = Math.floor((ox + w + M) / 256), y0 = Math.floor((oy - M) / 256), y1 = Math.floor((oy + h + M) / 256);
+        const rk = x0 + ',' + x1 + ',' + y0 + ',' + y1 + ',' + z;
+        if (rk === this._rk) return; // mismo bloque de piezas: no hay nada que revisar
+        this._rk = rk;
+        const vx0 = Math.floor(ox / 256), vx1 = Math.floor((ox + w) / 256), vy0 = Math.floor(oy / 256), vy1 = Math.floor((oy + h) / 256);
+        for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+            if (ty < 0 || ty >= max) continue;
+            const wx = ((tx % max) + max) % max, key = tx + '/' + ty;
+            let img = this.tiles.get(key);
+            if (!img) img = this._nuevaPieza(tx, ty, wx, z, key);
+            img._vis = tx >= vx0 && tx <= vx1 && ty >= vy0 && ty <= vy1;
+        }
+        const kx0 = x0 - 1, kx1 = x1 + 1, ky0 = y0 - 1, ky1 = y1 + 1;
+        this.tiles.forEach((img, k) => {
+            if (img._tx < kx0 || img._tx > kx1 || img._ty < ky0 || img._ty > ky1) { this._soltar(img); this.tiles.delete(k); }
+        });
+        mapaBombear();
+    }
+    _posPins(z) {
+        this._pinsSucio = false;
+        const bx = this.bx, by = this.by, ps = this.pins, els = this.pinEls;
+        for (let i = 0; i < ps.length; i++) {
+            els[i].style.transform = 'translate(' + Math.round(mapaLngX(ps[i].lng, z) - bx) + 'px,' + Math.round(mapaLatY(ps[i].lat, z) - by) + 'px)';
+        }
+    }
+    _selPin() {
+        const s = (this.sel === null || this.sel === undefined) ? null : String(this.sel);
+        if (s === this._selPrev) return;
+        if (this._selPrev !== null) { const i = this._idx.get(this._selPrev); if (i !== undefined && this.pinEls[i]) this.pinEls[i].classList.remove('sel'); }
+        if (s !== null) { const i = this._idx.get(s); if (i !== undefined && this.pinEls[i]) this.pinEls[i].classList.add('sel'); }
+        this._selPrev = s;
+    }
+    _posYo(z) {
+        if (!this.yo) return;
+        if (!this.yoEl) { this.yoEl = document.createElement('div'); this.yoEl.className = 'mapd-yo'; this.pl.appendChild(this.yoEl); this._yoSucio = true; }
+        if (!this._yoSucio) return;
+        this._yoSucio = false;
+        const tr = 'translate(' + Math.round(mapaLngX(this.yo.lng, z) - this.bx) + 'px,' + Math.round(mapaLatY(this.yo.lat, z) - this.by) + 'px)';
+        this.yoEl.style.transform = tr;
+        const mpp = 156543.03392 * Math.cos(this.yo.lat * Math.PI / 180) / Math.pow(2, z);
+        const d = this.yoAcc > 15 ? Math.min(2 * this.yoAcc / mpp, 600) : 0;
+        if (!this.yoAccEl) { this.yoAccEl = document.createElement('div'); this.yoAccEl.className = 'mapd-yoacc'; this.pl.insertBefore(this.yoAccEl, this.yoEl); }
+        this.yoAccEl.style.display = d > 22 ? 'block' : 'none';
+        this.yoAccEl.style.width = this.yoAccEl.style.height = d + 'px';
+        this.yoAccEl.style.margin = (-d / 2) + 'px 0 0 ' + (-d / 2) + 'px';
+        this.yoAccEl.style.transform = tr;
+    }
     render() {
         const w = this.el.clientWidth, h = this.el.clientHeight;
         if (!w || !h) return;
         const z = this.z, max = Math.pow(2, z);
         const cx = mapaLngX(this.c.lng, z), cy = mapaLatY(this.c.lat, z), ox = cx - w / 2, oy = cy - h / 2;
-        const x0 = Math.floor(ox / 256), x1 = Math.floor((ox + w) / 256), y0 = Math.floor(oy / 256), y1 = Math.floor((oy + h) / 256);
-        const need = new Set();
-        for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
-            if (ty < 0 || ty >= max) continue;
-            const wx = ((tx % max) + max) % max, key = z + '/' + wx + '/' + ty + '@' + tx;
-            need.add(key);
-            let img = this.tiles.get(key);
-            if (!img) {
-                img = document.createElement('img'); img.className = 'mapd-t'; img.alt = ''; img.draggable = false; img.style.opacity = 0;
-                this.tl.appendChild(img); this.tiles.set(key, img);
-                const el = this.el;
-                mapaTileBlob(z, wx, ty).then(b => {
-                    if (!img.isConnected) return;
-                    if (!b) { if (this.tiles.size && ![...this.tiles.values()].some(i => i.dataset.ok)) el.classList.add('sin-tiles'); return; }
-                    img.onload = () => { img.style.opacity = 1; img.dataset.ok = '1'; el.classList.remove('sin-tiles'); };
-                    img.src = URL.createObjectURL(b);
-                });
-            }
-            img.style.transform = 'translate(' + Math.round(tx * 256 - ox) + 'px,' + Math.round(ty * 256 - oy) + 'px)';
+        this._cx = cx / 256; this._cy = cy / 256;
+        if (this.az !== z) this._cambiarZoom(ox, oy);
+        else if (Math.abs(this.bx - ox) > 2500 || Math.abs(this.by - oy) > 2500) this._anclar(ox, oy);
+        // al arrastrar solo se mueven 2 capas (piezas y pines), no cada elemento
+        const tr = 'translate3d(' + Math.round(this.bx - ox) + 'px,' + Math.round(this.by - oy) + 'px,0)';
+        this.tl.style.transform = tr; this.pl.style.transform = tr;
+        for (let i = this.ghosts.length - 1; i >= 0; i--) {
+            const g = this.ghosts[i], dz = z - g._z;
+            if (Math.abs(dz) > 2) { g.remove(); this.ghosts.splice(i, 1); continue; }
+            const s = Math.pow(2, dz);
+            g.style.transform = 'translate3d(' + (s * g._bx - ox) + 'px,' + (s * g._by - oy) + 'px,0) scale(' + s + ')';
         }
-        this.tiles.forEach((img, k) => { if (!need.has(k)) { if (img.src && img.src.indexOf('blob:') === 0) URL.revokeObjectURL(img.src); img.remove(); this.tiles.delete(k); } });
-        this.pins.forEach((p, i) => {
-            const d = this.pinEls[i]; if (!d) return;
-            const px = mapaLngX(p.lng, z) - ox, py = mapaLatY(p.lat, z) - oy;
-            if (px < -40 || py < -40 || px > w + 40 || py > h + 40) { if (!d._h) { d.style.display = 'none'; d._h = true; } return; }
-            if (d._h) { d.style.display = ''; d._h = false; }
-            d.style.transform = 'translate(' + Math.round(px) + 'px,' + Math.round(py) + 'px)';
-            const esSel = this.sel !== null && String(this.sel) === String(p.id);
-            if (d._s !== esSel) { d.classList.toggle('sel', esSel); d._s = esSel; }
-        });
-        if (this.yo) {
-            if (!this.yoEl) { this.yoEl = document.createElement('div'); this.yoEl.className = 'mapd-yo'; this.pl.appendChild(this.yoEl); }
-            this.yoEl.style.left = Math.round(mapaLngX(this.yo.lng, z) - ox) + 'px';
-            this.yoEl.style.top = Math.round(mapaLatY(this.yo.lat, z) - oy) + 'px';
-            const mpp = 156543.03392 * Math.cos(this.yo.lat * Math.PI / 180) / Math.pow(2, z);
-            const d = this.yoAcc > 15 ? Math.min(2 * this.yoAcc / mpp, 600) : 0;
-            if (!this.yoAccEl) { this.yoAccEl = document.createElement('div'); this.yoAccEl.className = 'mapd-yoacc'; this.pl.insertBefore(this.yoAccEl, this.yoEl); }
-            this.yoAccEl.style.display = d > 22 ? 'block' : 'none';
-            this.yoAccEl.style.width = this.yoAccEl.style.height = d + 'px';
-            this.yoAccEl.style.margin = (-d / 2) + 'px 0 0 ' + (-d / 2) + 'px';
-            this.yoAccEl.style.left = this.yoEl.style.left; this.yoAccEl.style.top = this.yoEl.style.top;
-        }
+        this._piezas(ox, oy, w, h, z, max);
+        if (this._pinsSucio) this._posPins(z);
+        this._selPin();
+        this._posYo(z);
     }
 }
 window.addEventListener('online', () => { [mapaClientes, mapaPicker].forEach(m => { if (m) m.reload(); }); });
@@ -2406,11 +2557,11 @@ async function descargarMapaOffline() {
     let hechos = 0, fallos = 0, i = 0;
     async function worker() {
         while (!_mapaCancelar && i < tiles.length) {
-            const t = tiles[i++], key = t[0] + '/' + t[1] + '/' + t[2];
+            const t = tiles[i++], base = t[0] + '/' + t[1] + '/' + t[2], key = MAPA_PREF + base;
             if (!(await mapaTileGet(key))) {
                 try {
-                    const r = await fetch(MAPA_TILE_URL(t[0], t[1], t[2]));
-                    if (r.ok) await mapaTilePut(key, await r.blob()); else fallos++;
+                    const res = await mapaBajarTile(t[0], t[1], t[2]);
+                    if (res) await mapaTilePut(res.osm ? base : key, res.b); else fallos++;
                 } catch (e) { fallos++; if (navigator.onLine === false) _mapaCancelar = true; }
             }
             hechos++;

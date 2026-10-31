@@ -610,7 +610,7 @@ button.w-8.h-8,button.w-9.h-9{min-width:44px;min-height:44px}
                 </button>
                 <button onclick="actualizarApp()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span>
-                    <span style="display:block;min-width:0;"><span class="ajuste-label">Actualizar app</span><span class="ajuste-sub">v24</span></span>
+                    <span style="display:block;min-width:0;"><span class="ajuste-label">Actualizar app</span><span class="ajuste-sub">v26</span></span>
                 </button>
             </div>
 
@@ -7752,7 +7752,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y pregunta si quieres actualizar.
-const APP_BUILD = '2026-10-26-d';
+const APP_BUILD = '2026-10-30-a';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0;
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 async function aplicarActualizacion() {

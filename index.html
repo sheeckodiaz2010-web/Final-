@@ -1,6 +1,6 @@
 <html lang="es"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DIGAR POS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f8080">
@@ -210,6 +210,68 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 .pm-err{color:#dc2626;font-size:12px;font-weight:700;margin-top:10px}
 .pm-empty{text-align:center;color:#6b7280;padding:30px 10px;font-size:14px}
 </style>
+<style id="digar-kiosco-css">
+.text-gray-400{color:#6b7280}
+.bg-gray-900 .text-gray-400,.bg-gray-800 .text-gray-400,.bg-black .text-gray-400,.bg-slate-900 .text-gray-400,.bg-slate-800 .text-gray-400{color:#9ca3af}
+.text-\[8px\],.text-\[9px\],.text-\[10px\]{font-size:11px!important}
+button[aria-label="Cerrar"]{min-width:48px;min-height:48px;display:inline-flex;align-items:center;justify-content:center}
+button.w-8.h-8,button.w-9.h-9{min-width:44px;min-height:44px}
+</style>
+<script>
+(function () {
+    var mostrado = false;
+    function ignorar(m) { return /ResizeObserver|Script error|Load failed|NetworkError|AbortError|Failed to fetch/i.test(m || ''); }
+    function boton(txt, fn) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = txt; b.onclick = fn;
+        b.style.cssText = 'min-height:48px;min-width:48px;padding:0 14px;border:0;border-radius:12px;font:700 13px system-ui,sans-serif;background:#fff;color:#7f1d1d';
+        return b;
+    }
+    function aviso(m) {
+        if (mostrado || ignorar(m)) return;
+        mostrado = true;
+        var d = document.createElement('div');
+        d.setAttribute('role', 'alert');
+        d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2147483000;background:#7f1d1d;color:#fff;padding:10px 12px;border-radius:14px;font:600 13px/1.3 system-ui,sans-serif;display:flex;gap:8px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.35)';
+        var s = document.createElement('span'); s.style.flex = '1'; s.textContent = 'Algo falló en la app. Tus datos están guardados.';
+        d.appendChild(s);
+        d.appendChild(boton('Reiniciar', function () { location.reload(); }));
+        d.appendChild(boton('Cerrar', function () { d.remove(); setTimeout(function () { mostrado = false; }, 10000); }));
+        (document.body || document.documentElement).appendChild(d);
+    }
+    window.addEventListener('error', function (e) { if (e && e.target && e.target !== window) return; aviso(e && e.message); });
+    window.addEventListener('unhandledrejection', function (e) { var r = e && e.reason; aviso(r && r.message ? r.message : String(r || '')); });
+
+    // Aviso de almacenamiento al 70 %
+    function avisarAlmacen(pct) {
+        try {
+            var hoy = new Date().toISOString().slice(0, 10);
+            if (localStorage.getItem('digar_alm_aviso') === hoy) return;
+            localStorage.setItem('digar_alm_aviso', hoy);
+            var m = 'Almacenamiento de la app al ' + Math.round(pct * 100) + '%. Haz un respaldo y archiva ventas viejas.';
+            if (window.toast) window.toast(m); else alert(m);
+        } catch (e) {}
+    }
+    function revisarAlmacen() {
+        try {
+            var n = 0;
+            for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; }
+            var pct = n / 5000000;
+            if (pct >= 0.7) avisarAlmacen(pct);
+            else if (navigator.storage && navigator.storage.estimate) {
+                navigator.storage.estimate().then(function (r) { if (r && r.quota && r.usage / r.quota >= 0.7) avisarAlmacen(r.usage / r.quota); }).catch(function () {});
+            }
+        } catch (e) {}
+    }
+    window.addEventListener('load', function () { setTimeout(revisarAlmacen, 5000); setInterval(revisarAlmacen, 6 * 60 * 60 * 1000); });
+
+    // Teclado: mantener visible el campo enfocado
+    document.addEventListener('focusin', function (e) {
+        var t = e.target;
+        if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) setTimeout(function () { try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) {} }, 350);
+    });
+})();
+</script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 
@@ -307,7 +369,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-bold">Mis Clientes</h2>
                 <div style="display:flex;align-items:center;gap:8px">
-                    <button onclick="abrirModalFormCliente()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
+                    <button onclick="abrirModalFormCliente()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md" aria-label="Agregar">+</button>
                 </div>
             </div>
             <div style="display:flex;background:#e5e7eb;border-radius:14px;padding:4px;gap:4px">
@@ -429,7 +491,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <h2 class="text-lg font-bold">Artículos</h2>
                 <div class="flex items-center gap-2">
                     <button onclick="imprimirInventario()" title="Imprimir inventario" class="bg-white border border-gray-200 text-gray-700 w-9 h-9 rounded-full font-bold text-base flex items-center justify-center shadow-sm">🖨️</button>
-                    <button onclick="abrirModalProducto()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md">+</button>
+                    <button onclick="abrirModalProducto()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md" aria-label="Agregar">+</button>
                 </div>
             </div>
 
@@ -564,7 +626,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <span class="text-lg">⚠️</span>
         <span class="text-xs text-yellow-800 flex-1" id="banner-respaldo-texto"></span>
         <button onclick="compartirRespaldo()" class="text-xs font-bold text-white px-3 py-2 rounded-lg shadow-sm bg-blue-600">Respaldar</button>
-        <button onclick="cerrarBannerRespaldo()" class="text-yellow-700 text-lg px-1">✕</button>
+        <button onclick="cerrarBannerRespaldo()" class="text-yellow-700 text-lg px-1" aria-label="Cerrar">✕</button>
     </div>
 
     <!-- NAVEGACIÓN -->
@@ -630,7 +692,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <h3 class="font-bold text-base text-gray-900">Directorio de Tiendas / Clientes</h3>
                     <p class="text-[11px] text-gray-400" id="sub-total-clientes">Total: 7 clientes / tiendas</p>
                 </div>
-                <button onclick="cerrarModal('modal-clientes')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-clientes')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <button onclick="abrirModalFormCliente()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs shadow-sm">+ Agregar nueva tienda / cliente</button>
             <div id="lista-clientes-admin" class="space-y-2 max-h-60 overflow-y-auto"></div>
@@ -645,7 +707,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <h3 class="font-bold text-base" id="dias-cliente-nombre">Cliente</h3>
                     <p class="text-[11px] text-gray-400">Elige uno o varios días de visita</p>
                 </div>
-                <button onclick="cerrarModal('modal-dias-cliente')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-dias-cliente')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <input type="hidden" id="dias-cliente-id">
             <div id="dias-cliente-selector" style="display:flex;gap:6px"></div>
@@ -658,7 +720,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base" id="titulo-form-cliente">Nueva Tienda / Cliente</h3>
-                <button onclick="cerrarModal('modal-form-cliente')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-form-cliente')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <input type="hidden" id="form-cliente-id">
             <div class="space-y-1">
@@ -703,7 +765,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base text-red-600">🗑️ Borrar todo el sistema</h3>
-                <button onclick="cerrarModal('modal-borrar-todo')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-borrar-todo')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <p class="text-xs text-gray-500">Por seguridad, escribe el usuario y la contraseña con los que entras a la app.</p>
             <div class="space-y-1">
@@ -725,7 +787,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 flex flex-col overflow-hidden" style="height:88vh;height:88dvh;gap:12px">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">¿A qué cliente es la venta?</h3>
-                <button onclick="cerrarSelectorCliente()" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarSelectorCliente()" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <button onclick="abrirClienteRapido()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">➕ Agregar cliente rápido</button>
             <input autocomplete="off" type="text" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
@@ -738,7 +800,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">➕ Cliente rápido</h3>
-                <button onclick="cerrarModal('modal-cliente-rapido')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-cliente-rapido')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Nombre del negocio o cliente *</label>
@@ -761,7 +823,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">Ubicación del cliente</h3>
-                <button onclick="cerrarPicker()" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarPicker()" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <p class="text-xs text-gray-500">Toca el mapa para poner el pin. Arrastra para moverte; acerca con dos dedos o con +.</p>
             <div id="mapa-picker" style="height:46dvh;min-height:260px"></div>
@@ -816,7 +878,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <h3 class="font-bold text-base text-purple-700">📦 Factura de Compra</h3>
                     <p class="text-[11px] text-gray-400" id="compra-paso-txt">Paso 1 / 3 — Capturar factura</p>
                 </div>
-                <button onclick="cerrarModal('modal-compra')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-compra')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="flex gap-1">
                 <div id="compra-dot-1" class="flex-1 h-1 rounded-full bg-purple-600"></div>
@@ -987,7 +1049,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">Configurar mi ticket</h3>
-                <button onclick="cerrarModal('modal-config-ticket')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-config-ticket')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Nombre del negocio</label>
@@ -1028,7 +1090,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">🗄️ Backup y Seguridad</h3>
-                <button onclick="cerrarModal('modal-backup')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-backup')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <p class="text-xs text-gray-400 -mt-1">Tus ventas, clientes e inventario viven solo en este celular. Respalda de vez en cuando para no perderlos.</p>
             <div style="border:1px solid #e5e7eb;border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:8px">
@@ -1053,6 +1115,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             </div>
             <div class="pt-1 space-y-2">
                 <button onclick="compartirRespaldo()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs shadow-sm">📤 Compartir respaldo (Drive, WhatsApp, correo)</button>
+                <button type="button" onclick="abrirAvisoPrivacidad()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">🔒 Aviso de privacidad y términos</button>
                 <button onclick="exportarDatos()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📂 Exportar Respaldo</button>
                 <input type="file" id="input-restaurar-archivo" accept="application/json,.json" class="hidden" onchange="importarDatosArchivo(event)">
                 <button onclick="document.getElementById('input-restaurar-archivo').click()" class="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs shadow-sm">📥 Restaurar Datos</button>
@@ -1069,7 +1132,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-4" style="padding-bottom:max(16px, env(safe-area-inset-bottom));">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <h3 class="font-bold text-base" style="display:flex;align-items:center;gap:8px;"><span style="display:inline-flex;width:30px;height:30px;border-radius:10px;align-items:center;justify-content:center;background:linear-gradient(135deg,#60a5fa,#1e3a8a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4.5" y="2" width="15" height="20" rx="3.2" stroke="#fff" stroke-width="1.8"/><rect x="7.5" y="5" width="9" height="4" rx="1.2" fill="#fff"/><circle cx="8.8" cy="12.6" r="1.15" fill="#fff"/><circle cx="12" cy="12.6" r="1.15" fill="#fff"/><circle cx="15.2" cy="12.6" r="1.15" fill="#fff"/><circle cx="8.8" cy="16.1" r="1.15" fill="#fff"/><circle cx="12" cy="16.1" r="1.15" fill="#fff"/><circle cx="15.2" cy="16.1" r="1.15" fill="#fff"/><circle cx="8.8" cy="19.4" r="1.15" fill="#fff"/><circle cx="12" cy="19.4" r="1.15" fill="#fff"/><circle cx="15.2" cy="19.4" r="1.15" fill="#fbbf24"/></svg></span>Calculadora</h3>
-                <button onclick="cerrarModal('modal-calculadora')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-calculadora')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div style="background:#f3f4f6;border-radius:16px;padding:10px 14px;text-align:right;min-height:84px;">
                 <div id="calc-expr" style="font-size:15px;color:#6b7280;min-height:20px;word-break:break-all;"></div>
@@ -1084,7 +1147,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">🗂️ Catálogo</h3>
-                <button onclick="cerrarModal('modal-catalogo-menu')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-catalogo-menu')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <button onclick="irACatalogo('precios')" class="w-full text-left p-4 rounded-2xl border border-gray-200 bg-gray-50 active:scale-95 transition">
                 <div class="font-bold text-sm">🏷️ Enviar precios al catálogo</div>
@@ -1106,7 +1169,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">🏷️ Categorías</h3>
-                <button onclick="cerrarModal('modal-categorias')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-categorias')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="flex gap-2">
                 <input autocomplete="off" id="cat-nueva-input" type="text" placeholder="Nueva categoría (ej. Dulces)" class="flex-1 p-3 border rounded-xl text-sm">
@@ -1120,7 +1183,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base" id="asignar-cat-titulo">Productos</h3>
-                <button onclick="cerrarModal('modal-asignar-cat')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-asignar-cat')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <input autocomplete="off" id="asignar-cat-buscar" type="text" placeholder="Buscar producto..." oninput="renderAsignarCategoria()" class="w-full p-3 border rounded-xl text-sm">
             <div id="asignar-cat-lista" class="overflow-y-auto flex-1"></div>
@@ -1133,7 +1196,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">🏷️ Precios del POS al catálogo</h3>
-                <button onclick="cerrarModal('modal-precios-catalogo')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-precios-catalogo')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <p id="precios-cat-resumen" class="text-xs text-gray-500">Consultando catálogo…</p>
             <div id="precios-cat-lista" class="overflow-y-auto flex-1 min-h-0"></div>
@@ -1151,7 +1214,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">➕ Productos nuevos al catálogo</h3>
-                <button onclick="cerrarModal('modal-nuevos-catalogo')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-nuevos-catalogo')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <p id="nuevos-cat-resumen" class="text-xs text-gray-500">Consultando catálogo…</p>
             <div id="nuevos-cat-lista" class="overflow-y-auto flex-1 min-h-0"></div>
@@ -1164,6 +1227,24 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         </div>
     </div>
 
+        <!-- Aviso de privacidad y términos -->
+    <div id="modal-privacidad" class="fixed inset-0 bg-black/50 z-[70] hidden flex flex-col justify-center items-center max-w-md mx-auto p-6" role="dialog" aria-modal="true" aria-labelledby="priv-titulo">
+        <div class="bg-white w-full rounded-2xl p-5 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <h3 id="priv-titulo" class="font-bold text-base">Privacidad y términos</h3>
+                <button onclick="cerrarModal('modal-privacidad')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
+            </div>
+            <div class="text-xs text-gray-700 space-y-2 leading-relaxed">
+                <p><b>Qué datos guarda DIGAR POS.</b> Productos, clientes (nombre, dirección, teléfono, ubicación), ventas y configuración del ticket. Se guardan en tu propio dispositivo.</p>
+                <p><b>Dónde se envían.</b> Solo si activas la sincronización o el respaldo: a Firebase (Google) y a tu cuenta de Google Drive mediante tu enlace y clave. No vendemos ni compartimos tus datos con terceros.</p>
+                <p><b>Ubicación.</b> Se usa únicamente cuando tocas "Estoy aquí" para guardar la ubicación de un cliente.</p>
+                <p><b>Datos de tus clientes.</b> Tú eres responsable de contar con su consentimiento para guardar sus datos personales.</p>
+                <p><b>Tus derechos.</b> Puedes exportar, corregir o borrar todos tus datos en cualquier momento desde la app.</p>
+                <p><b>Términos.</b> La app se ofrece "tal cual". Haz respaldos periódicos: el almacenamiento del navegador puede borrarse.</p>
+            </div>
+            <button onclick="cerrarModal('modal-privacidad')" class="w-full mt-4 bg-blue-600 text-white font-bold py-3 rounded-xl text-sm">Entendido</button>
+        </div>
+    </div>
     <!-- Modal confirmar exportar respaldo (pantalla "pro") -->
     <div id="modal-confirmar-respaldo" class="fixed inset-0 bg-black/50 z-[60] hidden flex flex-col justify-center items-center max-w-md mx-auto p-6">
         <div class="bg-white rounded-3xl p-6 w-full text-center shadow-xl">
@@ -1199,7 +1280,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">💳 Créditos Pendientes</h3>
-                <button onclick="cerrarModal('modal-creditos')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-creditos')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div id="lista-creditos-clientes" class="space-y-2 pt-1"></div>
         </div>
@@ -1210,7 +1291,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base" id="detalle-credito-nombre">Cliente</h3>
-                <button onclick="cerrarModal('modal-detalle-credito')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-detalle-credito')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="text-center py-2">
                 <span class="text-gray-400 text-xs">Debe en total</span>
@@ -1235,9 +1316,9 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <div class="text-center">
                 <p class="text-xs font-semibold text-gray-500 mb-2">¿Cuántas piezas?</p>
                 <div class="flex items-center justify-center gap-4">
-                    <button type="button" onclick="cambiarCantModal(-1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl">−</button>
+                    <button type="button" onclick="cambiarCantModal(-1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl" aria-label="Disminuir">−</button>
                     <input autocomplete="off" type="number" id="cant-prod-input" min="1" value="1" class="w-20 text-center text-3xl font-black border rounded-xl py-2 focus:outline-none focus:border-blue-600">
-                    <button type="button" onclick="cambiarCantModal(1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl">+</button>
+                    <button type="button" onclick="cambiarCantModal(1)" class="w-12 h-12 bg-gray-200 rounded-full font-black text-xl" aria-label="Aumentar">+</button>
                 </div>
             </div>
             <button onclick="confirmarCantidadAlCarrito()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md">Agregar al carrito</button>
@@ -1253,7 +1334,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <h3 class="font-bold text-base" id="hist-cliente-titulo">Historial</h3>
                     <p class="text-xs text-gray-500" id="hist-cliente-total">Total: $0.00</p>
                 </div>
-                <button onclick="cerrarModal('modal-historial-cliente')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-historial-cliente')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div id="hist-cliente-lista" class="space-y-2"></div>
         </div>
@@ -1264,7 +1345,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
     <div id="modal-escaner-qr" class="fixed inset-0 bg-black hidden flex flex-col max-w-md mx-auto" style="z-index:9990">
         <div class="flex justify-between items-center p-4 text-white">
             <h3 class="font-bold text-base">Escanear pedido QR</h3>
-            <button onclick="cerrarEscanerQR()" class="text-2xl font-bold px-4 py-2" style="min-width:56px;min-height:48px">×</button>
+            <button onclick="cerrarEscanerQR()" class="text-2xl font-bold px-4 py-2" style="min-width:56px;min-height:48px" aria-label="Cerrar">×</button>
         </div>
         <div class="flex-1 relative bg-black overflow-hidden">
             <video id="video-escaner-qr" class="w-full h-full object-cover" playsinline></video>
@@ -1282,7 +1363,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                 <h3 class="font-bold text-base">Carrito</h3>
                 <div class="flex items-center gap-3">
                     <button onclick="vaciarCarrito()" class="text-xs font-bold text-red-500 flex items-center gap-1">🗑️ Vaciar</button>
-                    <button onclick="cerrarModal('modal-carrito')" class="text-gray-400 text-xl font-bold px-2">×</button>
+                    <button onclick="cerrarModal('modal-carrito')" class="text-gray-400 text-xl font-bold px-2" aria-label="Cerrar">×</button>
                 </div>
             </div>
             <div id="items-carrito" class="space-y-3"></div>
@@ -1308,7 +1389,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-5 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base text-gray-900" id="cfg-item-titulo">Producto</h3>
-                <button onclick="cerrarModal('modal-config-item')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-config-item')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="bg-white p-3.5 border border-gray-200 rounded-2xl flex justify-between items-center shadow-sm cursor-pointer" onclick="editarPrecioUnitarioItemPrompt()">
                 <span class="text-sm font-semibold text-gray-700">Precio unitario</span>
@@ -1317,9 +1398,9 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
             <div class="space-y-2">
                 <label class="text-xs font-semibold text-gray-500">Cantidad</label>
                 <div class="flex items-center justify-between bg-gray-50 p-3 rounded-2xl border border-gray-200">
-                    <button onclick="cambiarCantConfigItem(-1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">-</button>
+                    <button onclick="cambiarCantConfigItem(-1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm" aria-label="Disminuir">-</button>
                     <input autocomplete="off" id="cfg-item-cant" type="text" inputmode="numeric" pattern="[0-9]*" value="1" onchange="fijarCantConfigItem(this.value)" style="width:110px;text-align:center;font-size:30px;font-weight:900;border:1px solid #e5e7eb;border-radius:12px;padding:4px 0;background:#fff;color:#111827;">
-                    <button onclick="cambiarCantConfigItem(1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm">+</button>
+                    <button onclick="cambiarCantConfigItem(1)" class="w-12 h-12 bg-gray-200 text-gray-700 rounded-full font-black text-xl flex items-center justify-center shadow-sm" aria-label="Aumentar">+</button>
                 </div>
             </div>
             <button onclick="eliminarItemDelCarritoConfig()" class="w-full py-3.5 text-red-600 font-bold border border-red-200 bg-red-50/50 rounded-2xl text-sm">Eliminar producto</button>
@@ -1366,7 +1447,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
     <div id="modal-exito" class="fixed inset-0 bg-white z-50 hidden flex flex-col max-w-md mx-auto p-5 justify-between">
         <div class="space-y-4">
             <div class="flex justify-between items-center">
-                <button onclick="cerrarExitoNuevaVenta()" class="text-gray-800 text-xl font-bold">×</button>
+                <button onclick="cerrarExitoNuevaVenta()" class="text-gray-800 text-xl font-bold" aria-label="Cerrar">×</button>
                 <button onclick="abrirConfigTicket()" class="text-blue-600 text-xs font-bold flex items-center gap-1">✏️ Personalizar</button>
             </div>
         </div>
@@ -1416,7 +1497,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base">Añadir transacción</h3>
-                <button onclick="cerrarModal('modal-transaccion')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-transaccion')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <div class="flex bg-gray-100 p-1 rounded-xl">
                 <button type="button" id="btn-tipo-gasto" onclick="cambiarTipoTransaccionModal('Gasto')" class="flex-1 py-2 text-xs font-bold rounded-lg bg-red-600 text-white">Gasto</button>
@@ -1443,7 +1524,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-base" id="det-venta-titulo">Venta</h3>
-                <button onclick="cerrarModal('modal-detalle-venta')" class="text-gray-400 text-xl font-bold px-2">×</button>
+                <button onclick="cerrarModal('modal-detalle-venta')" class="text-gray-400 text-xl font-bold px-2" aria-label="Cerrar">×</button>
             </div>
             <div class="bg-gray-50 p-4 rounded-2xl border space-y-1">
                 <div class="flex justify-between text-sm"><span class="text-gray-500">Cliente / Tienda</span><span class="font-bold text-gray-800" id="det-venta-cliente">General</span></div>
@@ -1471,7 +1552,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
                     <h3 class="font-bold text-base" id="edit-venta-titulo">Editar ticket</h3>
                     <p class="text-xs text-gray-500" id="edit-venta-cliente"></p>
                 </div>
-                <button onclick="cancelarEdicionVenta()" class="text-gray-400 text-xl font-bold px-2">×</button>
+                <button onclick="cancelarEdicionVenta()" class="text-gray-400 text-xl font-bold px-2" aria-label="Cerrar">×</button>
             </div>
 
             <div class="bg-gray-50 border rounded-2xl p-3 space-y-2">
@@ -1517,7 +1598,7 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
         <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-base" id="prod-modal-titulo">Crear producto</h3>
-                <button onclick="cerrarModal('modal-producto')" class="text-gray-400 font-bold text-xl">×</button>
+                <button onclick="cerrarModal('modal-producto')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <input type="hidden" id="form-prod-id">
             <div class="space-y-1">
@@ -2392,7 +2473,7 @@ function abrirPopupMapa(id, silencioso) {
         <div style="width:42px;height:42px;border-radius:50%;background:#f1f3f8;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none">🏪</div>
         <div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:800;color:#111827">${escHtml(c.nombre)}</div>
         <div style="font-size:12px;color:#6b7280">${escHtml(c.direccion || 'Sin dirección')}</div></div>
-        <button type="button" onclick="cerrarPopupMapa()" style="font-size:24px;line-height:1;color:#9ca3af;padding:4px 6px">×</button></div>
+        <button type="button" onclick="cerrarPopupMapa()" style="font-size:24px;line-height:1;color:#9ca3af;padding:4px 6px" aria-label="Cerrar">×</button></div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:6px"><span style="font-size:12px;font-weight:800;color:${MAPA_TXT[e][1]}">● ${MAPA_TXT[e][0]}</span><span id="mapa-popup-dist" style="font-size:12px;font-weight:800;color:#2563eb"></span></div>
         <div style="display:flex;gap:10px;margin-top:10px">
         <button type="button" onclick="mapaAccion('venta','${idA}')" style="flex:1;min-height:48px;border-radius:14px;background:#1fa971;color:#fff;font-size:15px;font-weight:800">🛒 Vender</button></div>
@@ -2759,14 +2840,14 @@ function renderListaClientesInicio(filtro) {
         div.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
-                    <p class="font-bold text-sm text-gray-900">${c.nombre}</p>
+                    <p class="font-bold text-sm text-gray-900">${escHtml(c.nombre)}</p>
                     ${visitado
                         ? '<p class="text-[10px] font-bold text-emerald-600 mt-0.5">✓ Visitado hoy</p>'
                         : (noComproHoy(c)
                             ? '<p class="text-[10px] font-bold text-red-600 mt-0.5">✕ No compró hoy</p>'
                             : '<p class="text-[10px] font-bold mt-0.5" style="color:#a16207">● Sin venta hoy</p>')}
-                    <p class="text-xs text-blue-600 mt-0.5">📍 ${c.direccion || 'Sin dirección'}</p>
-                    <p class="text-[11px] text-gray-400 mt-0.5">📞 ${c.telefono || 'Sin teléfono'}</p>
+                    <p class="text-xs text-blue-600 mt-0.5">📍 ${escHtml(c.direccion || 'Sin dirección')}</p>
+                    <p class="text-[11px] text-gray-400 mt-0.5">📞 ${escHtml(c.telefono || 'Sin teléfono')}</p>
                     ${diasTxt ? `<p class="text-[11px] text-gray-500 mt-0.5">📅 ${diasTxt}</p>` : ''}
                 </div>
                 ${activo ? '<span class="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Activo</span>' : '<span class="text-gray-300 text-lg">›</span>'}
@@ -2919,9 +3000,9 @@ function renderClientesAdmin() {
         div.className = 'bg-gray-50 p-3 rounded-xl border flex justify-between items-center text-sm';
         div.innerHTML = `
             <div>
-                <span class="font-bold block text-gray-800">${c.nombre}</span>
-                <span class="text-xs text-blue-600 block">📍 ${c.direccion || 'Sin dirección'}</span>
-                <span class="text-[11px] text-gray-400">📞 ${c.telefono || 'Sin teléfono'}</span>
+                <span class="font-bold block text-gray-800">${escHtml(c.nombre)}</span>
+                <span class="text-xs text-blue-600 block">📍 ${escHtml(c.direccion || 'Sin dirección')}</span>
+                <span class="text-[11px] text-gray-400">📞 ${escHtml(c.telefono || 'Sin teléfono')}</span>
                 ${textoDiasCliente(c) ? `<span class="text-[11px] text-gray-500 block">📅 ${textoDiasCliente(c)}</span>` : ''}
             </div>
             <button type="button" class="text-blue-600 font-bold text-xs bg-white border px-3 py-1.5 rounded-lg shadow-sm">Editar</button>
@@ -3070,8 +3151,8 @@ function renderSeleccionClientes(filtro) {
         });
         div.innerHTML = `
             <div>
-                <span class="font-bold block">${c.nombre}</span>
-                <span class="text-xs opacity-80">📍 ${c.direccion || 'Sin dirección'}</span>
+                <span class="font-bold block">${escHtml(c.nombre)}</span>
+                <span class="text-xs opacity-80">📍 ${escHtml(c.direccion || 'Sin dirección')}</span>
                 ${visitados.has(c.id) ? '<span class="text-[10px] font-bold text-emerald-600 block">✓ Visitado hoy</span>' : (noComproHoy(c) ? '<span class="text-[10px] font-bold text-red-600 block">✕ No compró hoy</span>' : '')}
             </div>
             ${activo ? '<span class="font-bold text-xs text-blue-600">✓ Seleccionado</span>' : '<span class="text-xs text-gray-400">Tocar para elegir</span>'}
@@ -3245,7 +3326,7 @@ function pmForm(err) {
     const p = pmEdit, sel = p.ids.map(pmProd).filter(Boolean);
     const media = sel.length ? sel.reduce((a, x) => a + Number(x.precio), 0) / sel.length : 0;
     $('pm-sheet').innerHTML = `
-    <div class="pm-row"><h2 class="text-lg font-bold">${p.id ? 'Editar' : 'Nueva'} promoción</h2><button type="button" class="pm-x" style="color:#6b7280" onclick="pmCerrar()">✕</button></div>
+    <div class="pm-row"><h2 class="text-lg font-bold">${p.id ? 'Editar' : 'Nueva'} promoción</h2><button type="button" class="pm-x" style="color:#6b7280" onclick="pmCerrar()" aria-label="Cerrar">✕</button></div>
     <label class="pm-lbl">Nombre (opcional)</label>
     <input class="pm-in" id="pm-n" autocomplete="off" placeholder="Ej. Mazapán 3x100" value="${pmEsc(p.name)}">
     <label class="pm-lbl">Productos incluidos (uno o varios)</label>
@@ -3255,7 +3336,7 @@ function pmForm(err) {
     ${sel.length > 1 ? `<label class="pm-lbl">¿Se pueden mezclar?</label><div class="pm-opt"><button type="button" class="${p.mix ? 'on' : ''}" onclick="pmMix(true)">Sí, cualquier combinación</button><button type="button" class="${!p.mix ? 'on' : ''}" onclick="pmMix(false)">No, del mismo producto</button></div>` : ''}
     <label class="pm-lbl">Escalones de precio</label>
     ${p.tiers.map((t, i) => `<div class="pm-trow"><input class="pm-in" type="number" inputmode="numeric" min="2" placeholder="Piezas" value="${t.q}" data-pmq="${i}"><input class="pm-in" type="number" inputmode="decimal" min="0" placeholder="Precio $" value="${t.p}" data-pmp="${i}">
-      <button type="button" class="pm-x" onclick="pmQuitarTier(${i})" ${p.tiers.length < 2 ? 'disabled style="opacity:.3"' : ''}>✕</button>
+      <button type="button" class="pm-x" onclick="pmQuitarTier(${i})" ${p.tiers.length < 2 ? 'disabled style="opacity:.3"' : ''} aria-label="Cerrar">✕</button>
       ${media && t.q && t.p ? `<div class="pm-hint">Normal: ${money(media * t.q)} · ahorra ${money(media * t.q - t.p)}</div>` : ''}</div>`).join('')}
     <button type="button" class="pm-add" onclick="pmAddTier()">+ Agregar escalón (ej. 6 piezas)</button>
     <label class="pm-lbl">Vigencia (opcional)</label>
@@ -3491,7 +3572,7 @@ function renderVenta(filtro = '') {
             div.innerHTML = `
                 ${agotado ? '<span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : ''}
                 <div class="flex-1 flex flex-col items-center justify-center text-center px-2">
-                    <div class="text-sm font-extrabold leading-tight line-clamp-2 uppercase text-white">${p.nombre}</div>
+                    <div class="text-sm font-extrabold leading-tight line-clamp-2 uppercase text-white">${escHtml(p.nombre)}</div>
                     <div class="text-[10px] text-white opacity-80 mt-0.5">Stock: ${p.stock}</div>
                 </div>
                 <div class="text-center text-sm font-black py-1.5 text-white" style="background:rgba(0,0,0,.25)">${money(p.precio)}</div>
@@ -3588,7 +3669,7 @@ function renderVenta(filtro = '') {
             div.innerHTML = `
                 ${agotado ? '<span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : ''}
                 <div>
-                    <h4 class="font-bold text-sm text-gray-800">${p.nombre}</h4>
+                    <h4 class="font-bold text-sm text-gray-800">${escHtml(p.nombre)}</h4>
                     <p class="text-blue-600 font-extrabold text-sm">${money(p.precio)}</p>
                 </div>
                 <span class="text-xs font-bold text-gray-700">Stock (${p.stock})</span>
@@ -4078,7 +4159,7 @@ async function ejecutarCobroFinal() {
     const containerRecibo = $('recibo-lista-items');
     let _htmlRecibo = '';
     [...carrito].sort(ordenAlfaItems).forEach(i => {
-        _htmlRecibo += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${i.nombre}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
+        _htmlRecibo += `<div class="flex justify-between font-medium text-gray-800"><span>${i.cant}x ${escHtml(i.nombre)}</span><span>${money(i.precioPersonalizado * i.cant)}</span></div>`;
     });
     infoPromo.detalle.forEach(d => {
         _htmlRecibo += `<div class="flex justify-between font-bold" style="color:#059669"><span>Promo ${d.n}<br><span style="font-size:10px;font-weight:500">${d.d}</span></span><span>-${money(d.a)}</span></div>`;
@@ -4149,8 +4230,8 @@ function abrirModalCreditos() {
         cont.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">No hay créditos pendientes 🎉</p>`;
     } else {
         cont.innerHTML = listaClientes.map(c => `
-            <button onclick="abrirDetalleCredito('${c.nombre.replace(/'/g, "\\'")}')" class="w-full flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <span class="font-bold text-sm">${c.nombre}</span>
+            <button onclick="abrirDetalleCredito('${escHtml(c.nombre.replace(/'/g, "\\'"))}')" class="w-full flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <span class="font-bold text-sm">${escHtml(c.nombre)}</span>
                 <span class="font-bold text-amber-600">${money(c.saldo)}</span>
             </button>
         `).join('');
@@ -4353,7 +4434,7 @@ function renderInventario(filtro = '') {
             <div class="flex items-center gap-3">
                 <span class="w-12 h-12 shrink-0 rounded-xl text-white font-black text-xs flex items-center justify-center" style="background:#0b1220">${inicialesProducto(p.nombre)}</span>
                 <div>
-                    <p class="font-bold text-gray-900">${p.nombre}</p>
+                    <p class="font-bold text-gray-900">${escHtml(p.nombre)}</p>
                     <p class="text-xs mt-1 text-gray-500">Venta: <span class="font-bold text-gray-700">${money(p.precio)}</span> | Costo: ${money(p.costo || 0)} | Stock: ${p.stock}</p>
                     ${(() => { const m = margenInfo(p.precio, p.costo); return m.pct === null ? '<p class="text-xs mt-0.5 font-bold text-gray-400">⚪ Sin costo</p>' : `<p class="text-xs mt-0.5 font-bold ${m.clase}">${m.semaforo} Gana ${money(m.gana)} · ${m.pct.toFixed(0)}%</p>`; })()}
                 </div>
@@ -4567,7 +4648,7 @@ function poblarSelectProductosCompra() {
     if (!select) return;
     select.innerHTML = '';
     productos.forEach(p => {
-        select.innerHTML += `<option value="${p.id}">${p.nombre} (Costo: ${money(p.costo || 0)})</option>`;
+        select.innerHTML += `<option value="${p.id}">${escHtml(p.nombre)} (Costo: ${money(p.costo || 0)})</option>`;
     });
 }
 
@@ -4650,8 +4731,8 @@ function renderFacturaCompra() {
             div.className = 'bg-gray-50 p-2.5 rounded-xl border text-xs space-y-1';
             div.innerHTML = `
                 <div class="flex justify-between items-start">
-                    <span class="font-bold text-gray-800">${item.nombre}</span>
-                    <button type="button" class="text-red-500 font-bold px-1" data-rm="${idx}">✕</button>
+                    <span class="font-bold text-gray-800">${escHtml(item.nombre)}</span>
+                    <button type="button" class="text-red-500 font-bold px-1" data-rm="${idx}" aria-label="Cerrar">✕</button>
                 </div>
                 <div class="flex items-center gap-2 text-gray-500">
                     Cant <input autocomplete="off" type="number" value="${item.cant}" class="w-14 p-1 border rounded text-center font-bold bg-white">
@@ -4693,7 +4774,7 @@ function renderCompraPaso2() {
     cont.innerHTML = facturaCompraItems.map(item => {
         const c = compraCalcularItem(item);
         return `<div class="bg-gray-50 border rounded-xl p-2.5 text-xs">
-            <p class="font-bold text-gray-800">${c.nombre}</p>
+            <p class="font-bold text-gray-800">${escHtml(c.nombre)}</p>
             <div class="flex justify-between text-gray-500 mt-1"><span>Factura</span><span>${money(c.costoUnitario)}</span></div>
             <div class="flex justify-between text-gray-500"><span>+ Impuestos</span><span>${money(c.imp)}</span></div>
             <div class="flex justify-between text-gray-500"><span>+ Flete ${(compraFletePctActual() * 100).toFixed(1)}%</span><span>${money(c.flete)}</span></div>
@@ -4990,7 +5071,7 @@ function renderTransacciones() {
         if (count > limiteTrans) return; // los totales cuentan todo, pero solo se dibujan las más recientes
         const color = esTarjeta ? 'bg-purple-50 text-purple-600' : (t.tipo === 'Gasto' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600');
         const subLabel = t.tipo === 'Venta'
-            ? `${t.clienteNombre || 'General'} (${t.clienteDir || 'Mostrador'})`
+            ? `${escHtml(t.clienteNombre || 'General')} (${escHtml(t.clienteDir || 'Mostrador')})`
             : t.descripcion;
 
         const div = document.createElement('div');
@@ -5002,7 +5083,7 @@ function renderTransacciones() {
                     <span class="${color} text-[10px] px-2 py-0.5 rounded font-bold">${t.tipo}${esTarjeta ? ' · 💳 Tarjeta' : ''}</span>
                     <span class="font-bold text-gray-800">${subLabel}</span>
                 </div>
-                <p class="text-[10px] text-gray-400 mt-1">${t.fecha} • <span class="uppercase">${t.categoria || ''}</span></p>
+                <p class="text-[10px] text-gray-400 mt-1">${t.fecha} • <span class="uppercase">${escHtml(t.categoria || '')}</span></p>
             </div>
             <span class="font-bold ${esTarjeta ? 'text-purple-600' : (t.tipo === 'Gasto' ? 'text-red-600' : 'text-emerald-600')}">${t.tipo === 'Gasto' ? '-' : '+'}${money(t.monto)}</span>
         `;
@@ -5045,11 +5126,11 @@ function abrirDetalleVenta(id) {
     let _h = '';
     if (t.items) {
         [...t.items].sort(ordenAlfaItems).forEach(i => {
-            _h += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre}</span><span class="font-bold">${money(i.precioPersonalizado * i.cant)}</span></div>`;
+            _h += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${escHtml(i.nombre)}</span><span class="font-bold">${money(i.precioPersonalizado * i.cant)}</span></div>`;
         });
     } else if (t.itemsCompra) {
         t.itemsCompra.forEach(i => {
-            _h += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${i.nombre} (Costo: ${money(i.costoUnitario)})</span><span class="font-bold">${money(i.cant * i.costoUnitario)}</span></div>`;
+            _h += `<div class="flex justify-between items-center text-sm bg-gray-50 p-2.5 rounded-xl border"><span>${i.cant} × ${escHtml(i.nombre)} (Costo: ${money(i.costoUnitario)})</span><span class="font-bold">${money(i.cant * i.costoUnitario)}</span></div>`;
         });
     } else {
         container.innerHTML = `<p class="text-xs text-gray-600">${t.descripcion} (Categoría: ${t.categoria})</p>`;
@@ -5161,7 +5242,7 @@ let editClienteNombre = '', editClienteDir = '', editEsCredito = false, seleccio
 let editItems = [];
 let editOriginal = [];
 
-const escHtml = str => String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function escHtml(str) { return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 const mismoId = (a, b) => String(a) === String(b);
 
 function abrirEditarVenta() {
@@ -5238,10 +5319,10 @@ function renderEditarVenta() {
                 <div class="flex items-center justify-between mt-2">
                     <span class="text-xs text-gray-500">${money(i.precioPersonalizado)} c/u · <b>${money(i.precioPersonalizado * i.cant)}</b></span>
                     <div class="flex items-center gap-2">
-                        <button onclick="cambiarCantEditVenta(${idx}, -1)" class="w-8 h-8 rounded-lg bg-white border font-bold">−</button>
+                        <button onclick="cambiarCantEditVenta(${idx}, -1)" class="w-8 h-8 rounded-lg bg-white border font-bold" aria-label="Disminuir">−</button>
                         <span class="w-6 text-center font-bold text-sm">${i.cant}</span>
-                        <button onclick="cambiarCantEditVenta(${idx}, 1)" class="w-8 h-8 rounded-lg bg-white border font-bold">+</button>
-                        <button onclick="quitarItemEditVenta(${idx})" class="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600">🗑</button>
+                        <button onclick="cambiarCantEditVenta(${idx}, 1)" class="w-8 h-8 rounded-lg bg-white border font-bold" aria-label="Aumentar">+</button>
+                        <button onclick="quitarItemEditVenta(${idx})" class="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600" aria-label="Quitar">🗑</button>
                     </div>
                 </div>
             </div>`).join('');
@@ -8180,6 +8261,7 @@ async function driveSubir(manual, forzar) {
     try {
         const cuerpo = JSON.stringify({ clave: c.clave, datos: { productos, clientes, transacciones, configTicket, categorias: todasLasCategorias() } });
         const hdr = { 'Content-Type': 'text/plain;charset=utf-8' };
+        let confirmado = true;
         try {
             const r = await fetch(c.url, { method: 'POST', headers: hdr, body: cuerpo });
             let j; try { j = await r.json(); } catch (e) { throw new Error('Respuesta inesperada. Revisa que el acceso sea "Cualquier persona".'); }
@@ -8187,9 +8269,17 @@ async function driveSubir(manual, forzar) {
         } catch (e) {
             if (!(e instanceof TypeError)) throw e;
             await fetch(c.url, { method: 'POST', mode: 'no-cors', headers: hdr, body: cuerpo }); // sin confirmación, pero se envía
+            confirmado = false;
         }
         const ahora = new Date().toISOString();
         localStorage.setItem(DRIVE_ULT, ahora);
+        if (!confirmado) {
+            localStorage.setItem('digar_drive_sinconf', ahora);
+            drivePintar('Enviado, sin confirmación. Verifica en tu carpeta de Drive.');
+            if (manual) driveAviso('Enviado a Drive, pero sin confirmación. Verifica la carpeta.');
+            return true;
+        }
+        localStorage.removeItem('digar_drive_sinconf');
         localStorage.setItem('yimi_ultimo_respaldo', ahora);
         try { cerrarBannerRespaldo(); } catch (e) {}
         drivePintar();
@@ -8255,4 +8345,11 @@ setTimeout(driveRevisar, 20000);
 </script>
 <script src="asistente.js?v=2026-10-24-b"></script>
 <div class="pm-ov" id="pm-ov"><div class="pm-sheet" id="pm-sheet"></div></div>
+<script>
+// Privacidad y persistencia
+function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privacidad'); if (m) m.classList.remove('hidden'); }
+(function () {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
+})();
+</script>
 </body></html>

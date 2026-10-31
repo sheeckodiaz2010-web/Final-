@@ -2,13 +2,15 @@
 // Red primero (siempre intenta traer la versión más nueva) y, si no hay señal
 // o tarda demasiado, abre la copia guardada para que funcione sin conexión.
 // (los datos reales de tus ventas viven en localStorage, no aquí)
-const CACHE_NAME = 'digar-pos-v24';
+const CACHE_NAME = 'digar-pos-v26';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-maskable-192.png',
+  './icon-maskable-512.png'
 ];
 const ESPERA_RED_MS = 3000;
 

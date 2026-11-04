@@ -7636,13 +7636,25 @@ let ignorarClickNavHasta = 0;
 })();
 
 // -------------------- RELOJ (barra superior) --------------------
+let _bateriaTxt = '';
+if (navigator.getBattery) {
+    navigator.getBattery().then(function (b) {
+        const pintarBat = function () {
+            _bateriaTxt = Math.round(b.level * 100) + '%' + (b.charging ? ' ⚡' : '');
+            if (typeof pintarReloj === 'function') pintarReloj();
+        };
+        pintarBat();
+        b.addEventListener('levelchange', pintarBat);
+        b.addEventListener('chargingchange', pintarBat);
+    }).catch(function () {});
+}
 function pintarReloj() {
     const el = $('reloj-app');
     if (!el) return;
     const d = new Date();
     const hora = d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\s?([ap])\.?\s?m\.?/i, (m, x) => ' ' + x.toUpperCase() + 'M');
     const fecha = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
-    el.innerHTML = '<span style="text-align:left">🕐 ' + hora + '</span><span style="text-align:right;font-size:12px;font-weight:700;">' + fecha + '</span>';
+    el.innerHTML = '<span style="text-align:left">🕐 ' + hora + '</span><span style="text-align:right;font-size:14px;font-weight:700;">' + fecha + (_bateriaTxt ? ' · 🔋 ' + _bateriaTxt : '') + '</span>';
 }
 function programarReloj() {
     pintarReloj();

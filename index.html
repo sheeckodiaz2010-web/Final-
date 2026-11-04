@@ -1,6 +1,6 @@
 <html lang="es"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DIGAR POS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f8080">
@@ -273,10 +273,19 @@ button.w-8.h-8,button.w-9.h-9{min-width:44px;min-height:44px}
 })();
 </script>
 <style id="zoom-touch-fix">
-html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{max-width:100%;overflow-x:clip}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 </style>
+<script>
+/* Bloquea el pellizco de zoom (iOS ignora user-scalable=no) */
+['gesturestart','gesturechange','gestureend'].forEach(function(t){
+  document.addEventListener(t, function(e){ e.preventDefault(); }, { passive: false });
+});
+document.addEventListener('touchmove', function(e){
+  if (e.touches && e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+</script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 

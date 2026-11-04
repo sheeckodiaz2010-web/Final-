@@ -343,8 +343,8 @@ button,input,select,textarea{font-family:inherit}
 
     <!-- BARRA SUPERIOR + HEADER (juntos y fijos arriba, así el reloj siempre se ve) -->
     <div id="barra-superior-fija" style="position:sticky;top:0;z-index:30;">
-    <div class="bg-gray-900 text-white text-xs py-1.5 px-4 text-center flex justify-center items-center">
-        <span id="reloj-app" style="font-size:15px;font-weight:800;letter-spacing:.2px;font-variant-numeric:tabular-nums;" aria-label="Hora actual"></span>
+    <div class="bg-gray-900 text-white text-xs text-left" style="padding-top:calc(env(safe-area-inset-top,0px) + 8px);padding-bottom:8px;padding-left:12px;padding-right:12px;">
+        <div id="reloj-app" style="display:flex;justify-content:space-between;align-items:center;width:100%;white-space:nowrap;gap:12px;font-size:15px;font-weight:800;letter-spacing:.2px;font-variant-numeric:tabular-nums;" aria-label="Hora actual"></div>
     </div>
 
     <!-- HEADER -->
@@ -7627,7 +7627,7 @@ function pintarReloj() {
     const d = new Date();
     const hora = d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\s?([ap])\.?\s?m\.?/i, (m, x) => ' ' + x.toUpperCase() + 'M');
     const fecha = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
-    el.textContent = `🕐 ${hora} · ${fecha}`;
+    el.innerHTML = '<span style="text-align:left">🕐 ' + hora + '</span><span style="text-align:right;font-size:12px;font-weight:700;">' + fecha + '</span>';
 }
 function programarReloj() {
     pintarReloj();

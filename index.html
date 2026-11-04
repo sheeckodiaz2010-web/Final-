@@ -4480,6 +4480,7 @@ function renderInventario(filtro = '') {
                 <div>
                     <p class="font-bold text-gray-900">${escHtml(p.nombre)}</p>
                     <p class="text-xs mt-1 text-gray-500">Venta: <span class="font-bold text-gray-700">${money(p.precio)}</span> | Costo: ${money(p.costo || 0)} | Stock: ${p.stock}</p>
+                    <p class="text-xs mt-0.5 font-bold text-blue-700">Dinero en stock: ${money((p.precio || 0) * (p.stock || 0))}</p>
                     ${(() => { const m = margenInfo(p.precio, p.costo); return m.pct === null ? '<p class="text-xs mt-0.5 font-bold text-gray-400">⚪ Sin costo</p>' : `<p class="text-xs mt-0.5 font-bold ${m.clase}">${m.semaforo} Gana ${money(m.gana)} · ${m.pct.toFixed(0)}%</p>`; })()}
                 </div>
             </div>

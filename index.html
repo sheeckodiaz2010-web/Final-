@@ -272,6 +272,11 @@ button.w-8.h-8,button.w-9.h-9{min-width:44px;min-height:44px}
     });
 })();
 </script>
+<style id="zoom-touch-fix">
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{max-width:100%;overflow-x:clip}
+@media (pointer:coarse){input,select,textarea{font-size:16px!important}}
+</style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 
@@ -1657,6 +1662,11 @@ function debounce(fn, ms = 200) {
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+function _leerJSON(clave, defecto = null) {
+    try { const v = JSON.parse(localStorage.getItem(clave)); return v == null ? defecto : v; }
+    catch (e) { console.error('Dato corrupto en ' + clave, e); return defecto; }
+}
+
 // -------------------- ESTADO --------------------
 // Normalizar IDs a número para evitar fallos de comparación (string vs number)
 function normalizarId(id) {
@@ -1669,7 +1679,7 @@ function ordenarProductosAlfabetico() {
 }
 
 function cargarProductos() {
-    const raw = JSON.parse(localStorage.getItem('yimi_productos')) || [
+    const raw = _leerJSON('yimi_productos', null) || [
         { id: 1, nombre: 'MINI NUGS 18/24', precio: 70.00, costo: 45.00, stock: 24 },
         { id: 2, nombre: 'PALETA MIX DULCE SURTIDO', precio: 51.00, costo: 30.00, stock: 2 }
     ];
@@ -1679,7 +1689,7 @@ function cargarProductos() {
 }
 
 function cargarClientes() {
-    const raw = JSON.parse(localStorage.getItem('yimi_clientes')) || [];
+    const raw = _leerJSON('yimi_clientes', null) || [];
     return raw
         .filter(c => !esClienteGeneral(c))
         .map(c => ({ ...c, id: normalizarId(c.id), dias: Array.isArray(c.dias) ? c.dias : [] }));
@@ -1760,7 +1770,7 @@ let transacciones = cargarTransacciones();
     });
     if (n) guardarTransacciones();
 })();
-let configTicket = JSON.parse(localStorage.getItem('yimi_config_ticket')) || {
+let configTicket = _leerJSON('yimi_config_ticket', null) || {
     negocio: 'DIGAR',
     direccion: 'Sabinas Coahuila',
     telefono: '8611261265',
@@ -1778,7 +1788,14 @@ let clienteSeleccionado = null; // Ya no hay "Cliente General": en cada venta se
 let verTodosSeleccion = false; // en el selector de venta: false = solo clientes del día de hoy
 let pagoPendienteCliente = false; // true si se abrió el selector porque faltaba cliente al cobrar
 let clienteMenuActivoId = null; // cliente del menú contextual
-let carrito = [];
+function _cargarBorradorCarrito() {
+    const raw = _leerJSON('yimi_carrito', []);
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .filter(i => i && i.id != null && Number(i.cant) > 0)
+        .map(i => ({ ...i, id: normalizarId(i.id), cant: Number(i.cant) }));
+}
+let carrito = _cargarBorradorCarrito();
 let facturaCompraItems = [];
 let compraMargenPct = 0.30;
 let compraPaso = 1;
@@ -1826,8 +1843,24 @@ let bluetoothCharSinRespuesta = false;
 let bluetoothCharacteristic = null;
 
 // -------------------- PERSISTENCIA --------------------
+let _tBorrador = null;
+function _guardarBorradorYa() {
+    clearTimeout(_tBorrador); _tBorrador = null;
+    _escribirSiCambio('yimi_productos', productos);
+    _escribirSiCambio('yimi_carrito', carrito);
+}
+function guardarBorradorSoon() {
+    if (_tBorrador) return; // ya hay una escritura programada; tomará el estado final
+    _tBorrador = setTimeout(_guardarBorradorYa, 150);
+}
+window.addEventListener('pagehide', () => { if (_tBorrador) _guardarBorradorYa(); });
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && _tBorrador) _guardarBorradorYa();
+});
+
 function guardarTodo() {
     _escribirSiCambio('yimi_productos', productos);
+    _escribirSiCambio('yimi_carrito', carrito);
     _escribirSiCambio('digar_promos', promos);
     _escribirSiCambio('yimi_clientes', clientes);
     guardarTransacciones();
@@ -3528,6 +3561,7 @@ function firmaTarjetaVenta(p, modo, mapaCarrito) {
 let ultimoFiltroVenta = '';
 let temporizadorAltoGrid = null;
 function renderVenta(filtro = '') {
+    guardarBorradorSoon();
     const grid = $('grid-venta');
     if (!modoVistaCatalogo) productoSeleccionadoId = null;
     // Guardar dónde va la pantalla: al tocar/agregar un producto la lista NO debe regresar al principio
@@ -3716,7 +3750,7 @@ function renderVentaPronto() {
     clearTimeout(_tRV);
     _tRV = setTimeout(() => renderVenta($('buscador-venta') ? $('buscador-venta').value : ''), 250);
 }
-const filtrarVentaDebounced = debounce(val => renderVenta(val), 180);
+const filtrarVentaDebounced = debounce(val => renderVenta(val), 100);
 function filtrarVenta(val) { filtrarVentaDebounced(val); }
 
 function toggleLimpiarBuscadorVenta() {
@@ -3792,6 +3826,7 @@ function confirmarCantidadAlCarrito() {
 }
 
 function actualizarTotalesCarrito() {
+    guardarBorradorSoon();
     const total = totalCarritoActual();
     const piezas = carrito.reduce((a, b) => a + (b.cant || 0), 0);
     $('modal-total').innerText = money(total);

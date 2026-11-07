@@ -309,45 +309,15 @@ button,input,select,textarea{font-family:inherit}
 .font-bold,.font-extrabold,.font-black{letter-spacing:-.005em}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 </style>
-<style id="modo-oscuro-css">
-body.modo-oscuro{background:#0f172a!important;color:#e5e7eb!important;color-scheme:dark}
-body.modo-oscuro .bg-white,body.modo-oscuro .bg-gray-50{background-color:#1e293b!important}
-body.modo-oscuro .bg-gray-100{background-color:#273449!important}
-body.modo-oscuro .bg-gray-200{background-color:#334155!important}
-body.modo-oscuro .bg-blue-50{background-color:#172554!important}
-body.modo-oscuro .bg-red-50{background-color:#450a0a!important}
-body.modo-oscuro .bg-green-50,body.modo-oscuro .bg-emerald-50{background-color:#052e16!important}
-body.modo-oscuro .bg-yellow-50,body.modo-oscuro .bg-amber-50{background-color:#422006!important}
-body.modo-oscuro .bg-purple-50{background-color:#2e1065!important}
-body.modo-oscuro .text-gray-900,body.modo-oscuro .text-gray-800,body.modo-oscuro .text-black{color:#f1f5f9!important}
-body.modo-oscuro .text-gray-700,body.modo-oscuro .text-gray-600{color:#cbd5e1!important}
-body.modo-oscuro .text-gray-500{color:#94a3b8!important}
-body.modo-oscuro .text-gray-400{color:#7c8aa0!important}
-body.modo-oscuro .text-blue-800,body.modo-oscuro .text-blue-700{color:#bfdbfe!important}
-body.modo-oscuro .border,body.modo-oscuro .border-gray-100,body.modo-oscuro .border-gray-200,body.modo-oscuro .border-gray-300,body.modo-oscuro .border-b,body.modo-oscuro .border-t{border-color:#334155!important}
-body.modo-oscuro .border-blue-200{border-color:#1e40af!important}
-body.modo-oscuro .divide-gray-100>*+*,body.modo-oscuro .divide-gray-200>*+*{border-color:#334155!important}
-body.modo-oscuro nav.fixed.bottom-0{background:#1e293b!important;box-shadow:0 -1px 12px rgba(0,0,0,.4)!important}
-body.modo-oscuro .ajuste-card{background:#1e293b!important;border-color:#334155!important;box-shadow:none!important}
-body.modo-oscuro .ajuste-sub{color:#94a3b8!important}
-body.modo-oscuro [style*="background:#fff"],body.modo-oscuro [style*="background: #fff"],body.modo-oscuro [style*="background:#ffffff"]{background-color:#1e293b!important}
-body.modo-oscuro [style*="background:#f9fafb"],body.modo-oscuro [style*="background:#f3f4f6"]{background-color:#0f172a!important}
-body.modo-oscuro input,body.modo-oscuro select,body.modo-oscuro textarea{background-color:#0f172a!important;color:#f1f5f9!important;border-color:#334155!important}
-body.modo-oscuro input::placeholder,body.modo-oscuro textarea::placeholder{color:#64748b!important}
-body.modo-oscuro [id^="modal-"].fixed>.bg-white>:first-child.flex.justify-between.items-center{background:#1e293b!important}
-body.modo-oscuro #toast-pro{background:#f1f5f9;color:#0f172a}
-body.modo-oscuro .shadow-sm,body.modo-oscuro .shadow-md,body.modo-oscuro .shadow-lg{box-shadow:0 1px 3px rgba(0,0,0,.5)!important}
-/* Factura de compra: más compacta y botones visibles */
+<style id="factura-compacta">
 #modal-compra>.bg-white{zoom:.86;padding-bottom:24px!important}
 #modal-compra input,#modal-compra select{min-width:0;max-width:100%;min-height:40px}
 #modal-compra button{min-height:40px}
-#modal-compra .flex.gap-2>button,#modal-compra .flex.gap-2>select{flex-shrink:0}
 #modal-compra .flex.gap-2>select{flex:1 1 0;min-width:0}
-#modal-compra .flex.gap-2>button{min-width:84px;min-height:44px;position:relative;z-index:2}
+#modal-compra .flex.gap-2>button{flex-shrink:0;min-width:84px;min-height:44px;position:relative;z-index:2}
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
-<script>try{if(localStorage.getItem('digar-modo-oscuro')==='1')document.body.classList.add('modo-oscuro')}catch(e){}</script>
 
     <!-- PANTALLA DE ACCESO -->
     <div id="pantalla-login" class="fixed inset-0 z-[9999] bg-white flex items-center justify-center p-4">
@@ -461,6 +431,7 @@ body.modo-oscuro .shadow-sm,body.modo-oscuro .shadow-md,body.modo-oscuro .shadow
             </div>
             <div id="lista-clientes-inicio" class="space-y-2"></div>
             <div id="mapa-clientes-wrap" class="hidden space-y-2">
+                <button type="button" id="btn-mapa-oscuro" onclick="toggleMapaOscuro()" style="align-self:flex-end;padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;background:#111827;color:#fff">🌙 Ver mapa oscuro</button>
                 <div id="mapa-chips" style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px"></div>
                 <div style="position:relative">
                     <div id="mapa-clientes" style="height:calc(100dvh - 450px);min-height:320px;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb"></div>
@@ -670,10 +641,6 @@ body.modo-oscuro .shadow-sm,body.modo-oscuro .shadow-md,body.modo-oscuro .shadow
                 <button onclick="abrirConfigurarImpresora()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg></span>
                     <span style="display:block;min-width:0;"><span class="ajuste-label">Impresora</span><span class="ajuste-sub" id="estado-impresora-txt" style="color:#2563eb;">Conectar &gt;</span></span>
-                </button>
-                <button onclick="toggleModoOscuro()" class="ajuste-card">
-                    <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg></span>
-                    <span style="display:block;min-width:0;"><span class="ajuste-label">Modo oscuro</span><span class="ajuste-sub" id="modo-oscuro-sub">Desactivado &gt;</span></span>
                 </button>
                 <button onclick="cambiarVista('estadisticas')" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="3.6" height="9" rx="1.8"/><rect x="10.2" y="4" width="3.6" height="16" rx="1.8"/><rect x="16.4" y="8" width="3.6" height="12" rx="1.8"/></svg></span>
@@ -2100,9 +2067,24 @@ const MAPA_ZMIN = 11, MAPA_ZMAX = 16; // no se acerca más de lo que se descarga
 const MAPA_CARTO_KEY = 'cb1_4y3c_1_15f8786f0f182a683f7d89a3';
 const MAPA_OSM_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 const MAPA_CARTO_URL = (z, x, y) => `https://basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png?key=${encodeURIComponent(MAPA_CARTO_KEY)}`;
-const MAPA_PREF = MAPA_CARTO_KEY ? 'c/' : ''; // prefijo para no mezclar piezas guardadas de cada proveedor
-const MAPA_TILE_URL = MAPA_CARTO_KEY ? MAPA_CARTO_URL : MAPA_OSM_URL;
+const MAPA_DARK_URL = (z, x, y) => `https://basemaps.cartocdn.com/rastertiles/dark_all/${z}/${x}/${y}.png?key=${encodeURIComponent(MAPA_CARTO_KEY)}`;
+let mapaOscuro = false; // mapa oscuro: solo del mapa, no de la interfaz
+try { mapaOscuro = localStorage.getItem('digar-mapa-oscuro') === '1' && !!MAPA_CARTO_KEY; } catch (e) {}
+// prefijo para no mezclar piezas guardadas de cada proveedor y estilo (c/ = claro, d/ = oscuro)
+let MAPA_PREF = mapaOscuro ? 'd/' : (MAPA_CARTO_KEY ? 'c/' : '');
+let MAPA_TILE_URL = mapaOscuro ? MAPA_DARK_URL : (MAPA_CARTO_KEY ? MAPA_CARTO_URL : MAPA_OSM_URL);
 function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
+function pintarBotonMapaOscuro() { const b = document.getElementById('btn-mapa-oscuro'); if (b) b.textContent = mapaOscuro ? '☀️ Ver mapa claro' : '🌙 Ver mapa oscuro'; }
+function toggleMapaOscuro() {
+    if (!MAPA_CARTO_KEY) { mapaAviso('El mapa oscuro necesita la clave de CARTO'); return; }
+    mapaOscuro = !mapaOscuro;
+    try { localStorage.setItem('digar-mapa-oscuro', mapaOscuro ? '1' : '0'); } catch (e) {}
+    MAPA_PREF = mapaOscuro ? 'd/' : 'c/';
+    MAPA_TILE_URL = mapaOscuro ? MAPA_DARK_URL : MAPA_CARTO_URL;
+    pintarBotonMapaOscuro();
+    [mapaClientes, mapaPicker].forEach(m => { if (m) m.reload(); });
+}
+document.addEventListener('DOMContentLoaded', pintarBotonMapaOscuro);
 const mapaLngX = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * 256;
 const mapaLatY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * Math.pow(2, z) * 256; };
 const mapaXLng = (x, z) => x / (Math.pow(2, z) * 256) * 360 - 180;
@@ -2144,7 +2126,7 @@ async function mapaBajarTile(z, x, y, signal) {
         const r = await fetch(MAPA_TILE_URL(z, x, y), op);
         if (r.ok) return { b: await r.blob(), osm: false };
     } catch (e) { if (signal && signal.aborted) throw e; if (!MAPA_PREF && navigator.onLine === false) throw e; }
-    if (!MAPA_PREF) return null;
+    if (!MAPA_PREF || mapaOscuro) return null;
     const r = await fetch(MAPA_OSM_URL(z, x, y), op);
     return r.ok ? { b: await r.blob(), osm: true } : null;
 }
@@ -2214,7 +2196,7 @@ async function mapaRed(t) {
 function mapaTileUrl(t) {
     const m = _mapaMem.get(t.key);
     if (m) { _mapaMem.delete(t.key); _mapaMem.set(t.key, m); t.done(m); return; }
-    mapaTileGet(t.key).then(b => b || (MAPA_PREF ? mapaTileGet(t.key.slice(MAPA_PREF.length)) : null)).then(b => {
+    mapaTileGet(t.key).then(b => b || (MAPA_PREF && !mapaOscuro ? mapaTileGet(t.key.slice(MAPA_PREF.length)) : null)).then(b => {
         if (t.cancel) return;
         if (b) { const u = URL.createObjectURL(b); mapaMemPut(t.key, u); t.done(u); return; }
         if (navigator.onLine === false) { t.done(null); return; }
@@ -8502,24 +8484,6 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
     el.addEventListener('touchstart', abrir, { passive: true });
     el.addEventListener('blur', function(){ el.setAttribute('readonly','readonly'); });
   });
-})();
-</script>
-<script>
-function aplicarModoOscuro(on){
-    document.body.classList.toggle('modo-oscuro', !!on);
-    document.documentElement.style.colorScheme = on ? 'dark' : 'light';
-    var t = document.getElementById('modo-oscuro-sub');
-    if (t) t.textContent = on ? 'Activado >' : 'Desactivado >';
-}
-function toggleModoOscuro(){
-    var on = !document.body.classList.contains('modo-oscuro');
-    try { localStorage.setItem('digar-modo-oscuro', on ? '1' : '0'); } catch (e) {}
-    aplicarModoOscuro(on);
-}
-(function(){
-    var on = false;
-    try { on = localStorage.getItem('digar-modo-oscuro') === '1'; } catch (e) {}
-    aplicarModoOscuro(on);
 })();
 </script>
 </body></html>

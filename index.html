@@ -310,6 +310,8 @@ button,input,select,textarea{font-family:inherit}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 </style>
 <style id="factura-compacta">
+body.mapa-oscuro-on .mapd{background:#263040}
+body.mapa-oscuro-on .mapd-t{filter:sepia(.45) hue-rotate(185deg) saturate(1.5)}
 #modal-compra>.bg-white{zoom:.86;padding-bottom:24px!important}
 #modal-compra input,#modal-compra select{min-width:0;max-width:100%;min-height:40px}
 #modal-compra button{min-height:40px}
@@ -2074,7 +2076,7 @@ try { mapaOscuro = localStorage.getItem('digar-mapa-oscuro') === '1' && !!MAPA_C
 let MAPA_PREF = mapaOscuro ? 'd/' : (MAPA_CARTO_KEY ? 'c/' : '');
 let MAPA_TILE_URL = mapaOscuro ? MAPA_DARK_URL : (MAPA_CARTO_KEY ? MAPA_CARTO_URL : MAPA_OSM_URL);
 function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
-function pintarBotonMapaOscuro() { const b = document.getElementById('btn-mapa-oscuro'); if (b) b.textContent = mapaOscuro ? '☀️ Ver mapa claro' : '🌙 Ver mapa oscuro'; }
+function pintarBotonMapaOscuro() { document.body.classList.toggle('mapa-oscuro-on', mapaOscuro); const b = document.getElementById('btn-mapa-oscuro'); if (b) b.textContent = mapaOscuro ? '☀️ Ver mapa claro' : '🌙 Ver mapa oscuro'; }
 function toggleMapaOscuro() {
     if (!MAPA_CARTO_KEY) { mapaAviso('El mapa oscuro necesita la clave de CARTO'); return; }
     mapaOscuro = !mapaOscuro;

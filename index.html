@@ -292,8 +292,6 @@ button,input,select,textarea{font-family:inherit}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 </style>
 <style id="factura-compacta">
-body.mapa-oscuro-on .mapd{background:#263040}
-body.mapa-oscuro-on .mapd-t{filter:sepia(.45) hue-rotate(185deg) saturate(1.5)}
 #modal-compra>.bg-white{zoom:.86;padding-bottom:24px!important}
 #modal-compra input,#modal-compra select{min-width:0;max-width:100%;min-height:40px}
 #modal-compra button{min-height:40px}
@@ -415,7 +413,6 @@ body.mapa-oscuro-on .mapd-t{filter:sepia(.45) hue-rotate(185deg) saturate(1.5)}
             </div>
             <div id="lista-clientes-inicio" class="space-y-2"></div>
             <div id="mapa-clientes-wrap" class="hidden space-y-2">
-                <button type="button" id="btn-mapa-oscuro" onclick="toggleMapaOscuro()" style="align-self:flex-end;padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;background:#111827;color:#fff">🌙 Ver mapa oscuro</button>
                 <div id="mapa-chips" style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px"></div>
                 <div style="position:relative">
                     <div id="mapa-clientes" style="height:calc(100dvh - 450px);min-height:320px;border-radius:22px;overflow:hidden;border:1px solid #e5e7eb"></div>
@@ -2204,24 +2201,11 @@ const MAPA_ZMIN = 11, MAPA_ZMAX = 16; // no se acerca más de lo que se descarga
 const MAPA_CARTO_KEY = 'cb1_4y3c_1_15f8786f0f182a683f7d89a3';
 const MAPA_OSM_URL = (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 const MAPA_CARTO_URL = (z, x, y) => `https://basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png?key=${encodeURIComponent(MAPA_CARTO_KEY)}`;
-const MAPA_DARK_URL = (z, x, y) => `https://basemaps.cartocdn.com/rastertiles/dark_all/${z}/${x}/${y}.png?key=${encodeURIComponent(MAPA_CARTO_KEY)}`;
-let mapaOscuro = false; // mapa oscuro: solo del mapa, no de la interfaz
-try { mapaOscuro = localStorage.getItem('digar-mapa-oscuro') === '1' && !!MAPA_CARTO_KEY; } catch (e) {}
-// prefijo para no mezclar piezas guardadas de cada proveedor y estilo (c/ = claro, d/ = oscuro)
-let MAPA_PREF = mapaOscuro ? 'd/' : (MAPA_CARTO_KEY ? 'c/' : '');
-let MAPA_TILE_URL = mapaOscuro ? MAPA_DARK_URL : (MAPA_CARTO_KEY ? MAPA_CARTO_URL : MAPA_OSM_URL);
+// Mapa siempre claro (sin modo oscuro).
+// Prefijo para no mezclar piezas guardadas de cada proveedor (c/ = CARTO claro, sin prefijo = OpenStreetMap).
+const MAPA_PREF = MAPA_CARTO_KEY ? 'c/' : '';
+const MAPA_TILE_URL = MAPA_CARTO_KEY ? MAPA_CARTO_URL : MAPA_OSM_URL;
 function mapaAviso(m) { try { if (window.toast) window.toast(m); } catch (e) {} }
-function pintarBotonMapaOscuro() { document.body.classList.toggle('mapa-oscuro-on', mapaOscuro); const b = document.getElementById('btn-mapa-oscuro'); if (b) b.textContent = mapaOscuro ? '☀️ Ver mapa claro' : '🌙 Ver mapa oscuro'; }
-function toggleMapaOscuro() {
-    if (!MAPA_CARTO_KEY) { mapaAviso('El mapa oscuro necesita la clave de CARTO'); return; }
-    mapaOscuro = !mapaOscuro;
-    try { localStorage.setItem('digar-mapa-oscuro', mapaOscuro ? '1' : '0'); } catch (e) {}
-    MAPA_PREF = mapaOscuro ? 'd/' : 'c/';
-    MAPA_TILE_URL = mapaOscuro ? MAPA_DARK_URL : MAPA_CARTO_URL;
-    pintarBotonMapaOscuro();
-    [mapaClientes, mapaPicker].forEach(m => { if (m) m.reload(); });
-}
-document.addEventListener('DOMContentLoaded', pintarBotonMapaOscuro);
 const mapaLngX = (lng, z) => (lng + 180) / 360 * Math.pow(2, z) * 256;
 const mapaLatY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * Math.pow(2, z) * 256; };
 const mapaXLng = (x, z) => x / (Math.pow(2, z) * 256) * 360 - 180;
@@ -2263,7 +2247,7 @@ async function mapaBajarTile(z, x, y, signal) {
         const r = await fetch(MAPA_TILE_URL(z, x, y), op);
         if (r.ok) return { b: await r.blob(), osm: false };
     } catch (e) { if (signal && signal.aborted) throw e; if (!MAPA_PREF && navigator.onLine === false) throw e; }
-    if (!MAPA_PREF || mapaOscuro) return null;
+    if (!MAPA_PREF) return null;
     const r = await fetch(MAPA_OSM_URL(z, x, y), op);
     return r.ok ? { b: await r.blob(), osm: true } : null;
 }
@@ -2333,7 +2317,7 @@ async function mapaRed(t) {
 function mapaTileUrl(t) {
     const m = _mapaMem.get(t.key);
     if (m) { _mapaMem.delete(t.key); _mapaMem.set(t.key, m); t.done(m); return; }
-    mapaTileGet(t.key).then(b => b || (MAPA_PREF && !mapaOscuro ? mapaTileGet(t.key.slice(MAPA_PREF.length)) : null)).then(b => {
+    mapaTileGet(t.key).then(b => b || (MAPA_PREF ? mapaTileGet(t.key.slice(MAPA_PREF.length)) : null)).then(b => {
         if (t.cancel) return;
         if (b) { const u = URL.createObjectURL(b); mapaMemPut(t.key, u); t.done(u); return; }
         if (navigator.onLine === false) { t.done(null); return; }

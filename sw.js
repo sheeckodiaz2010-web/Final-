@@ -2,7 +2,7 @@
 // Red primero (siempre intenta traer la versión más nueva) y, si no hay señal
 // o tarda demasiado, abre la copia guardada para que funcione sin conexión.
 // (los datos reales de tus ventas viven en localStorage, no aquí)
-const CACHE_NAME = 'digar-pos-v27';
+const CACHE_NAME = 'digar-pos-v28';
 const ASSETS = [
   './',
   './index.html',

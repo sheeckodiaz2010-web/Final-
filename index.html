@@ -1922,6 +1922,18 @@ function guardarTodo() {
     actualizarContadorClientesUI();
     subirDatosNubeDebounced();
 }
+// LITE: version agrupada de guardarTodo para toques que pueden repetirse
+// (marcar no-compro, dias de cliente, promos). Junta los guardados en 300 ms
+// y vacia al cerrar/ocultar la app. NUNCA se usa en cobro, ventas, importacion
+// ni borrado: ahi guardarTodo() sigue siendo inmediato.
+let _tGuardarTodo = null;
+function guardarTodoPronto() {
+    if (_tGuardarTodo) return;
+    _tGuardarTodo = setTimeout(() => { _tGuardarTodo = null; guardarTodo(); }, 300);
+}
+function _vaciarGuardarTodoPronto() { if (_tGuardarTodo) { clearTimeout(_tGuardarTodo); _tGuardarTodo = null; guardarTodo(); } }
+window.addEventListener('pagehide', _vaciarGuardarTodoPronto);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') _vaciarGuardarTodoPronto(); });
 
 // -------------------- SINCRONIZACIÓN EN LA NUBE (FIREBASE) --------------------
 // 1) Crea un proyecto gratis en https://console.firebase.google.com
@@ -2599,6 +2611,7 @@ function setVistaClientes(v) {
     if (l) l.classList.toggle('hidden', esMapa);
     if (m) m.classList.toggle('hidden', !esMapa);
     if (esMapa) refrescarMapaClientes(true);
+    else { _mapaVisible = false; detenerGpsMapa(); } // LITE: GPS apagado inmediato al salir del mapa
 }
 function programarRefrescoMapa() {
     if (vistaClientes !== 'mapa') return;
@@ -2632,6 +2645,9 @@ function buscarClientePorId(id) { const n = normalizarId(id); return clientes.fi
 
 function refrescarMapaClientes(forzarFit) {
     const el = $('mapa-clientes'); if (!el) return;
+    // LITE: no crear el mapa (ni tiles ni GPS) detras del login ni en vista lista.
+    if (document.getElementById('pantalla-login')) return;
+    if (vistaClientes !== 'mapa') return;
     if (!mapaClientes) {
         mapaClientes = new MapaDigar(el);
         mapaClientes.onPin = p => abrirPopupMapa(p.id);
@@ -2708,7 +2724,7 @@ function toggleSinCompra(id) {
     if (clienteVisitadoHoy(c)) { alert('Ya tiene venta hoy'); return; }
     if (noComproHoy(c)) { delete c.sinCompra; mapaAviso('Marca quitada'); }
     else { c.sinCompra = hoy(); mapaAviso('Marcado: no compró hoy'); }
-    guardarTodo();
+    guardarTodoPronto();
     renderListaClientesInicio();
     refrescarMapaClientes(false);
 }
@@ -2728,11 +2744,11 @@ function actualizarDistanciaPopup() {
 }
 let _gpsTimeoutMapa = null;
 function iniciarGpsMapa() {
-    // FIX 18: el GPS se detiene solo a los 60 s (antes quedaba observando
+    // FIX 18 + LITE: el GPS se detiene a los 30 s y al salir del mapa (antes quedaba observando
     // mientras la vista de clientes estuviera abierta, gastando bateria/datos).
     if (_watchId !== null || !navigator.geolocation) return;
     clearTimeout(_gpsTimeoutMapa);
-    _gpsTimeoutMapa = setTimeout(detenerGpsMapa, 60000);
+    _gpsTimeoutMapa = setTimeout(detenerGpsMapa, 30000);
     _watchId = navigator.geolocation.watchPosition(p => {
         const nueva = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
         const ahora = Date.now();
@@ -2744,7 +2760,7 @@ function iniciarGpsMapa() {
         actualizarDistanciaPopup();
     }, e => {
         if (e && e.code === 1) { detenerGpsMapa(); if (!_gpsAvisado) { _gpsAvisado = true; mapaAviso('Activa el permiso de ubicación para ver tu punto en el mapa'); } }
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+    }, { enableHighAccuracy: false, maximumAge: 10000, timeout: 20000 });
 }
 function detenerGpsMapa() { clearTimeout(_gpsTimeoutMapa); if (_watchId !== null) { try { navigator.geolocation.clearWatch(_watchId); } catch (e) {} _watchId = null; } }
 function _gpsMapaSync() { if ((_mapaVisible || _pickerAbierto) && !document.hidden) iniciarGpsMapa(); else detenerGpsMapa(); }
@@ -2850,7 +2866,7 @@ async function descargarMapaOffline() {
     if (_mapaDescargando) { _mapaCancelar = true; return; }
     if (navigator.onLine === false) { if (window.toast) window.toast('Necesitas internet para descargar el mapa.'); return; }
     const tiles = mapaListaTiles();
-    if (tiles.length > 1200) { if (window.toast) window.toast('La zona de tus clientes es muy grande para descargarla (máx. 1200 piezas).'); return; }
+    if (tiles.length > 800) { if (window.toast) window.toast('La zona de tus clientes es muy grande para descargarla (máx. 800 piezas).'); return; }
     const mb = Math.max(1, Math.round(tiles.length * 0.015));
     if (!(await confirmarPro(`Se descargarán ${tiles.length} piezas del mapa (unos ${mb} MB) de la zona de tus clientes para verlo sin internet. Mejor con WiFi. ¿Continuar?`))) return;
     _mapaDescargando = true; _mapaCancelar = false;
@@ -3105,7 +3121,7 @@ function guardarDiasCliente() {
     const c = clientes.find(x => normalizarId(x.id) === idNum);
     if (!c) return;
     c.dias = leerSelectorDias('dias-cliente-selector');
-    guardarTodo();
+    guardarTodoPronto();
     cerrarModal('modal-dias-cliente');
     renderClientesAdmin();
     renderListaClientesInicio();
@@ -3559,11 +3575,11 @@ function pmRender() {
           <div class="pm-acts"><button type="button" onclick="pmAbrir(${p.id})">Editar</button><button type="button" style="color:#dc2626" onclick="pmEliminar(${p.id})">Eliminar</button></div></div>`;
     }).join('');
 }
-function pmToggle(id) { const p = promos.find(x => x.id === id); if (!p) return; p.on = !p.on; guardarTodo(); pmRender(); actualizarTotalesCarrito(); }
+function pmToggle(id) { const p = promos.find(x => x.id === id); if (!p) return; p.on = !p.on; guardarTodoPronto(); pmRender(); actualizarTotalesCarrito(); }
 async function pmEliminar(id) {
     if (!await confirmarPro('¿Eliminar esta promoción?')) return;
     const _pm = promos.find(x => x.id === id); if (_pm) guardarEnPapelera('promo', _pm.nombre || 'Promoción', { ..._pm });
-    promos = promos.filter(x => x.id !== id); guardarTodo(); pmRender(); actualizarTotalesCarrito();
+    promos = promos.filter(x => x.id !== id); guardarTodoPronto(); pmRender(); actualizarTotalesCarrito();
 }
 
 let pmEdit = null;
@@ -3622,11 +3638,13 @@ function pmGuardar() {
     if (e.ids.length < 2) e.mix = false;
     if (e.id) promos = promos.map(p => p.id === e.id ? e : p);
     else { e.id = generarIdUnico('promo'); promos.unshift(e); }
-    guardarTodo(); pmCerrar(); pmRender(); actualizarTotalesCarrito();
+    guardarTodoPronto(); pmCerrar(); pmRender(); actualizarTotalesCarrito();
 }
 
 function cambiarVista(v) {
     desenfocarCampos();
+    // LITE: al salir de Clientes el GPS se apaga de inmediato (antes solo lo paraba el observador o el temporizador).
+    if (v !== 'clientes') { try { detenerGpsMapa(); _mapaVisible = false; } catch (e) {} }
     if (v === 'inicio' && typeof modoBotones === 'function' && !modoBotones()) v = 'clientes';
     const vistas = ['inicio', 'clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas', 'promos'];
     vistas.forEach(vista => {
@@ -3677,8 +3695,9 @@ function aplicarModoVistaGuardado() {
     modoVistaCatalogo = true;
     try { localStorage.setItem('digar_modo_vista', 'catalogo'); } catch (e) {}
     etiquetaModoVista();
-    renderVenta($('buscador-venta') ? $('buscador-venta').value : '');
-    sincronizarFotosCatalogo(false);
+    // LITE: el render de ventas y la sincronizacion de fotos (red + IndexedDB) van en idle.
+    if (window.requestIdleCallback) requestIdleCallback(() => { try { renderVenta($('buscador-venta') ? $('buscador-venta').value : ''); } catch (e) {} sincronizarFotosCatalogo(false); }, { timeout: 5000 });
+    else setTimeout(() => { renderVenta($('buscador-venta') ? $('buscador-venta').value : ''); sincronizarFotosCatalogo(false); }, 1500);
 }
 
 let productoSeleccionadoId = null; // producto marcado en la venta; solo se agrega al tocar su botón "Agregar"
@@ -3808,49 +3827,7 @@ function renderVenta(filtro = '') {
     const frag = document.createDocumentFragment();
     grid.style.cssText = '';
 
-    if (modoVistaGrid) {
-        grid.className = 'grid grid-cols-3 gap-2.5';
-        const addBtn = document.createElement('div');
-        addBtn.className = 'p-3 rounded-xl flex flex-col items-center justify-center text-center h-28 cursor-pointer';
-        addBtn.style.background = '#eef2fd';
-        addBtn.onclick = abrirModalProducto;
-        addBtn.innerHTML = `<span class="text-blue-600 font-black text-3xl" style="line-height:1">+</span><span class="text-xs font-bold text-blue-600 mt-1">Producto</span>`;
-        frag.appendChild(addBtn);
-
-        filtrados.forEach(p => {
-            const _f = firmaTarjetaVenta(p, 'grid', mapaCarrito);
-            const _c = cacheTarjetasVenta.get(p.id);
-            if (_c && _c.f === _f) { frag.appendChild(_c.el); return; } // sin cambios: se reutiliza la tarjeta ya armada (nada de recargar fotos)
-
-            const div = document.createElement('div');
-            const agotado = p.stock <= 0;
-            div.className = 'text-white rounded-xl flex flex-col h-28 cursor-pointer shadow-sm select-none relative overflow-hidden';
-            div.style.background = agotado ? '#9ca3af' : '#2a5794';
-            div.innerHTML = `
-                ${agotado ? '<span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : ''}
-                <div class="flex-1 flex flex-col items-center justify-center text-center px-2">
-                    <div class="text-sm font-extrabold leading-tight line-clamp-2 uppercase text-white">${escHtml(p.nombre)}</div>
-                    <div class="text-[10px] text-white opacity-80 mt-0.5">Stock: ${p.stock}</div>
-                </div>
-                <div class="text-center text-sm font-black py-1.5 text-white" style="background:rgba(0,0,0,.25)">${money(p.precio)}</div>
-            `;
-            if (productoSeleccionadoId === p.id) {
-                div.style.boxShadow = '0 0 0 3px #16a34a';
-                div.replaceChild(crearBotonAgregar(p, carrito.find(x => x.id === p.id), 'barra'), div.lastElementChild);
-            }
-            bindProductoToque(div, p.id);
-            cacheTarjetasVenta.set(p.id, { f: _f, el: div });
-            frag.appendChild(div);
-        });
-        const celdas = filtrados.length + 1;
-        const meta = Math.max(12, Math.ceil(celdas / 3) * 3);
-        for (let i = celdas; i < meta; i++) {
-            const vacia = document.createElement('div');
-            vacia.className = 'rounded-xl h-28';
-            vacia.style.background = '#f1f4fb';
-            frag.appendChild(vacia);
-        }
-    } else if (modoVistaCatalogo) {
+    if (modoVistaCatalogo) { // LITE: rama 'grid' muerta eliminada (modoVistaGrid siempre false)
         grid.className = '';
         grid.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start;';
         const addBtn = document.createElement('div');
@@ -7963,12 +7940,17 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 ['cant-prod-input', 'cfg-item-cant'].forEach(id => { const el = $(id); if (el) campoCantidadLimpio(el); });
 $('buscador-venta').addEventListener('input', e => filtrarVenta(e.target.value));
 $('buscador-inventario').addEventListener('input', e => filtrarInventario(e.target.value));
-$('buscador-clientes').addEventListener('input', e => renderListaClientesInicio(e.target.value));
+const filtrarClientesDebounced = debounce(val => renderListaClientesInicio(val), 180); // LITE: antes repintaba la lista en cada tecla
+$('buscador-clientes').addEventListener('input', e => filtrarClientesDebounced(e.target.value));
 setVistaClientes(vistaClientes);
 
+// LITE: el login tapa todo al arrancar; ventas y clientes se renderizan en
+// idle para que el login pinte primero. Al entrar a cada vista cambiarVista()
+// vuelve a renderizar, asi que nada queda vacio.
 actualizarContadorClientesUI();
-renderVenta();
-renderListaClientesInicio();
+function renderInicialDiferido() { try { renderVenta(); } catch (e) {} try { renderListaClientesInicio(); } catch (e) {} }
+if (window.requestIdleCallback) requestIdleCallback(renderInicialDiferido, { timeout: 3000 });
+else setTimeout(renderInicialDiferido, 800);
 initPantallaLogin();
 initHuellaLogin();
 
@@ -8199,7 +8181,7 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-window.addEventListener('load', () => { setTimeout(buscarActualizacion, 4000); });
+window.addEventListener('load', () => { setTimeout(buscarActualizacion, 30000); }); // LITE: no gastar red a los 4 s del arranque
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - _actUltimoChequeo > 10 * 60 * 1000) buscarActualizacion(); });
 setInterval(buscarActualizacion, 30 * 60 * 1000);
 
@@ -8232,7 +8214,9 @@ document.addEventListener('click', (e) => {
 actualizarBotonVibracion();
 restaurarImpresoraGuardada();
 aplicarModoVistaGuardado();
-cargarFotosGuardadas();
+// LITE: leer las fotos de IndexedDB en idle; al terminar, cargarFotosGuardadas re-renderiza ventas.
+if (window.requestIdleCallback) requestIdleCallback(() => cargarFotosGuardadas(), { timeout: 5000 });
+else setTimeout(cargarFotosGuardadas, 1500);
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && bluetoothDevice) {
         actualizarEstadoImpresora(!!(bluetoothDevice.gatt && bluetoothDevice.gatt.connected && bluetoothCharacteristic));
@@ -8589,7 +8573,7 @@ function abrirMenuInicio() { const m = document.getElementById('menu-inicio'); i
 function cerrarMenuInicio() { const m = document.getElementById('menu-inicio'); if (m) m.classList.add('hidden'); }
 (function () {
     aplicarModoBotones();
-    setInterval(function () { const v = document.getElementById('vista-inicio'); if (!document.hidden && v && !v.classList.contains('hidden')) renderInicio(); }, 15000);
+    setInterval(function () { const v = document.getElementById('vista-inicio'); if (!document.hidden && v && !v.classList.contains('hidden')) renderInicio(); }, 30000);
 })();
 </script>
 <script>
@@ -8705,7 +8689,7 @@ function driveRevisar() {
 setInterval(driveRevisar, 5 * 60 * 1000);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(driveRevisar, 1500); });
 window.addEventListener('online', function () { setTimeout(driveRevisar, 2000); });
-setTimeout(driveRevisar, 20000);
+setTimeout(driveRevisar, 60000); // LITE: la primera revision de Drive va a los 60 s, no a los 20 s
 </script>
 <script>
 // Que el teléfono NO ofrezca contraseñas guardadas en buscadores y demás campos: solo en los de acceso.

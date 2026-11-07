@@ -1,6 +1,6 @@
 <html lang="es"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DIGAR POS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#dbe7fb">
@@ -37,21 +37,9 @@
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
-        /* Si el celular se gira a horizontal, fuerza visualmente modo vertical */
-        @media screen and (orientation: landscape) {
-            html {
-                transform: rotate(-90deg);
-                transform-origin: left top;
-                width: 100vh;
-                height: 100vw;
-                overflow-x: hidden;
-                position: absolute;
-                top: 100%;
-                left: 0;
-            }
-        }
+        /* FIX 21: sin rotacion forzada en horizontal; el layout se adapta y el zoom queda permitido. */
     </style>
-<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.inset-y-0{top:0px;bottom:0px}.bottom-0{bottom:0px}.bottom-16{bottom:4rem}.left-0{left:0px}.right-0{right:0px}.top-0{top:0px}.z-10{z-index:10}.z-20{z-index:20}.z-30{z-index:30}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.my-4{margin-top:1rem;margin-bottom:1rem}.mb-0\.5{margin-bottom:0.125rem}.mb-1{margin-bottom:0.25rem}.mb-2{margin-bottom:0.5rem}.mt-0\.5{margin-top:0.125rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.line-clamp-2{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-12{height:3rem}.h-28{height:7rem}.h-8{height:2rem}.h-9{height:2.25rem}.max-h-48{max-height:12rem}.max-h-60{max-height:15rem}.max-h-\[85vh\]{max-height:85vh}.max-h-\[90vh\]{max-height:90vh}.w-12{width:3rem}.w-20{width:5rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-full{width:100%}.max-w-md{max-width:28rem}.flex-1{flex:1 1 0%}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;user-select:none}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}.flex-col{flex-direction:column}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-1\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.375rem * var(--tw-space-y-reverse))}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-2\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.625rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.625rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem * var(--tw-space-y-reverse))}.divide-y > :not([hidden]) ~ :not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px * var(--tw-divide-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.rounded-t-3xl{border-top-left-radius:1.5rem;border-top-right-radius:1.5rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-none{border-style:none}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254 / var(--tw-border-opacity, 1))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235 / var(--tw-border-opacity, 1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208 / var(--tw-border-opacity, 1))}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246 / var(--tw-border-opacity, 1))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235 / var(--tw-border-opacity, 1))}.border-red-200{--tw-border-opacity:1;border-color:rgb(254 202 202 / var(--tw-border-opacity, 1))}.bg-black\/50{background-color:rgb(0 0 0 / 0.5)}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254 / var(--tw-bg-opacity, 1))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.bg-blue-900{--tw-bg-opacity:1;background-color:rgb(30 58 138 / var(--tw-bg-opacity, 1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245 / var(--tw-bg-opacity, 1))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246 / var(--tw-bg-opacity, 1))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235 / var(--tw-bg-opacity, 1))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}.bg-gray-900{--tw-bg-opacity:1;background-color:rgb(17 24 39 / var(--tw-bg-opacity, 1))}.bg-purple-600{--tw-bg-opacity:1;background-color:rgb(147 51 234 / var(--tw-bg-opacity, 1))}.bg-red-50{--tw-bg-opacity:1;background-color:rgb(254 242 242 / var(--tw-bg-opacity, 1))}.bg-red-50\/50{background-color:rgb(254 242 242 / 0.5)}.bg-red-600{--tw-bg-opacity:1;background-color:rgb(220 38 38 / var(--tw-bg-opacity, 1))}.bg-transparent{background-color:transparent}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.p-1{padding:0.25rem}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-3\.5{padding:0.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.px-1{padding-left:0.25rem;padding-right:0.25rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-2{padding-bottom:0.5rem}.pb-24{padding-bottom:6rem}.pb-3{padding-bottom:0.75rem}.pb-4{padding-bottom:1rem}.pl-10{padding-left:2.5rem}.pl-3{padding-left:0.75rem}.pl-4{padding-left:1rem}.pr-4{padding-right:1rem}.pt-1{padding-top:0.25rem}.pt-2{padding-top:0.5rem}.pt-3{padding-top:0.75rem}.pt-6{padding-top:1.5rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-sans{font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-normal{font-weight:400}.font-semibold{font-weight:600}.leading-tight{line-height:1.25}.tracking-tight{letter-spacing:-0.025em}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235 / var(--tw-text-opacity, 1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216 / var(--tw-text-opacity, 1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105 / var(--tw-text-opacity, 1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87 / var(--tw-text-opacity, 1))}.text-gray-300{--tw-text-opacity:1;color:rgb(209 213 219 / var(--tw-text-opacity, 1))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175 / var(--tw-text-opacity, 1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity, 1))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99 / var(--tw-text-opacity, 1))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81 / var(--tw-text-opacity, 1))}.text-gray-800{--tw-text-opacity:1;color:rgb(31 41 55 / var(--tw-text-opacity, 1))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39 / var(--tw-text-opacity, 1))}.text-purple-600{--tw-text-opacity:1;color:rgb(147 51 234 / var(--tw-text-opacity, 1))}.text-purple-700{--tw-text-opacity:1;color:rgb(126 34 206 / var(--tw-text-opacity, 1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.underline{-webkit-text-decoration-line:underline;text-decoration-line:underline}.opacity-80{opacity:0.8}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.hover\:bg-blue-500:hover{--tw-bg-opacity:1;background-color:rgb(59 130 246 / var(--tw-bg-opacity, 1))}.hover\:bg-gray-200:hover{--tw-bg-opacity:1;background-color:rgb(229 231 235 / var(--tw-bg-opacity, 1))}.hover\:bg-gray-50:hover{--tw-bg-opacity:1;background-color:rgb(249 250 251 / var(--tw-bg-opacity, 1))}.hover\:bg-red-50:hover{--tw-bg-opacity:1;background-color:rgb(254 242 242 / var(--tw-bg-opacity, 1))}.focus\:border-blue-600:focus{--tw-border-opacity:1;border-color:rgb(37 99 235 / var(--tw-border-opacity, 1))}.focus\:border-purple-600:focus{--tw-border-opacity:1;border-color:rgb(147 51 234 / var(--tw-border-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.active\:scale-\[0\.99\]:active{--tw-scale-x:0.99;--tw-scale-y:0.99;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}</style><style>.btn-mg{padding:.5rem 0;border-radius:.75rem;font-size:.75rem;font-weight:700;border:1px solid #e5e7eb;background:#f9fafb;color:#4b5563}.btn-mg.activo{border:2px solid #9333ea;background:#faf5ff;color:#7e22ce}</style>
+<!-- FIX 14: bloque Tailwind v3.4.17 eliminado; quedo solo v3.4.19 (sus clases son un superconjunto verificado). --><style>.btn-mg{padding:.5rem 0;border-radius:.75rem;font-size:.75rem;font-weight:700;border:1px solid #e5e7eb;background:#f9fafb;color:#4b5563}.btn-mg.activo{border:2px solid #9333ea;background:#faf5ff;color:#7e22ce}</style>
 <style>
 .ajuste-card{display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-height:112px;min-width:0;padding:16px 16px 14px;text-align:left;background:#fff;border:1px solid #eef0f6;border-radius:22px;box-shadow:0 1px 2px rgba(15,23,42,.04);color:#2b3140;-webkit-tap-highlight-color:transparent;transition:transform .08s ease;}
 .ajuste-card:active{transform:scale(.97);}
@@ -278,17 +266,11 @@ html,body{max-width:100%;overflow-x:clip}
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 </style>
 <script>
-/* Bloquea el pellizco de zoom (iOS ignora user-scalable=no) */
-['gesturestart','gesturechange','gestureend'].forEach(function(t){
-  document.addEventListener(t, function(e){ e.preventDefault(); }, { passive: false });
-});
-document.addEventListener('touchmove', function(e){
-  if (e.touches && e.touches.length > 1) e.preventDefault();
-}, { passive: false });
+/* FIX 21: zoom por pellizco permitido (accesibilidad). Antes este bloque lo impedia. */
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style id="estilo-nuevo">
 /* Fondo degradado azul claro como la app de referencia */
 html,body{font-family:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif!important}
@@ -1705,9 +1687,21 @@ function debounce(fn, ms = 200) {
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+// FIX 5: si un JSON esta corrupto, se pone en cuarentena (digar_cuarentena_<clave>),
+// se avisa que se perdio y NUNCA se resiembra con datos demo encima de datos reales.
+window._digarCorruptos = window._digarCorruptos || [];
 function _leerJSON(clave, defecto = null) {
-    try { const v = JSON.parse(localStorage.getItem(clave)); return v == null ? defecto : v; }
-    catch (e) { console.error('Dato corrupto en ' + clave, e); return defecto; }
+    let raw = null;
+    try { raw = localStorage.getItem(clave); } catch (e) { return defecto; }
+    if (raw == null) return defecto;
+    try { const v = JSON.parse(raw); return v == null ? defecto : v; }
+    catch (e) {
+        console.error('Dato corrupto en ' + clave, e);
+        try { localStorage.setItem('digar_cuarentena_' + clave, raw); } catch (x) {}
+        if (window._digarCorruptos.indexOf(clave) < 0) window._digarCorruptos.push(clave);
+        setTimeout(function () { try { if (window.toast) window.toast('Dato dañado en ' + clave + ': se guardó en cuarentena y no se borró. Haz un respaldo.'); } catch (x) {} }, 1500);
+        return defecto;
+    }
 }
 
 // -------------------- ESTADO --------------------
@@ -1722,10 +1716,13 @@ function ordenarProductosAlfabetico() {
 }
 
 function cargarProductos() {
-    const raw = _leerJSON('yimi_productos', null) || [
+    // FIX 5: los productos demo solo se usan si NUNCA hubo productos guardados.
+    // Si habia datos y estan corruptos, se devuelve lista vacia (en cuarentena) y se avisa.
+    const _habiaProductos = (function () { try { return localStorage.getItem('yimi_productos') != null; } catch (e) { return false; } })();
+    const raw = _leerJSON('yimi_productos', null) || (_habiaProductos ? [] : [
         { id: 1, nombre: 'MINI NUGS 18/24', precio: 70.00, costo: 45.00, stock: 24 },
         { id: 2, nombre: 'PALETA MIX DULCE SURTIDO', precio: 51.00, costo: 30.00, stock: 2 }
-    ];
+    ]);
     const lista = raw.map(p => ({ ...p, id: normalizarId(p.id) }));
     lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
     return lista;
@@ -1756,7 +1753,7 @@ function _escribirSiCambio(clave, valor) {
         console.error('No se pudo guardar ' + clave, e);
         if (!_avisoLlenoMostrado) {
             _avisoLlenoMostrado = true;
-            alert('El almacenamiento del teléfono está lleno y no se pudo guardar. Haz un respaldo y libera espacio.');
+            if (window.toast) window.toast('El almacenamiento está lleno y no se pudo guardar. Haz un respaldo y libera espacio.');
         }
     }
 }
@@ -1776,16 +1773,16 @@ function guardarTransacciones() {
     _escribirSiCambio('yimi_trans', recientes);
 }
 function cargarTransacciones() {
-    let rec = [], arc = [];
-    try { rec = JSON.parse(localStorage.getItem('yimi_trans')) || []; } catch (e) { console.error(e); }
-    try { arc = JSON.parse(localStorage.getItem('yimi_trans_archivo')) || []; } catch (e) { console.error(e); }
+    // FIX 5: lectura por _leerJSON (cuarentena + aviso) en vez de JSON.parse silencioso.
+    let rec = _leerJSON('yimi_trans', []) || [], arc = _leerJSON('yimi_trans_archivo', []) || [];
+    if (!Array.isArray(rec)) rec = []; if (!Array.isArray(arc)) arc = [];
     if (!arc.length) return rec;
     const ids = new Set(rec.map(t => t.id));
     return rec.concat(arc.filter(t => t.id == null || !ids.has(t.id)));
 }
 
 let productos = cargarProductos();
-let promos = (function () { try { const l = JSON.parse(localStorage.getItem('digar_promos')); return Array.isArray(l) ? l : []; } catch (e) { return []; } })();
+let promos = (function () { const l = _leerJSON('digar_promos', []); return Array.isArray(l) ? l : []; })();
 let clientes = cargarClientes();
 let transacciones = cargarTransacciones();
 
@@ -1834,9 +1831,21 @@ let clienteMenuActivoId = null; // cliente del menú contextual
 function _cargarBorradorCarrito() {
     const raw = _leerJSON('yimi_carrito', []);
     if (!Array.isArray(raw)) return [];
-    return raw
+    const lista = raw
         .filter(i => i && i.id != null && Number(i.cant) > 0)
         .map(i => ({ ...i, id: normalizarId(i.id), cant: Number(i.cant) }));
+    // FIX 7: carrito abandonado (mas de 24 h sin tocarse): se libera su stock
+    // y se vacia, para que no retenga inventario para siempre.
+    try {
+        const ts = Number(localStorage.getItem('yimi_carrito_ts') || 0);
+        if (lista.length && ts && Date.now() - ts > 24 * 3600000) {
+            lista.forEach(i => { const p = productos.find(x => x.id === i.id); if (p) p.stock = (Number(p.stock) || 0) + i.cant; });
+            localStorage.removeItem('yimi_carrito'); localStorage.removeItem('yimi_carrito_ts');
+            setTimeout(function () { try { if (window.toast) window.toast('Carrito abandonado de hace mas de un dia: se libero su stock.'); } catch (e) {} }, 1500);
+            return [];
+        }
+    } catch (e) {}
+    return lista;
 }
 let carrito = _cargarBorradorCarrito();
 let facturaCompraItems = [];
@@ -1891,6 +1900,7 @@ function _guardarBorradorYa() {
     clearTimeout(_tBorrador); _tBorrador = null;
     _escribirSiCambio('yimi_productos', productos);
     _escribirSiCambio('yimi_carrito', carrito);
+    try { localStorage.setItem('yimi_carrito_ts', String(Date.now())); } catch (e) {}
 }
 function guardarBorradorSoon() {
     if (_tBorrador) return; // ya hay una escritura programada; tomará el estado final
@@ -1902,6 +1912,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function guardarTodo() {
+    respaldoLocalAutomatico(false);
     _escribirSiCambio('yimi_productos', productos);
     _escribirSiCambio('yimi_carrito', carrito);
     _escribirSiCambio('digar_promos', promos);
@@ -1970,12 +1981,22 @@ function iniciarFirebase(telefono, password) {
         console.warn('Firebase no está configurado todavía: la app seguirá funcionando solo en este dispositivo.');
         return;
     }
-    _credencialesNube = { telefono, password };
+    // FIX 10: en memoria solo queda telefono + docId (hash). La clave nunca se guarda.
+    _credencialesNube = { telefono, docId: null };
     cargarFirebase().then(async () => {
         if (firestoreDocRef) return; // ya conectado
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         dbFirestore = firebase.firestore();
-        const docId = await hashSeguro(telefono + '|' + password);
+        // FIX 10: el docId es un hash guardado; si ya existe se reutiliza (no cambia
+        // el respaldo en la nube del usuario). Solo se deriva de la clave la primera vez.
+        let docId = null;
+        try { docId = localStorage.getItem('digar_nube_docid') || null; } catch (e) {}
+        if (!docId) {
+            if (!password) { console.warn('Sin docId de nube guardado y sin clave para derivarlo.'); firestoreDocRef = null; return; }
+            docId = await hashSeguro(telefono + '|' + password);
+            try { localStorage.setItem('digar_nube_docid', docId); } catch (e) {}
+        }
+        _credencialesNube = { telefono, docId };
         if (firestoreDocRef) return;
         firestoreDocRef = dbFirestore.collection('pos_datos').doc(docId);
         // 1) Leer lo que hay en la nube ANTES de escribir nada (así un teléfono nuevo/vacío nunca borra el respaldo)
@@ -1983,7 +2004,7 @@ function iniciarFirebase(telefono, password) {
         try { snap = await firestoreDocRef.get(); }
         catch (e) {
             console.warn('No se pudo leer la nube (se reintenta al volver el internet):', e);
-            if (e && e.code === 'permission-denied') alert('La nube rechazó la conexión. Revisa que las reglas de Firestore estén publicadas.');
+            if (e && e.code === 'permission-denied') if (window.toast) window.toast('La nube rechazó la conexión. Revisa las reglas de Firestore.');
             firestoreDocRef = null; return;
         }
         const nube = snap.exists ? snap.data() : null;
@@ -2005,7 +2026,7 @@ function iniciarFirebase(telefono, password) {
 }
 // Si arrancó sin internet, al regresar la señal se conecta a la nube
 window.addEventListener('online', () => {
-    if (_credencialesNube && !firestoreDocRef) iniciarFirebase(_credencialesNube.telefono, _credencialesNube.password);
+    if (_credencialesNube && !firestoreDocRef) iniciarFirebase(_credencialesNube.telefono, null);
 });
 
 function escucharCambiosNube() {
@@ -2016,10 +2037,13 @@ function escucharCambiosNube() {
         const data = snap.data();
         if (!data || data._origen === instanciaId) return;
         sincronizandoDesdeNube = true;
-        productos = data.productos || productos;
-        clientes = (data.clientes || clientes).filter(c => !esClienteGeneral(c)).map(c => ({ ...c, dias: Array.isArray(c.dias) ? c.dias : [] }));
+        // FIX 1: antes de aplicar la nube, respaldo previo; luego fusion por ID,
+        // nunca reemplazo total (un telefono no borra lo del otro).
+        guardarRespaldoPreCambio('nube');
+        productos = fusionarPorId(productos, data.productos);
+        clientes = fusionarPorId(clientes, (data.clientes || []).filter(c => !esClienteGeneral(c)).map(c => ({ ...c, dias: Array.isArray(c.dias) ? c.dias : [] })));
         if (clienteSeleccionado && !clientes.some(c => normalizarId(c.id) === normalizarId(clienteSeleccionado.id))) clienteSeleccionado = null;
-        transacciones = data.transacciones || transacciones;
+        transacciones = fusionarPorId(transacciones, data.transacciones);
         configTicket = data.configTicket || configTicket;
         ordenarProductosAlfabetico();
         _escribirSiCambio('yimi_productos', productos);
@@ -2041,25 +2065,124 @@ function avisarPesoNube() {
     try {
         if (JSON.stringify({ productos, clientes, transacciones, configTicket }).length > 800000) {
             _avisoPesoNube = true;
-            alert('La nube está casi llena (el límite es 1 MB). Haz un respaldo con el botón de compartir y pídele a Claude que parta las ventas por mes para que siga sincronizando.');
+            if (window.toast) window.toast('La nube está casi llena (límite 1 MB). Haz un respaldo y parte las ventas por mes.');
+            else if (window.toast) window.toast('La nube está casi llena (límite 1 MB). Haz un respaldo.');
         }
     } catch (e) {}
 }
+let _ultimoPayloadNube = '';
 function subirDatosNube() {
     if (!firestoreDocRef || sincronizandoDesdeNube || !_nubeLista) return Promise.resolve(false);
     avisarPesoNube();
+    // FIX 1/16: no subir si nada cambio (hash) y no intentar subir mas de 1 MB.
+    let payload;
+    try { payload = JSON.stringify({ productos, clientes, transacciones, configTicket }); } catch (e) { return Promise.resolve(false); }
+    if (payload === _ultimoPayloadNube) return Promise.resolve(true);
+    if (payload.length > 950000) {
+        if (window.toast) window.toast('La nube está llena (límite 1 MB): no se subió nada. Haz un respaldo y parte las ventas por mes. Tus datos locales están a salvo.');
+        return Promise.resolve(false);
+    }
+    if (payload.length > 800000 && window.toast) window.toast('La nube está casi llena: haz un respaldo pronto.');
     return firestoreDocRef.set({
         productos, clientes, transacciones, configTicket,
         _origen: instanciaId,
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true }).then(() => true).catch(e => {
+    }, { merge: true }).then(() => { _ultimoPayloadNube = payload; return true; }).catch(e => {
         console.error('No se pudo guardar en la nube:', e);
-        if (e && e.code === 'permission-denied') alert('La nube rechazó guardar. Revisa que las reglas de Firestore estén publicadas.');
-        else if (e && e.code === 'invalid-argument') alert('La nube se llenó (límite de 1 MB) y ya no puede guardar. Haz un respaldo con el botón de compartir y pídele a Claude que parta las ventas por mes.');
+        if (e && e.code === 'permission-denied') { if (window.toast) window.toast('La nube rechazó guardar. Revisa las reglas de Firestore.'); }
+        else if (e && e.code === 'invalid-argument') { if (window.toast) window.toast('La nube se llenó (límite 1 MB) y ya no puede guardar. Haz un respaldo.'); }
         return false;
     });
 }
 const subirDatosNubeDebounced = debounce(subirDatosNube, 800);
+
+// ==================== FIXES DIGAR (2026-11-06) ====================
+// FIX 6: IDs unicos: timestamp base36 + contador por sesion + aleatorio.
+// Nunca mas Date.now() solo (dos creaciones en el mismo milisegundo chocaban).
+let _idContador = 0;
+function generarIdUnico(prefijo) {
+    _idContador++;
+    const aleat = (window.crypto && crypto.getRandomValues ? [...crypto.getRandomValues(new Uint8Array(3))].map(x => x.toString(16).padStart(2, '0')).join('') : Math.random().toString(36).slice(2, 8));
+    return (prefijo ? prefijo + '-' : '') + Date.now().toString(36) + '-' + _idContador.toString(36) + '-' + aleat;
+}
+// FIX 6: folio completo (antes solo los ultimos 3 digitos y se repetia).
+function folioDe(id) { return String(id == null ? '' : id); }
+// FIX 20: papelera temporal con deshacer (productos, clientes, ventas, promos).
+let _papelera = [];
+try { _papelera = _leerJSON('digar_papelera', []) || []; if (!Array.isArray(_papelera)) _papelera = []; } catch (e) { _papelera = []; }
+function _guardarPapelera() { try { localStorage.setItem('digar_papelera', JSON.stringify(_papelera.slice(0, 10))); } catch (e) {} }
+function guardarEnPapelera(tipo, etiqueta, datos) {
+    _papelera.unshift({ tipo, etiqueta, datos, fecha: new Date().toISOString() });
+    _papelera = _papelera.slice(0, 10); _guardarPapelera(); mostrarBotonDeshacer(etiqueta);
+}
+function mostrarBotonDeshacer(etiqueta) {
+    try {
+        const viejo = document.getElementById('btn-deshacer-digar'); if (viejo) viejo.remove();
+        const b = document.createElement('button'); b.id = 'btn-deshacer-digar'; b.type = 'button';
+        b.textContent = 'Deshacer: ' + etiqueta;
+        b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:9998;background:#111827;color:#fff;font:700 13px system-ui,sans-serif;padding:11px 18px;border-radius:999px;border:0;box-shadow:0 8px 24px rgba(0,0,0,.3)';
+        b.addEventListener('click', function () { deshacerUltimoBorrado(); });
+        document.body.appendChild(b);
+        setTimeout(function () { try { b.remove(); } catch (e) {} }, 20000);
+    } catch (e) {}
+}
+function deshacerUltimoBorrado() {
+    const item = _papelera.shift(); if (!item) { try { if (window.toast) window.toast('No hay nada que deshacer'); } catch (e) {} return; }
+    _guardarPapelera();
+    try {
+        if (item.tipo === 'producto') productos.push(item.datos);
+        else if (item.tipo === 'cliente') clientes.push(item.datos);
+        else if (item.tipo === 'transaccion') transacciones.unshift(item.datos);
+        else if (item.tipo === 'promo') promos.unshift(item.datos);
+        guardarTodo();
+        try { renderVenta(); renderListaClientesInicio(); renderInventario(); renderTransacciones(); } catch (e) {}
+        if (window.toast) window.toast('Restaurado: ' + item.etiqueta);
+    } catch (e) { if (window.toast) window.toast('No se pudo restaurar'); }
+}
+// FIX 2: respaldo local automatico verificado (copia completa en localStorage, max 1/hora).
+let _ultimoRespaldoAuto = 0;
+function respaldoLocalAutomatico(forzar) {
+    try {
+        const ahora = Date.now();
+        if (!forzar && ahora - _ultimoRespaldoAuto < 3600000) return true;
+        _ultimoRespaldoAuto = ahora;
+        const data = JSON.stringify({ productos, clientes, transacciones, configTicket, categorias: (typeof todasLasCategorias === 'function' ? todasLasCategorias() : []), fecha: new Date().toISOString() });
+        localStorage.setItem('digar_respaldo_auto', data);
+        const verif = JSON.parse(localStorage.getItem('digar_respaldo_auto'));
+        if (!verif || !Array.isArray(verif.productos)) throw new Error('verificacion del respaldo local fallo');
+        localStorage.setItem('digar_respaldo_auto_fecha', new Date().toISOString());
+        return true;
+    } catch (e) {
+        console.error('Respaldo local automatico fallo:', e);
+        try { if (window.toast) window.toast('No se pudo hacer el respaldo local automatico. Exporta un respaldo manual.'); } catch (x) {}
+        return false;
+    }
+}
+// FIX 1/4: copia del estado actual antes de importar o de aplicar cambios de la nube.
+function guardarRespaldoPreCambio(motivo) {
+    try {
+        const data = JSON.stringify({ productos, clientes, transacciones, configTicket, categorias: (typeof todasLasCategorias === 'function' ? todasLasCategorias() : []), motivo, fecha: new Date().toISOString() });
+        localStorage.setItem('digar_respaldo_previo', data);
+        return true;
+    } catch (e) { return false; }
+}
+async function restaurarRespaldoPrevio() {
+    try {
+        const raw = localStorage.getItem('digar_respaldo_previo'); if (!raw) return false;
+        await aplicarRespaldo(raw, { yaConfirmado: true, esRespaldoPrevio: true });
+        return true;
+    } catch (e) { return false; }
+}
+// FIX 1: fusion por ID (no reemplazo total): se conservan los datos locales y
+// se agregan los de la nube que no existen aqui. Para IDs compartidos gana lo local,
+// asi un telefono nunca borra lo del otro sin aviso.
+function fusionarPorId(local, nube) {
+    const mapa = new Map();
+    (Array.isArray(local) ? local : []).forEach(x => { if (x && x.id != null) mapa.set(String(x.id), x); });
+    (Array.isArray(nube) ? nube : []).forEach(x => { if (x && x.id != null && !mapa.has(String(x.id))) mapa.set(String(x.id), x); });
+    return [...mapa.values()];
+}
+
 
 // ==================== MAPA DE CLIENTES (propio, sin librerías: funciona sin internet) ====================
 const MAPA_BASE = { lat: 27.85, lng: -101.117 };
@@ -2603,8 +2726,13 @@ function actualizarDistanciaPopup() {
     if (!c || !mapaTieneUbic(c)) { el.innerText = ''; return; }
     el.innerText = miPos ? '📏 A ' + mapaDistTxt(mapaDist(miPos, c)) + ' de ti' + (miPos.prec > 30 ? ' (±' + Math.round(miPos.prec) + ' m)' : '') : 'Buscando tu ubicación…';
 }
+let _gpsTimeoutMapa = null;
 function iniciarGpsMapa() {
+    // FIX 18: el GPS se detiene solo a los 60 s (antes quedaba observando
+    // mientras la vista de clientes estuviera abierta, gastando bateria/datos).
     if (_watchId !== null || !navigator.geolocation) return;
+    clearTimeout(_gpsTimeoutMapa);
+    _gpsTimeoutMapa = setTimeout(detenerGpsMapa, 60000);
     _watchId = navigator.geolocation.watchPosition(p => {
         const nueva = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
         const ahora = Date.now();
@@ -2618,7 +2746,7 @@ function iniciarGpsMapa() {
         if (e && e.code === 1) { detenerGpsMapa(); if (!_gpsAvisado) { _gpsAvisado = true; mapaAviso('Activa el permiso de ubicación para ver tu punto en el mapa'); } }
     }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
-function detenerGpsMapa() { if (_watchId !== null) { try { navigator.geolocation.clearWatch(_watchId); } catch (e) {} _watchId = null; } }
+function detenerGpsMapa() { clearTimeout(_gpsTimeoutMapa); if (_watchId !== null) { try { navigator.geolocation.clearWatch(_watchId); } catch (e) {} _watchId = null; } }
 function _gpsMapaSync() { if ((_mapaVisible || _pickerAbierto) && !document.hidden) iniciarGpsMapa(); else detenerGpsMapa(); }
 document.addEventListener('visibilitychange', _gpsMapaSync);
 let _gpsOcupado = false;
@@ -2720,9 +2848,9 @@ async function actualizarTxtMapaOffline() {
 async function descargarMapaOffline() {
     const btn = $('btn-mapa-offline');
     if (_mapaDescargando) { _mapaCancelar = true; return; }
-    if (navigator.onLine === false) { alert('Necesitas internet para descargar el mapa.'); return; }
+    if (navigator.onLine === false) { if (window.toast) window.toast('Necesitas internet para descargar el mapa.'); return; }
     const tiles = mapaListaTiles();
-    if (tiles.length > 2500) { alert('La zona de tus clientes es muy grande para descargarla.'); return; }
+    if (tiles.length > 1200) { if (window.toast) window.toast('La zona de tus clientes es muy grande para descargarla (máx. 1200 piezas).'); return; }
     const mb = Math.max(1, Math.round(tiles.length * 0.015));
     if (!(await confirmarPro(`Se descargarán ${tiles.length} piezas del mapa (unos ${mb} MB) de la zona de tus clientes para verlo sin internet. Mejor con WiFi. ¿Continuar?`))) return;
     _mapaDescargando = true; _mapaCancelar = false;
@@ -2891,6 +3019,7 @@ function renderChipsDiasClientes() {
     sel.innerHTML = items.map(it => `<option value="${it.k}"${String(it.k) === String(diaFiltroClientes) ? ' selected' : ''}>${it.label} · ${it.n} cliente${it.n === 1 ? '' : 's'}</option>`).join('');
 }
 
+let limiteClientes = 80, _ultimoFiltroClientes = null;
 function renderListaClientesInicio(filtro) {
     const container = $('lista-clientes-inicio');
     if (!container) return;
@@ -2921,8 +3050,12 @@ function renderListaClientesInicio(filtro) {
             : '<p class="text-center text-gray-400 text-sm py-8">No hay clientes para este día.</p>';
         return;
     }
+    // FIX 17: paginacion a 80 (como transacciones) para no repintar todo.
+    const totalClientes = lista.length;
+    if (filtro !== _ultimoFiltroClientes) { limiteClientes = 80; _ultimoFiltroClientes = filtro; }
+    const visiblesClientes = lista.slice(0, limiteClientes);
     const frag = document.createDocumentFragment();
-    lista.forEach(c => {
+    visiblesClientes.forEach(c => {
         const activo = esClienteActivo(c);
         const diasTxt = textoDiasCliente(c);
         const visitado = visitados.has(c.id);
@@ -2949,6 +3082,13 @@ function renderListaClientesInicio(filtro) {
     });
     container.innerHTML = '';
     container.appendChild(frag);
+    if (totalClientes > limiteClientes) {
+        const mas = document.createElement('button'); mas.type = 'button';
+        mas.className = 'w-full py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700';
+        mas.textContent = `Ver más (${totalClientes - limiteClientes} restantes)`;
+        mas.addEventListener('click', () => { limiteClientes += 80; renderListaClientesInicio(filtro); });
+        container.appendChild(mas);
+    }
 }
 
 function abrirModalDiasCliente(id) {
@@ -3015,7 +3155,13 @@ async function menuClienteAccion(accion) {
         const idNum = normalizarId(id);
         const c = clientes.find(x => normalizarId(x.id) === idNum);
         if (!c) return;
-        if (!await confirmarPro(`¿Eliminar a "${c.nombre}"?`)) return;
+        // FIX 12: avisar si tiene credito pendiente o ventas, y pedir confirmacion explicita.
+        const _cred = (obtenerCreditosPorCliente().find(g => (g.clienteId != null && normalizarId(g.clienteId) === idNum) || g.nombre === c.nombre) || {}).saldo || 0;
+        const _nVentas = transacciones.filter(x => (x.clienteId != null && normalizarId(x.clienteId) === idNum) || x.clienteNombre === c.nombre).length;
+        if (_cred > 0) { if (!await confirmarPro(`"${c.nombre}" tiene ${money(_cred)} de crédito pendiente. Si lo eliminas, ese saldo quedará sin cliente. ¿Eliminar de todos modos?`)) return; }
+        else if (_nVentas > 0) { if (!await confirmarPro(`¿Eliminar a "${c.nombre}"? Tiene ${_nVentas} venta(s) en el historial (el historial se conserva, pero sin cliente).`)) return; }
+        else if (!await confirmarPro(`¿Eliminar a "${c.nombre}"?`)) return;
+        guardarEnPapelera('cliente', c.nombre, { ...c }); // FIX 20: deshacer
         clientes = clientes.filter(x => normalizarId(x.id) !== idNum);
         if (clienteSeleccionado && normalizarId(clienteSeleccionado.id) === idNum) {
             clienteSeleccionado = null;
@@ -3155,7 +3301,7 @@ function guardarClienteForm() {
             actualizarEtiquetaCliente();
         }
     } else {
-        clientes.push({ id: Date.now(), nombre, direccion: dir, telefono: tel, dias, frecuencia: frec.frecuencia, semanaBase: frec.semanaBase, ...(ubicForm ? { lat: ubicForm.lat, lng: ubicForm.lng } : {}) });
+        clientes.push({ id: generarIdUnico('cli'), nombre, direccion: dir, telefono: tel, dias, frecuencia: frec.frecuencia, semanaBase: frec.semanaBase, ...(ubicForm ? { lat: ubicForm.lat, lng: ubicForm.lng } : {}) });
     }
     guardarTodo();
     cerrarModal('modal-form-cliente');
@@ -3165,7 +3311,13 @@ function guardarClienteForm() {
 
 async function eliminarClienteActual() {
     const id = normalizarId($('form-cliente-id').value);
-    if (!await confirmarPro('¿Eliminar esta tienda/cliente?')) return;
+    const _c = clientes.find(x => normalizarId(x.id) === id);
+    const _cred = _c ? ((obtenerCreditosPorCliente().find(g => (g.clienteId != null && normalizarId(g.clienteId) === id) || g.nombre === _c.nombre) || {}).saldo || 0) : 0;
+    const _nVentas = transacciones.filter(x => (x.clienteId != null && normalizarId(x.clienteId) === id) || (_c && x.clienteNombre === _c.nombre)).length;
+    if (_cred > 0) { if (!await confirmarPro(`"${_c ? _c.nombre : ''}" tiene ${money(_cred)} de crédito pendiente. ¿Eliminar de todos modos?`)) return; }
+    else if (_nVentas > 0) { if (!await confirmarPro(`¿Eliminar esta tienda/cliente? Tiene ${_nVentas} venta(s) en el historial.`)) return; }
+    else if (!await confirmarPro('¿Eliminar esta tienda/cliente?')) return;
+    if (_c) guardarEnPapelera('cliente', _c.nombre, { ..._c });
     clientes = clientes.filter(x => normalizarId(x.id) !== id);
     if (clienteSeleccionado && normalizarId(clienteSeleccionado.id) === id) {
         clienteSeleccionado = null;
@@ -3229,8 +3381,12 @@ function renderSeleccionClientes(filtro) {
         contenedor.appendChild(p);
         return;
     }
+    // FIX 17: paginacion a 80 (como transacciones) para no repintar todo.
+    const totalClientes = lista.length;
+    if (filtro !== _ultimoFiltroClientes) { limiteClientes = 80; _ultimoFiltroClientes = filtro; }
+    const visiblesClientes = lista.slice(0, limiteClientes);
     const frag = document.createDocumentFragment();
-    lista.forEach(c => {
+    visiblesClientes.forEach(c => {
         const activo = esClienteActivo(c);
         const div = document.createElement('div');
         div.className = `p-3.5 rounded-xl border flex justify-between items-center text-sm cursor-pointer active:scale-[0.98] transition ${activo ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`;
@@ -3251,6 +3407,13 @@ function renderSeleccionClientes(filtro) {
         frag.appendChild(div);
     });
     contenedor.appendChild(frag);
+    if (totalClientes > limiteClientes) {
+        const mas = document.createElement('button'); mas.type = 'button';
+        mas.className = 'w-full py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700';
+        mas.textContent = `Ver más (${totalClientes - limiteClientes} restantes)`;
+        mas.addEventListener('click', () => { limiteClientes += 80; renderSeleccionClientes(filtro); });
+        contenedor.appendChild(mas);
+    }
 }
 
 function seleccionarClienteVenta(id) {
@@ -3291,7 +3454,7 @@ async function guardarClienteRapido() {
     if (!nombre) return alert('Escribe el nombre del cliente o tienda');
     const existente = clientes.find(c => quitarAcentos(c.nombre).trim() === quitarAcentos(nombre).trim());
     if (existente && !await confirmarPro(`Ya existe un cliente llamado "${existente.nombre}". ¿Quieres crear otro igual?`)) return;
-    const nuevo = { id: Date.now(), nombre, direccion: dir, telefono: tel, dias: (typeof diaHoy() === 'number') ? [diaHoy()] : [] };
+    const nuevo = { id: generarIdUnico('cli'), nombre, direccion: dir, telefono: tel, dias: (typeof diaHoy() === 'number') ? [diaHoy()] : [] };
     clientes.push(nuevo);
     guardarTodo();
     if (seleccionEditVenta) {
@@ -3399,6 +3562,7 @@ function pmRender() {
 function pmToggle(id) { const p = promos.find(x => x.id === id); if (!p) return; p.on = !p.on; guardarTodo(); pmRender(); actualizarTotalesCarrito(); }
 async function pmEliminar(id) {
     if (!await confirmarPro('¿Eliminar esta promoción?')) return;
+    const _pm = promos.find(x => x.id === id); if (_pm) guardarEnPapelera('promo', _pm.nombre || 'Promoción', { ..._pm });
     promos = promos.filter(x => x.id !== id); guardarTodo(); pmRender(); actualizarTotalesCarrito();
 }
 
@@ -3457,7 +3621,7 @@ function pmGuardar() {
     if (e.from && e.to && e.to < e.from) return pmForm('La fecha final es antes que la inicial.');
     if (e.ids.length < 2) e.mix = false;
     if (e.id) promos = promos.map(p => p.id === e.id ? e : p);
-    else { e.id = Date.now(); promos.unshift(e); }
+    else { e.id = generarIdUnico('promo'); promos.unshift(e); }
     guardarTodo(); pmCerrar(); pmRender(); actualizarTotalesCarrito();
 }
 
@@ -3832,11 +3996,12 @@ function agregarAlCarrito(id, cantidad = 1) {
     const p = productos.find(x => x.id === id);
     if (!p) return;
     const cant = Math.max(1, parseInt(cantidad) || 1);
-    if (p.stock < cant) return alert(`Solo hay ${p.stock} en stock`);
+    if (p.stock < cant) { if (window.toast) window.toast(`Solo hay ${p.stock} en stock`); return; }
     p.stock -= cant;
     const item = carrito.find(x => x.id === id);
     if (item) item.cant += cant;
     else carrito.push({ ...p, precioPersonalizado: p.precio, cant });
+    _guardarBorradorYa(); // FIX 7: stock + carrito se guardan juntos en cada cambio
     if (navigator.vibrate) navigator.vibrate(20);
     renderVenta($('buscador-venta').value);
 }
@@ -3858,7 +4023,7 @@ async function vaciarCarrito() {
 function abrirModalCantidad(id) {
     const p = productos.find(x => x.id === id);
     if (!p) return;
-    if (p.stock <= 0) return alert('¡Sin stock disponible!');
+    if (p.stock <= 0) { if (window.toast) window.toast('¡Sin stock disponible!'); return; }
     productoCantidadId = id;
     $('cant-prod-nombre').innerText = p.nombre;
     $('cant-prod-info').innerText = `Stock: ${p.stock} · ${money(p.precio)}`;
@@ -3878,7 +4043,7 @@ function cambiarCantModal(delta) {
 
 function confirmarCantidadAlCarrito() {
     const cant = parseInt($('cant-prod-input').value) || 1;
-    if (cant < 1) return alert('Cantidad inválida');
+    if (cant < 1) { if (window.toast) window.toast('Cantidad inválida'); return; }
     cerrarModal('modal-cantidad');
     agregarAlCarrito(productoCantidadId, cant);
     productoCantidadId = null;
@@ -3906,12 +4071,13 @@ function fijarCantidadCarrito(idx, nueva) {
     if (extra > 0) {
         const disponible = p ? Math.max(0, Number(p.stock) || 0) : 0;
         if (extra > disponible) {
-            alert(`Solo hay ${disponible} pieza(s) más en stock.`);
+            if (window.toast) window.toast(`Solo hay ${disponible} pieza(s) más en stock.`);
             n = item.cant + disponible;
         }
     }
     if (p) p.stock -= (n - item.cant);
     item.cant = n;
+    _guardarBorradorYa(); // FIX 7: stock + carrito juntos
     renderVentaPronto();
     return n;
 }
@@ -3922,6 +4088,7 @@ function quitarDelCarrito(idx) {
     const p = productos.find(x => x.id === item.id);
     if (p) p.stock += item.cant;
     carrito.splice(idx, 1);
+    _guardarBorradorYa();
     abrirCarrito();
     actualizarBadgeCarrito();
     renderVentaPronto();
@@ -4054,13 +4221,14 @@ function cambiarCantConfigItem(delta) {
     const p = productos.find(x => x.id === item.id);
     if (!p) return;
     if (delta > 0) {
-        if (p.stock <= 0) return alert('No hay stock');
+        if (p.stock <= 0) { if (window.toast) window.toast('No hay stock'); return; }
         p.stock--;
         item.cant++;
     } else if (item.cant > 1) {
         p.stock++;
         item.cant--;
     }
+    _guardarBorradorYa();
     $('cfg-item-cant').value = item.cant;
     actualizarResumenConfigItem();
 }
@@ -4086,6 +4254,7 @@ function eliminarItemDelCarritoConfig() {
     const p = productos.find(x => x.id === item.id);
     if (p) p.stock += item.cant;
     carrito.splice(indexItemConfigActivo, 1);
+    _guardarBorradorYa();
     cerrarModal('modal-config-item');
     abrirCarrito();
     actualizarBadgeCarrito();
@@ -4155,7 +4324,7 @@ function actualizarMontoPago() {
 }
 
 function abrirPantallaPago() {
-    if (carrito.length === 0) return alert('Carrito vacío');
+    if (carrito.length === 0) { if (window.toast) window.toast('Carrito vacío'); return; }
     if (!clienteSeleccionado) {
         // Cada venta necesita cliente: se abre el selector (con agregado rápido) y luego se continúa al pago
         abrirModalSeleccionarCliente(true);
@@ -4192,13 +4361,24 @@ function calcularCambioModal() {
     $('pago-cambio-txt').innerText = money(Math.max(0, ef - total));
 }
 
+let _cobrando = false;
 async function ejecutarCobroFinal() {
-    if (!clienteSeleccionado) { alert('Elige un cliente para esta venta'); abrirModalSeleccionarCliente(); return; }
+    // FIX 8: bloqueo anti doble toque + clave de idempotencia por venta.
+    if (_cobrando) return;
+    if (carrito.length === 0) { if (window.toast) window.toast('Carrito vacío'); return; }
+    if (!clienteSeleccionado) { if (window.toast) window.toast('Elige un cliente para esta venta'); abrirModalSeleccionarCliente(); return; }
     const totalTicket = totalCarritoActual();
     const total = totalTicket;
     const esCredito = $('pago-es-credito').checked;
     const ef = parseFloat($('pago-efectivo').value) || 0;
-    if (!esCredito && ef < total) return alert('Efectivo insuficiente');
+    if (!esCredito && ef < total) { if (window.toast) window.toast('Efectivo insuficiente'); return; }
+    _cobrando = true;
+    const _btnCobrar = $('btn-cobrar-final'); if (_btnCobrar) { _btnCobrar.disabled = true; _btnCobrar.innerText = 'Cobrando…'; }
+    // FIX 8: ceder un turno para que un segundo cobro lanzado a la vez vea el
+    // bloqueo antes de que esta venta se registre (sin esto, dos llamadas
+    // sincronas seguidas creaban dos ventas).
+    await Promise.resolve();
+    try {
 
     const infoPromo = pmCalc(carrito);
     const gananciaTotal = carrito.reduce((a, b) => a + ((b.precioPersonalizado - (b.costo || 0)) * b.cant), 0) - infoPromo.desc;
@@ -4207,10 +4387,13 @@ async function ejecutarCobroFinal() {
     const fechaFormateada = fechaBonita(ahora);
 
     const cambioCalc = esCredito ? 0 : Math.max(0, ef - total);
+    const claveVenta = generarIdUnico('venta');
     const nuevaVenta = {
-        id: Date.now(),
+        id: claveVenta,
+        claveIdempotencia: claveVenta,
         tipo: 'Venta',
         categoria: 'Venta',
+        clienteId: clienteSeleccionado.id,
         clienteNombre: clienteSeleccionado.nombre,
         clienteDir: clienteSeleccionado.direccion || 'Mostrador',
         fechaStr,
@@ -4229,6 +4412,7 @@ async function ejecutarCobroFinal() {
         cambio: cambioCalc
     };
 
+    if (transacciones.some(x => x.claveIdempotencia && x.claveIdempotencia === claveVenta)) { if (window.toast) window.toast('Esta venta ya estaba registrada.'); return; }
     transacciones.unshift(nuevaVenta);
     guardarTodo();
 
@@ -4246,7 +4430,7 @@ async function ejecutarCobroFinal() {
     } else {
         $('recibo-dir-txt').classList.add('hidden');
     }
-    $('recibo-folio-txt').innerText = `#${String(nuevaVenta.id).slice(-3)}`;
+    $('recibo-folio-txt').innerText = `#${folioDe(nuevaVenta.id)}`;
     $('recibo-fecha-txt').innerText = nuevaVenta.fecha;
     $('recibo-resumen-cant').innerText = `${carrito.reduce((a, b) => a + b.cant, 0)} artículos`;
 
@@ -4282,30 +4466,39 @@ async function ejecutarCobroFinal() {
     $('modal-exito').classList.remove('hidden');
 
     // La venta se cierra primero; el ticket se imprime despues y, si falla, solo avisa (nunca congela la pantalla)
+    // FIX 8: el carrito solo se vacia DESPUES de guardar la venta (guardarTodo ya corrio arriba).
     carrito = [];
+    _guardarBorradorYa();
     renderVenta();
     if (bluetoothDevice) {
         enviarImpresionTicketESC_POS(nuevaVenta, { silencioso: true }).catch(e => console.error(e));
+    }
+    } finally {
+        _cobrando = false;
+        if (_btnCobrar) { _btnCobrar.disabled = false; _btnCobrar.innerText = esCredito ? '💳 Dejar a Crédito e Imprimir' : 'Cobrar e Imprimir'; }
     }
 }
 
 function cerrarExitoNuevaVenta() {
     $('modal-exito').classList.add('hidden');
-    // Nueva venta: se vuelve a pedir cliente
-    clienteSeleccionado = null;
+    // FIX 19: el cliente se mantiene para ventas repetidas; para cambiarlo
+    // esta el boton de cliente en la cabecera / el selector de venta.
     actualizarEtiquetaCliente();
-    diaFiltroClientes = diaHoy();
-    cambiarVista('clientes');
+    if (window.toast) window.toast('Cliente mantenido: ' + (clienteSeleccionado ? clienteSeleccionado.nombre : '') + '. Toca el cliente arriba para cambiarlo.');
+    cambiarVista('venta');
 }
 
 // -------------------- CREDITOS --------------------
 function obtenerCreditosPorCliente() {
+    // FIX 11: se agrupa por ID de cliente (las ventas viejas sin clienteId
+    // caen al grupo por nombre, para no perder su historial).
     const mapa = {};
     transacciones.filter(t => t.esCredito && t.saldoPendiente > 0).forEach(t => {
         const nombre = t.clienteNombre || 'General';
-        if (!mapa[nombre]) mapa[nombre] = { nombre, saldo: 0, ventas: [] };
-        mapa[nombre].saldo += t.saldoPendiente;
-        mapa[nombre].ventas.push(t);
+        const clave = t.clienteId != null ? ('id:' + String(t.clienteId)) : ('nombre:' + nombre);
+        if (!mapa[clave]) mapa[clave] = { id: clave, clienteId: t.clienteId != null ? t.clienteId : null, nombre, saldo: 0, ventas: [] };
+        mapa[clave].saldo += t.saldoPendiente;
+        mapa[clave].ventas.push(t);
     });
     return Object.values(mapa).sort((a, b) => b.saldo - a.saldo);
 }
@@ -4336,14 +4529,16 @@ function abrirModalCreditos() {
 
 let clienteCreditoActivo = null;
 
+let clienteCreditoActivoId = null;
 function abrirDetalleCredito(nombre) {
     clienteCreditoActivo = nombre;
     const c = obtenerCreditosPorCliente().find(x => x.nombre === nombre);
+    clienteCreditoActivoId = c ? c.clienteId : null;
     if (!c) return;
     $('detalle-credito-nombre').innerText = nombre;
     $('detalle-credito-saldo').innerText = money(c.saldo);
     $('detalle-credito-lista').innerHTML = c.ventas.map(v =>
-        `<div class="flex justify-between"><span>#${String(v.id).slice(-3)} - ${v.fecha}</span><span>${money(v.saldoPendiente)}</span></div>`
+        `<div class="flex justify-between"><span>#${folioDe(v.id)} - ${v.fecha}</span><span>${money(v.saldoPendiente)}</span></div>`
     ).join('');
     $('input-abono-credito').value = c.saldo.toFixed(2);
     $('modal-detalle-credito').classList.remove('hidden');
@@ -4351,14 +4546,14 @@ function abrirDetalleCredito(nombre) {
 
 function registrarPagoCredito() {
     let monto = parseFloat($('input-abono-credito').value) || 0;
-    if (monto <= 0) return alert('Ingresa un monto válido');
+    if (monto <= 0) { if (window.toast) window.toast('Ingresa un monto válido'); return; }
     if (!clienteCreditoActivo) return;
     const montoInicial = monto;
-    const idIngreso = Date.now(); // vincula el movimiento con los abonos aplicados a cada venta
+    const idIngreso = generarIdUnico('ingreso'); // vincula el movimiento con los abonos aplicados a cada venta
 
     const ventasPendientes = transacciones
-        .filter(t => t.esCredito && t.saldoPendiente > 0 && (t.clienteNombre || 'General') === clienteCreditoActivo)
-        .sort((a, b) => a.id - b.id); // se paga primero lo más viejo
+        .filter(t => t.esCredito && t.saldoPendiente > 0 && (clienteCreditoActivoId != null ? String(t.clienteId) === String(clienteCreditoActivoId) : (t.clienteNombre || 'General') === clienteCreditoActivo))
+        .sort((a, b) => String(a.id).localeCompare(String(b.id))); // se paga primero lo más viejo
 
     for (const v of ventasPendientes) {
         if (monto <= 0) break;
@@ -4387,7 +4582,7 @@ function registrarPagoCredito() {
     guardarTodo();
     cerrarModal('modal-detalle-credito');
     abrirModalCreditos();
-    alert('Pago registrado correctamente');
+    if (window.toast) window.toast('Pago registrado correctamente');
 }
 
 // -------------------- INVENTARIO --------------------
@@ -4489,8 +4684,9 @@ function crearBotonPapelera(id) {
 async function eliminarProductoRapido(id) {
     const prod = productos.find(x => x.id == id);
     if (!prod) return;
-    if (carrito.some(i => i.id == id)) return alert('Ese producto está en el carrito. Quítalo del carrito primero.');
-    if (!await confirmarPro(`¿Eliminar "${prod.nombre}"?\n\nEsta acción no se puede deshacer.`)) return;
+    if (carrito.some(i => i.id == id)) { if (window.toast) window.toast('Ese producto está en el carrito. Quítalo del carrito primero.'); return; }
+    if (!await confirmarPro(`¿Eliminar "${prod.nombre}"?\n\nSe puede deshacer con el botón Deshacer (20 s).`)) return;
+    guardarEnPapelera('producto', prod.nombre, { ...prod });
     productos = productos.filter(x => x.id != id);
     cacheTarjetasVenta.delete(prod.id);
     guardarTodo();
@@ -4511,10 +4707,14 @@ function pintarBotonSinStock() {
     const n = productos.filter(p => (Number(p.stock) || 0) <= 0).length;
     b.innerText = verSinStock ? '← Volver al inventario' : `Ver sin stock (${n})`;
 }
+let limiteInventario = 80;
 function renderInventario(filtro = '') {
     pintarBotonSinStock();
     const lista = $('lista-inventario');
     const filtrados = productos.filter(p => ((Number(p.stock) || 0) > 0) === !verSinStock && p.nombre.toLowerCase().includes((filtro || '').toLowerCase()));
+    // FIX 17: paginacion a 80 (como transacciones).
+    const totalInv = filtrados.length;
+    const visiblesInv = filtrados.slice(0, limiteInventario);
 
     let totalItems = 0, totalValor = 0, totalCosto = 0, totalGanancia = 0;
     productos.forEach(p => {
@@ -4530,7 +4730,7 @@ function renderInventario(filtro = '') {
     $('resumen-ganancia').innerText = money(totalGanancia);
 
     const frag = document.createDocumentFragment();
-    filtrados.forEach(p => {
+    visiblesInv.forEach(p => {
         const div = document.createElement('div');
         const estado = textoEstadoStock(p.stock || 0);
         div.className = `bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center text-sm cursor-pointer`;
@@ -4558,10 +4758,17 @@ function renderInventario(filtro = '') {
     });
     lista.innerHTML = '';
     lista.appendChild(frag);
+    if (totalInv > limiteInventario) {
+        const mas = document.createElement('button'); mas.type = 'button';
+        mas.className = 'w-full py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700';
+        mas.textContent = `Ver más (${totalInv - limiteInventario} restantes)`;
+        mas.addEventListener('click', () => { limiteInventario += 80; renderInventario(filtro); });
+        lista.appendChild(mas);
+    }
 }
 
 const filtrarInventarioDebounced = debounce(val => renderInventario(val), 180);
-function filtrarInventario(val) { filtrarInventarioDebounced(val); }
+function filtrarInventario(val) { limiteInventario = 80; filtrarInventarioDebounced(val); }
 
 function siguienteSkuPos() {
     let max = 0;
@@ -4620,7 +4827,7 @@ function guardarProductoInventario() {
         const p = productos.find(x => x.id == id);
         if (p) { p.nombre = nombre; p.sku = sku; p.precio = precio; p.costo = costo; p.stock = stock; p.categoria = categoria; }
     } else {
-        productos.push({ id: Date.now(), nombre, sku, precio, costo, stock, categoria });
+        productos.push({ id: generarIdUnico('prod'), nombre, sku, precio, costo, stock, categoria });
     }
     ordenarProductosAlfabetico();
     guardarTodo();
@@ -4633,7 +4840,8 @@ async function eliminarProductoDesdeModal() {
     const id = $('form-prod-id').value;
     const prod = productos.find(x => x.id == id);
     if (!prod) return;
-    if (!await confirmarPro(`¿Eliminar "${prod.nombre}"?\n\nEsta acción no se puede deshacer.`)) return;
+    if (!await confirmarPro(`¿Eliminar "${prod.nombre}"?\n\nSe puede deshacer con el botón Deshacer (20 s).`)) return;
+    guardarEnPapelera('producto', prod.nombre, { ...prod });
     productos = productos.filter(x => x.id != id);
     guardarTodo();
     cerrarModal('modal-producto');
@@ -4803,7 +5011,7 @@ function confirmarProductoNuevoCompra() {
     if (isNaN(cantidad) || cantidad < 1) return alert('La cantidad debe ser al menos 1');
 
     const nuevoProd = {
-        id: Date.now(),
+        id: generarIdUnico('prod'),
         nombre: nombre,
         sku: typeof siguienteSkuPos === 'function' ? siguienteSkuPos() : '',
         precio: isNaN(precioVenta) ? 0 : precioVenta,
@@ -5058,7 +5266,7 @@ function guardarFacturaCompraFinal() {
     descParts.push(`(${facturaCompraItems.length} art.)`);
 
     transacciones.unshift({
-        id: Date.now(),
+        id: generarIdUnico('trx'),
         tipo: 'Gasto',
         categoria: 'Compra de mercancía',
         fechaStr: fechaInput,
@@ -5119,13 +5327,13 @@ function seleccionarCatTrans(cat, el) {
 
 function guardarTransaccionManual() {
     const monto = parseFloat($('trans-monto').value);
-    if (isNaN(monto) || monto <= 0) return alert('Monto inválido');
+    if (isNaN(monto) || monto <= 0) { window.toast('Monto inválido'); return; }
     const tipo = $('btn-tipo-gasto').dataset.activo === 'true' ? 'Gasto' : 'Ingreso';
     const desc = $('trans-desc').value || categoriaTransaccionSeleccionada;
     const fechaInput = $('trans-fecha-input').value || hoy();
 
     transacciones.unshift({
-        id: Date.now(),
+        id: generarIdUnico('trx'),
         tipo,
         categoria: categoriaTransaccionSeleccionada,
         fechaStr: fechaInput,
@@ -5223,7 +5431,7 @@ function abrirDetalleVenta(id) {
     const t = transacciones.find(x => x.id === id);
     if (!t) return;
     ventaSeleccionadaId = id;
-    $('det-venta-titulo').innerText = `${t.tipo} #${String(id).slice(-3)}${t.metodoPago === 'Tarjeta' ? ' · 💳 Tarjeta' : ''}`;
+    $('det-venta-titulo').innerText = `${t.tipo} #${folioDe(id)}${t.metodoPago === 'Tarjeta' ? ' · 💳 Tarjeta' : ''}`;
     $('det-venta-cliente').innerText = t.clienteNombre || 'General';
     $('det-venta-dir').innerText = t.clienteDir || 'Mostrador';
     $('det-venta-total').innerText = money(t.monto);
@@ -5296,7 +5504,8 @@ async function cancelarOrdenActual() {
     const confirmacion = esFacturaCompra
         ? '¿Eliminar esta factura de compra? Se descontarán del inventario las cantidades que agregó.'
         : (esAbonoCredito ? '¿Eliminar este abono? El saldo regresará al cliente.' : '¿Eliminar transacción?');
-    if (!await confirmarPro(confirmacion)) return;
+    if (!await confirmarPro(confirmacion + '\n\nSe puede deshacer con el botón Deshacer (20 s).')) return;
+    guardarEnPapelera('transaccion', (t.tipo || 'Transacción') + ' #' + folioDe(t.id), JSON.parse(JSON.stringify(t)));
     if (esAbonoCredito) revertirAbonoCredito(t);
 
     const buscarProducto = id => productos.find(x => String(x.id) === String(id));
@@ -5363,7 +5572,7 @@ function abrirEditarVenta() {
     editClienteDir = t.clienteDir || 'Mostrador';
     editEsCredito = !!t.esCredito;
     seleccionEditVenta = false;
-    $('edit-venta-titulo').innerText = `Editar ticket #${String(t.id).slice(-3)}`;
+    $('edit-venta-titulo').innerText = `Editar ticket #${folioDe(t.id)}`;
     $('edit-venta-cliente').innerText = '';
     $('edit-venta-buscar').value = '';
     $('edit-venta-panel-agregar').classList.add('hidden');
@@ -5522,7 +5731,7 @@ function agregarProductoEditVenta(id) {
         if (existente.cant + 1 > maxEditable(existente)) return alert(`Solo hay ${maxEditable(existente)} disponibles de ${p.nombre}`);
         existente.cant += 1;
     } else {
-        if ((Number(p.stock) || 0) <= 0) return alert('¡Sin stock disponible!');
+        if ((Number(p.stock) || 0) <= 0) { window.toast('¡Sin stock disponible!'); return; }
         editItems.push({ ...p, precioPersonalizado: p.precio, cant: 1 });
     }
     if (navigator.vibrate) navigator.vibrate(20);
@@ -5549,7 +5758,7 @@ function guardarEdicionVenta() {
         if (c.delta > 0) {
             const p = productos.find(x => mismoId(x.id, c.id));
             if (p && (Number(p.stock) || 0) < c.delta) {
-                return alert(`Solo hay ${p.stock} en stock de ${p.nombre}`);
+                { window.toast(`Solo hay ${p.stock} en stock de ${p.nombre}`); return; }
             }
         }
     }
@@ -6517,7 +6726,7 @@ async function restaurarImpresoraGuardada() {
 async function abrirConfigurarImpresora() {
     try {
         if (!navigator.bluetooth) {
-            alert('Tu navegador no soporta Web Bluetooth. Usa Chrome en Android o PC.');
+            if (window.toast) window.toast('Tu navegador no soporta Web Bluetooth. Usa Chrome en Android o PC.');
             return;
         }
         const dispositivo = await navigator.bluetooth.requestDevice({
@@ -6530,13 +6739,13 @@ async function abrirConfigurarImpresora() {
         await conectarCaracteristicaImpresora(dispositivo);
         try { localStorage.setItem('digar_impresora_nombre', dispositivo.name || ''); } catch (e) {}
         actualizarEstadoImpresora(true);
-        alert('¡Impresora térmica vinculada con éxito!');
+        if (window.toast) window.toast('Impresora térmica vinculada con éxito.');
     } catch (error) {
         console.error(error);
         if (error && error.message === 'sin_caracteristica_escritura') {
-            alert('Dispositivo conectado, pero no se encontró una característica de escritura válida.');
+            if (window.toast) window.toast('Dispositivo conectado, pero no se encontró una característica válida.');
         } else {
-            alert('No se pudo conectar con la impresora o se canceló la selección.');
+            if (window.toast) window.toast('No se pudo conectar con la impresora.');
         }
     }
 }
@@ -6742,7 +6951,7 @@ async function enviarImpresionTicketESC_POS(t, opciones) {
     cmds.push(enc(`================================\n`));
 
     cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
-    const folioTxt = configTicket.showFolio !== false ? `Folio #${String(t.id).slice(-3)}` : '';
+    const folioTxt = configTicket.showFolio !== false ? `Folio #${folioDe(t.id)}` : '';
     const fechaTxt = fechaCompactaImpresion(t.id);
     cmds.push(enc(`${padRight(folioTxt, 13)}${padLeft(fechaTxt, 19)}\n`));
     cmds.push(enc(`Cliente: ${t.clienteNombre || 'General'}\n`));
@@ -7400,15 +7609,22 @@ function importarDatosArchivo(event) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => aplicarRespaldo(e.target.result);
-    reader.onerror = () => alert('No se pudo leer el archivo');
+    reader.onerror = () => { window.toast('No se pudo leer el archivo'); }
     reader.readAsText(file);
     event.target.value = ''; // permite volver a elegir el mismo archivo despues
 }
 
-async function aplicarRespaldo(json) {
-    if (!await confirmarPro('Esto va a reemplazar los datos actuales de la app con los del respaldo. ¿Continuar?')) return;
+async function aplicarRespaldo(json, opts) {
+    opts = opts || {};
+    // FIX 4: antes de importar se guarda automaticamente el estado actual
+    // (digar_respaldo_previo) y se ofrece deshacer.
+    if (!opts.yaConfirmado) {
+        guardarRespaldoPreCambio('importar');
+        if (!await confirmarPro('Esto va a reemplazar los datos actuales de la app con los del respaldo. Antes se guardó una copia automática del estado actual, que puedes restaurar. ¿Continuar?')) return;
+    }
     try {
         const data = JSON.parse(json);
+        if (!data || typeof data !== 'object') throw new Error('respaldo invalido');
         if (data.productos) productos = data.productos;
         if (data.clientes) clientes = data.clientes.filter(c => !esClienteGeneral(c));
         if (data.transacciones) transacciones = data.transacciones;
@@ -7418,12 +7634,17 @@ async function aplicarRespaldo(json) {
         clienteSeleccionado = null;
         actualizarEtiquetaCliente();
         guardarTodo();
-        alert('Datos restaurados correctamente');
+        if (window.toast) window.toast('Datos restaurados correctamente');
+        if (!opts.esRespaldoPrevio && window.confirmarPro) {
+            setTimeout(async function () {
+                try { if (await confirmarPro('Datos restaurados. ¿Quieres deshacer y volver al estado anterior a la importación?')) restaurarRespaldoPrevio(); } catch (e) {}
+            }, 600);
+        }
         renderVenta();
         renderListaClientesInicio();
         renderInventario();
     } catch (e) {
-        alert('Ese archivo no es un respaldo válido de DIGAR POS');
+        if (window.toast) window.toast('Ese archivo no es un respaldo válido de DIGAR POS');
     }
 }
 
@@ -7460,12 +7681,17 @@ function borrarTodo() {
     setTimeout(() => { const i = $('borrar-usuario'); if (i) i.focus(); }, 50);
 }
 
-function validarBorrarTodo() {
+async function validarBorrarTodo() {
     const norm = x => String(x || '').trim().toLowerCase().replace(/[\s()\-+]/g, '');
     const u = $('borrar-usuario').value;
     const p = $('borrar-password').value;
     if (!norm(u) || !p) return mostrarErrorBorrar('Escribe tu usuario y tu contraseña.');
-    if (norm(u) !== norm(yimiAuth.telefono) || p !== yimiAuth.password) {
+    let ok = false;
+    if (yimiAuth) {
+        if (yimiAuth.passHash) ok = norm(u) === norm(yimiAuth.telefono) && (await hashSeguro('auth|' + yimiAuth.telefono + '|' + p)) === yimiAuth.passHash;
+        else ok = norm(u) === norm(yimiAuth.telefono) && p === yimiAuth.password;
+    }
+    if (!ok) {
         $('borrar-password').value = '';
         return mostrarErrorBorrar('Usuario o contraseña incorrectos.');
     }
@@ -7480,7 +7706,15 @@ function mostrarErrorBorrar(msg) {
 }
 
 async function confirmarBorradoFinal() {
-    if (!await confirmarPro('⚠️ ÚLTIMA CONFIRMACIÓN\n\nSe borrarán TODAS tus ventas, clientes, inventario y configuración de este celular. No se puede deshacer.\n\nSi no has exportado un respaldo, cancela y hazlo primero.\n\n¿Seguro que quieres borrar todo el sistema?')) return;
+    if (!await confirmarPro('⚠️ ÚLTIMA CONFIRMACIÓN\n\nSe borrarán TODAS tus ventas, clientes, inventario y configuración de este celular, de la nube (Firestore) y de las fotos/mapas guardados en el teléfono.\n\nNO se borra automáticamente el respaldo de Google Drive: bórralo a mano en Drive si quieres eliminarlo también.\n\nSi no has exportado un respaldo, cancela y hazlo primero.\n\n¿Seguro que quieres borrar todo el sistema?')) return;
+    // FIX 9: antes de borrar, copia de seguridad automatica en el propio telefono.
+    try { guardarRespaldoPreCambio('borrar-todo'); } catch (e) {}
+    // Borrar el documento de la nube (si esta conectado).
+    try { if (firestoreDocRef) await firestoreDocRef.delete(); } catch (e) { console.warn('No se pudo borrar el documento de la nube:', e); }
+    // Borrar las bases IndexedDB del telefono (fotos y tiles del mapa, respaldo).
+    try { indexedDB.deleteDatabase('digar-mapa'); } catch (e) {}
+    try { indexedDB.deleteDatabase('digar-respaldo'); } catch (e) {}
+    try { indexedDB.deleteDatabase('digar-fotos'); } catch (e) {}
     localStorage.clear();
     location.reload();
 }
@@ -7491,6 +7725,25 @@ function cargarAuth() {
     catch (e) { return null; }
 }
 let yimiAuth = cargarAuth();
+// FIX 10: la clave ya NO se guarda en texto plano. Se guarda solo su hash SHA-256
+// (yimi_auth.passHash). Las cuentas viejas con .password se migran al entrar.
+function _loginBloqueado() {
+    try {
+        const b = JSON.parse(localStorage.getItem('digar_login_bloqueo') || 'null');
+        if (b && b.hasta && Date.now() < b.hasta) return Math.ceil((b.hasta - Date.now()) / 60000);
+    } catch (e) {}
+    return 0;
+}
+function _loginFallo() {
+    try {
+        const b = JSON.parse(localStorage.getItem('digar_login_bloqueo') || '{}');
+        const intentos = (Number(b.intentos) || 0) + 1;
+        const rec = { intentos, hasta: intentos >= 5 ? Date.now() + 5 * 60000 : 0 };
+        localStorage.setItem('digar_login_bloqueo', JSON.stringify(rec));
+        return intentos;
+    } catch (e) { return 0; }
+}
+function _loginExito() { try { localStorage.removeItem('digar_login_bloqueo'); } catch (e) {} }
 
 function initPantallaLogin() {
     const esConfigInicial = !yimiAuth;
@@ -7508,28 +7761,46 @@ function mostrarErrorLogin(msg) {
     el.classList.remove('hidden');
 }
 
-function intentarLogin() {
+async function intentarLogin() {
     const tel = $('login-telefono').value.trim();
     const pass = $('login-password').value;
     $('login-error').classList.add('hidden');
 
     if (!tel || !pass) return mostrarErrorLogin('Completa teléfono y contraseña.');
+    const _bloqMin = _loginBloqueado();
+    if (_bloqMin > 0) return mostrarErrorLogin('Demasiados intentos. Espera ' + _bloqMin + ' min e inténtalo de nuevo.');
 
     if (!yimiAuth) {
         const confirmar = $('login-password-confirmar').value;
-        if (pass.length < 4) return mostrarErrorLogin('Usa al menos 4 caracteres.');
+        // FIX 10: minimo 8 caracteres (antes 4).
+        if (pass.length < 8) return mostrarErrorLogin('Usa al menos 8 caracteres.');
         if (pass !== confirmar) return mostrarErrorLogin('Las contraseñas no coinciden.');
-        yimiAuth = { telefono: tel, password: pass };
+        const passHash = await hashSeguro('auth|' + tel + '|' + pass);
+        yimiAuth = { telefono: tel, passHash };
         localStorage.setItem('yimi_auth', JSON.stringify(yimiAuth));
+        _loginExito();
         iniciarFirebase(tel, pass);
         return ocultarLogin();
     }
 
-    if (yimiAuth.telefono === tel && yimiAuth.password === pass) {
+    // Migracion: cuenta vieja con clave en texto plano -> se verifica y se pasa a hash.
+    let ok = false;
+    if (yimiAuth.passHash) {
+        ok = (await hashSeguro('auth|' + tel + '|' + pass)) === yimiAuth.passHash && yimiAuth.telefono === tel;
+    } else if (yimiAuth.password) {
+        ok = yimiAuth.telefono === tel && yimiAuth.password === pass;
+        if (ok) {
+            yimiAuth = { telefono: tel, passHash: await hashSeguro('auth|' + tel + '|' + pass) };
+            localStorage.setItem('yimi_auth', JSON.stringify(yimiAuth));
+        }
+    }
+    if (ok) {
+        _loginExito();
         iniciarFirebase(tel, pass);
         ocultarLogin();
     } else {
-        mostrarErrorLogin('Teléfono o contraseña incorrectos.');
+        const intentos = _loginFallo();
+        mostrarErrorLogin(intentos >= 5 ? 'Teléfono o contraseña incorrectos. Bloqueado 5 minutos por seguridad.' : 'Teléfono o contraseña incorrectos.');
     }
 }
 
@@ -7624,7 +7895,7 @@ async function loginConHuella() {
                 timeout: 60000
             }
         });
-        iniciarFirebase(yimiAuth.telefono, yimiAuth.password);
+        iniciarFirebase(yimiAuth.telefono, null);
         ocultarLogin();
     } catch (e) {
         if (e && e.name !== 'NotAllowedError' && e.name !== 'AbortError') {
@@ -8392,13 +8663,15 @@ async function driveSubir(manual, forzar) {
             confirmado = false;
         }
         const ahora = new Date().toISOString();
-        localStorage.setItem(DRIVE_ULT, ahora);
         if (!confirmado) {
+            // FIX 3: sin confirmacion legible NO se marca como respaldado.
+            // Se guarda la marca de "sin confirmar" y se avisa que hay que verificar en Drive.
             localStorage.setItem('digar_drive_sinconf', ahora);
             drivePintar('Enviado, sin confirmación. Verifica en tu carpeta de Drive.');
             if (manual) driveAviso('Enviado a Drive, pero sin confirmación. Verifica la carpeta.');
-            return true;
+            return false;
         }
+        localStorage.setItem(DRIVE_ULT, ahora);
         localStorage.removeItem('digar_drive_sinconf');
         localStorage.setItem('yimi_ultimo_respaldo', ahora);
         try { cerrarBannerRespaldo(); } catch (e) {}

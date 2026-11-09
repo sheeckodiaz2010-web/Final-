@@ -7774,6 +7774,58 @@ function ocultarLogin() {
     const overlay = $('pantalla-login');
     if (overlay) overlay.remove();
     verificarRecordatorioRespaldo();
+    iniciarBloqueoInactividad();
+}
+
+// -------------------- BLOQUEO POR INACTIVIDAD (3 h) --------------------
+// Si pasan 3 h sin tocar la app, se vuelve a la pantalla de acceso
+// (telefono + contrasena, o huella si esta activada).
+// Antes de bloquear se guarda todo: el carrito queda como borrador en el
+// telefono y al volver a entrar se restaura, no se pierde la venta a medias.
+// Ligero para el Motorola: un solo temporizador, que solo se reinicia como
+// mucho 1 vez por minuto, y una revision al volver a la app por si el
+// telefono estuvo dormido/apagado mas de 3 h.
+const INACTIVIDAD_MS = 3 * 60 * 60 * 1000; // 3 horas
+let _ultimaActividad = Date.now();
+let _ultimoReinicioBloqueo = 0;
+let _timerBloqueo = null;
+function _guardarAntesDeBloquear() {
+    try { if (typeof _guardarBorradorYa === 'function') _guardarBorradorYa(); } catch (e) {}
+    try {
+        if (typeof _vaciarGuardarTodoPronto === 'function') _vaciarGuardarTodoPronto();
+        else if (typeof guardarTodo === 'function') guardarTodo();
+    } catch (e) {}
+}
+function bloquearPorInactividad() {
+    if (document.getElementById('pantalla-login')) return; // ya esta bloqueada
+    _guardarAntesDeBloquear();
+    try { localStorage.setItem('digar_bloqueo_inactividad', String(Date.now())); } catch (e) {}
+    location.reload(); // al recargar vuelve la pantalla de acceso
+}
+function registrarActividad() {
+    _ultimaActividad = Date.now();
+    if (!_timerBloqueo) return;
+    // No reiniciar el temporizador a cada toque: 1 vez por minuto basta.
+    if (Date.now() - _ultimoReinicioBloqueo < 60000) return;
+    _ultimoReinicioBloqueo = Date.now();
+    clearTimeout(_timerBloqueo);
+    _timerBloqueo = setTimeout(bloquearPorInactividad, INACTIVIDAD_MS);
+}
+function iniciarBloqueoInactividad() {
+    if (_timerBloqueo) return; // ya esta armado
+    if (document.getElementById('pantalla-login')) return; // aun no se entro
+    _ultimaActividad = Date.now();
+    _ultimoReinicioBloqueo = Date.now();
+    _timerBloqueo = setTimeout(bloquearPorInactividad, INACTIVIDAD_MS);
+    ['pointerdown', 'touchstart', 'keydown', 'click', 'wheel'].forEach(function (ev) {
+        document.addEventListener(ev, registrarActividad, { passive: true });
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible') return;
+        // Si volvio despues de 3 h o mas, bloquear de inmediato.
+        if (Date.now() - _ultimaActividad >= INACTIVIDAD_MS) bloquearPorInactividad();
+        else registrarActividad();
+    });
 }
 
 // -------------------- HUELLA (WebAuthn) --------------------

@@ -8880,19 +8880,47 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
 })();
 </script>
 <script id="sin-sugerencias">
-/* Los campos de texto se quedan en solo lectura hasta que el usuario los toca */
+/* Que el telefono NO ofrezca contraseñas guardadas en buscadores y demas
+   campos de texto (2026-11-13): el campo se queda en solo lectura hasta el
+   momento del focus. Antes el readonly se quitaba en pointerdown/touchstart,
+   que ocurren ANTES del focus, asi que cuando Chrome decidia si mostrar
+   contraseñas el campo ya estaba editable y las ofrecia. Al quitarlo en el
+   focus, Chrome ya decidio no mostrar nada y el campo queda escribible.
+   Los campos de acceso (login) quedan fuera: ahi si se vale el autollenado. */
 (function(){
-  document.querySelectorAll('input[type=text],input:not([type])').forEach(function(el){
-    if (el.id === 'borrar-usuario') return;
-    el.setAttribute('autocomplete','off');
-    el.setAttribute('data-lpignore','true');
-    el.setAttribute('data-form-type','other');
-    el.setAttribute('readonly','readonly');
-    var abrir = function(){ el.removeAttribute('readonly'); };
-    el.addEventListener('pointerdown', abrir);
-    el.addEventListener('touchstart', abrir, { passive: true });
-    el.addEventListener('blur', function(){ el.setAttribute('readonly','readonly'); });
-  });
+  var ACCESO = { 'login-telefono': 1, 'login-password': 1, 'login-password-confirmar': 1, 'precios-cat-email': 1, 'precios-cat-pass': 1, 'nuevos-cat-email': 1, 'nuevos-cat-pass': 1, 'borrar-usuario': 1 };
+  function proteger(el){
+    if (!el || !el.tagName) return;
+    if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
+    if (el.id && ACCESO[el.id]) return;
+    var ty = (el.getAttribute('type') || 'text').toLowerCase();
+    if (['checkbox', 'radio', 'file', 'range', 'hidden', 'button', 'submit', 'password', 'number', 'date'].indexOf(ty) >= 0) return;
+    if (el.dataset && el.dataset.sinSug) return;
+    if (el.dataset) el.dataset.sinSug = '1';
+    el.setAttribute('autocomplete', 'off');
+    el.setAttribute('autocapitalize', 'off');
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('spellcheck', 'false');
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-1p-ignore', 'true');
+    el.setAttribute('data-bwignore', 'true');
+    el.setAttribute('data-form-type', 'other');
+    el.setAttribute('readonly', 'readonly');
+    /* Solo en focus se quita el readonly: ahi Chrome ya paso el momento
+       en que decide ofrecer contraseñas. Jamas en pointerdown/touchstart. */
+    el.addEventListener('focus', function(){ el.removeAttribute('readonly'); });
+    el.addEventListener('blur', function(){ el.setAttribute('readonly', 'readonly'); });
+  }
+  function todos(raiz){
+    if (!raiz || !raiz.querySelectorAll) return;
+    if (raiz.tagName === 'INPUT' || raiz.tagName === 'TEXTAREA') proteger(raiz);
+    raiz.querySelectorAll('input,textarea').forEach(proteger);
+  }
+  todos(document);
+  try {
+    new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if (n.nodeType === 1) todos(n); }); }); })
+      .observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
 })();
 </script>
 </body></html>

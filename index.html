@@ -2115,7 +2115,51 @@ function generarIdUnico(prefijo) {
     return (prefijo ? prefijo + '-' : '') + Date.now().toString(36) + '-' + _idContador.toString(36) + '-' + aleat;
 }
 // FIX 6: folio completo (antes solo los ultimos 3 digitos y se repetia).
-function folioDe(id) { return String(id == null ? '' : id); }
+// FOLIO REAL (2026-11-13): cada venta lleva un numero de folio corto y
+// secuencial (1, 2, 3...), guardado en la venta como t.folio. Antes el
+// "folio" era el id interno (texto tipo "venta-..."), por eso en el ticket
+// impreso salia cortado y la fecha, que se sacaba de ese id con
+// new Date(id), salia NaN/NaN/NaN. El id ya no se usa para el folio ni
+// para la fecha: para eso estan t.folio y t.fechaMs.
+function _tsVenta(t) {
+    if (!t) return 0;
+    if (Number(t.fechaMs) > 0) return Number(t.fechaMs);
+    if (Number(t.id) > 1e12) return Number(t.id);
+    if (t.fechaStr) { const d = new Date(t.fechaStr + 'T12:00:00'); if (!isNaN(d.getTime())) return d.getTime(); }
+    const m = String(t.id || '').match(/^venta-([0-9a-z]+)-/);
+    if (m) { const n = parseInt(m[1], 36); if (Number.isFinite(n) && n > 1e12) return n; }
+    return 0;
+}
+function _maxFolioExistente() {
+    let m = 0;
+    transacciones.forEach(t => { if (t && t.tipo === 'Venta') { const f = Number(t.folio); if (Number.isFinite(f) && f > m) m = f; } });
+    return m;
+}
+let _folioVentaContador = (function () { try { return Number(localStorage.getItem('digar_folio_venta')) || 0; } catch (e) { return 0; } })();
+function siguienteFolio() {
+    const n = Math.max(_folioVentaContador || 0, _maxFolioExistente()) + 1;
+    _folioVentaContador = n;
+    try { localStorage.setItem('digar_folio_venta', String(n)); } catch (e) {}
+    return n;
+}
+function folioDe(id) {
+    if (id && typeof id === 'object') { const f = Number(id.folio); if (Number.isFinite(f) && f > 0) return String(f); id = id.id; }
+    if (id != null && typeof transacciones !== 'undefined') {
+        const t = transacciones.find(x => String(x.id) === String(id));
+        if (t) { const f = Number(t.folio); if (Number.isFinite(f) && f > 0) return String(f); if (t.tipo === 'Venta') return ''; }
+    }
+    return String(id == null ? '' : id);
+}
+// A las ventas viejas (sin folio) se les asigna uno en orden cronologico,
+// del ticket mas antiguo al mas reciente, para que todas tengan folio.
+(function asignarFoliosFaltantes() {
+    const sinFolio = transacciones.filter(t => t && t.tipo === 'Venta' && !(Number(t.folio) > 0));
+    if (!sinFolio.length) return;
+    sinFolio.sort((a, b) => (_tsVenta(a) - _tsVenta(b)) || String(a.id).localeCompare(String(b.id)));
+    let n = _maxFolioExistente();
+    sinFolio.forEach(t => { n++; t.folio = n; });
+    try { guardarTransacciones(); } catch (e) {}
+})();
 // FIX 20: papelera temporal con deshacer (productos, clientes, ventas, promos).
 let _papelera = [];
 try { _papelera = _leerJSON('digar_papelera', []) || []; if (!Array.isArray(_papelera)) _papelera = []; } catch (e) { _papelera = []; }
@@ -3350,24 +3394,31 @@ function renderSeleccionClientes(filtro) {
     contenedor.innerHTML = '';
     const term = quitarAcentos(filtro || '').trim();
     const dia = diaHoy();
-    const soloHoy = !term && !verTodosSeleccion && typeof dia === 'number';
+    const hayRutaHoy = typeof dia === 'number';
+    // La base es la ruta de hoy, salvo que se haya tocado "Buscar en todos".
+    // Antes, al escribir en el buscador se buscaba en TODOS los clientes y
+    // se perdia la ruta; ahora la busqueda respeta la ruta y solo se amplia
+    // con el boton.
+    const enRuta = c => !hayRutaHoy || (((c.dias || []).includes(dia)) && tocaEstaSemana(c));
+    const soloHoy = !verTodosSeleccion && hayRutaHoy;
     let lista = [...clientes];
+    if (!verTodosSeleccion) lista = lista.filter(enRuta);
     if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
-    else if (soloHoy) lista = lista.filter(c => (c.dias || []).includes(dia) && tocaEstaSemana(c));
     const visitados = new Set(lista.filter(clienteVisitadoHoy).map(c => c.id));
     const hechos = new Set(lista.filter(c => clienteVisitadoHoy(c) || noComproHoy(c)).map(c => c.id));
     lista.sort((a, b) => (hechos.has(a.id) - hechos.has(b.id)) || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 
-    // Encabezado: qué lista se está viendo + cambiar entre "de hoy" y "todos"
-    if (!term && typeof dia === 'number') {
+    // Encabezado: qué lista se está viendo + cambiar entre ruta y todos.
+    // Se muestra tambien mientras se busca, para poder ampliar la busqueda.
+    if (hayRutaHoy) {
         const nombreDia = (DIAS_SEM.find(d => d.n === dia) || {}).largo || 'hoy';
         const barra = document.createElement('div');
-        barra.className = 'flex justify-between items-center';
-        barra.innerHTML = `<span class="text-[11px] font-bold text-gray-500">${soloHoy ? `Clientes de hoy (${nombreDia}) · ${lista.length}` : `Todos los clientes · ${lista.length}`}</span>
-            <button type="button" class="text-[11px] font-bold text-blue-600 underline">${soloHoy ? 'Ver todos' : 'Solo los de hoy'}</button>`;
+        barra.className = 'flex justify-between items-center gap-2';
+        barra.innerHTML = `<span class="text-[11px] font-bold text-gray-500">${soloHoy ? (term ? `Buscando en la ruta (${nombreDia}) · ${lista.length}` : `Clientes de hoy (${nombreDia}) · ${lista.length}`) : (term ? `Buscando en todos · ${lista.length}` : `Todos los clientes · ${lista.length}`)}</span>
+            <button type="button" class="text-[11px] font-bold text-blue-600 underline whitespace-nowrap">${soloHoy ? 'Buscar en todos' : 'Solo los de la ruta'}</button>`;
         barra.querySelector('button').addEventListener('click', function () {
             verTodosSeleccion = soloHoy;
-            renderSeleccionClientes($('buscador-seleccion-cliente').value);
+            renderSeleccionClientes($('buscador-seleccion-cliente') ? $('buscador-seleccion-cliente').value : '');
         });
         contenedor.appendChild(barra);
     }
@@ -3376,8 +3427,8 @@ function renderSeleccionClientes(filtro) {
         const p = document.createElement('p');
         p.className = 'text-center text-gray-400 text-sm py-4';
         p.innerText = term
-            ? 'No encontré ese cliente. Agrégalo con el botón de arriba.'
-            : (soloHoy ? 'No tienes clientes asignados a hoy. Toca "Ver todos" o agrega uno rápido.' : 'Aún no tienes clientes. Agrega el primero con el botón de arriba.');
+            ? (soloHoy ? 'No está en la ruta de hoy. Toca "Buscar en todos" o agrégalo con el botón de arriba.' : 'No encontré ese cliente. Agrégalo con el botón de arriba.')
+            : (soloHoy ? 'No tienes clientes asignados a hoy. Toca "Buscar en todos" o agrega uno rápido.' : 'Aún no tienes clientes. Agrega el primero con el botón de arriba.');
         contenedor.appendChild(p);
         return;
     }
@@ -4352,6 +4403,8 @@ async function ejecutarCobroFinal() {
     const nuevaVenta = {
         id: claveVenta,
         claveIdempotencia: claveVenta,
+        folio: siguienteFolio(),
+        fechaMs: ahora.getTime(),
         tipo: 'Venta',
         categoria: 'Venta',
         clienteId: clienteSeleccionado.id,
@@ -4442,25 +4495,40 @@ async function ejecutarCobroFinal() {
 
 function cerrarExitoNuevaVenta() {
     $('modal-exito').classList.add('hidden');
-    // FIX 19: el cliente se mantiene para ventas repetidas; para cambiarlo
-    // esta el boton de cliente en la cabecera / el selector de venta.
+    // Al terminar la venta se va directo a Clientes para escoger al
+    // siguiente de la ruta (ya no se queda el cliente anterior en la venta).
+    clienteSeleccionado = null;
     actualizarEtiquetaCliente();
-    if (window.toast) window.toast('Cliente mantenido: ' + (clienteSeleccionado ? clienteSeleccionado.nombre : '') + '. Toca el cliente arriba para cambiarlo.');
-    cambiarVista('venta');
+    cambiarVista('clientes');
 }
 
 // -------------------- CREDITOS --------------------
+// Clave unica de credito por cliente (2026-11-13): una venta vieja sin
+// clienteId se junta con las nuevas del mismo cliente buscandolo por
+// nombre en la lista de clientes. Antes las ventas sin clienteId caian en
+// un grupo "por nombre" y las nuevas en un grupo "por id", asi el mismo
+// cliente aparecia como DOS cuentas y el abono solo tocaba una de ellas.
+function _clienteIdPorNombre(nombre) {
+    const c = clientes.find(x => quitarAcentos((x.nombre || '').trim()) === quitarAcentos((nombre || '').trim()));
+    return c ? c.id : null;
+}
+function _claveCreditoCliente(t) {
+    if (t.clienteId != null) return 'id:' + String(t.clienteId);
+    const idPorNombre = _clienteIdPorNombre(t.clienteNombre || 'General');
+    if (idPorNombre != null) return 'id:' + String(idPorNombre);
+    return 'nombre:' + (t.clienteNombre || 'General');
+}
 function obtenerCreditosPorCliente() {
-    // FIX 11: se agrupa por ID de cliente (las ventas viejas sin clienteId
-    // caen al grupo por nombre, para no perder su historial).
     const mapa = {};
     transacciones.filter(t => t.esCredito && t.saldoPendiente > 0).forEach(t => {
         const nombre = t.clienteNombre || 'General';
-        const clave = t.clienteId != null ? ('id:' + String(t.clienteId)) : ('nombre:' + nombre);
-        if (!mapa[clave]) mapa[clave] = { id: clave, clienteId: t.clienteId != null ? t.clienteId : null, nombre, saldo: 0, ventas: [] };
+        const clave = _claveCreditoCliente(t);
+        if (!mapa[clave]) mapa[clave] = { id: clave, clienteId: t.clienteId != null ? t.clienteId : _clienteIdPorNombre(nombre), nombre, saldo: 0, ventas: [] };
         mapa[clave].saldo += t.saldoPendiente;
         mapa[clave].ventas.push(t);
     });
+    // Dentro de cada cliente los tickets van del mas antiguo al mas reciente.
+    Object.values(mapa).forEach(g => g.ventas.sort((a, b) => (_tsVenta(a) - _tsVenta(b)) || (Number(a.folio) - Number(b.folio)) || String(a.id).localeCompare(String(b.id))));
     return Object.values(mapa).sort((a, b) => b.saldo - a.saldo);
 }
 
@@ -4478,7 +4546,7 @@ function abrirModalCreditos() {
         cont.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">No hay créditos pendientes 🎉</p>`;
     } else {
         cont.innerHTML = listaClientes.map(c => `
-            <button onclick="abrirDetalleCredito('${escHtml(c.nombre.replace(/'/g, "\\'"))}')" class="w-full flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <button onclick="abrirDetalleCredito('${escHtml(c.id)}')" class="w-full flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
                 <span class="font-bold text-sm">${escHtml(c.nombre)}</span>
                 <span class="font-bold text-amber-600">${money(c.saldo)}</span>
             </button>
@@ -4491,18 +4559,55 @@ function abrirModalCreditos() {
 let clienteCreditoActivo = null;
 
 let clienteCreditoActivoId = null;
-function abrirDetalleCredito(nombre) {
-    clienteCreditoActivo = nombre;
-    const c = obtenerCreditosPorCliente().find(x => x.nombre === nombre);
-    clienteCreditoActivoId = c ? c.clienteId : null;
+let grupoCreditoActivo = null; // grupo de credito abierto (una sola cuenta por cliente)
+let ventaCreditoElegidaId = null; // ticket que se toco para pagarlo en especifico
+function abrirDetalleCredito(claveONombre) {
+    const grupos = obtenerCreditosPorCliente();
+    const c = grupos.find(x => x.id === claveONombre)
+        || grupos.find(x => x.nombre === claveONombre)
+        || grupos.find(x => x.clienteId != null && String(x.clienteId) === String(claveONombre));
     if (!c) return;
-    $('detalle-credito-nombre').innerText = nombre;
+    grupoCreditoActivo = c;
+    clienteCreditoActivo = c.nombre;
+    clienteCreditoActivoId = c.clienteId;
+    ventaCreditoElegidaId = null;
+    $('detalle-credito-nombre').innerText = c.nombre;
     $('detalle-credito-saldo').innerText = money(c.saldo);
-    $('detalle-credito-lista').innerHTML = c.ventas.map(v =>
-        `<div class="flex justify-between"><span>#${folioDe(v.id)} - ${v.fecha}</span><span>${money(v.saldoPendiente)}</span></div>`
-    ).join('');
+    renderDetalleCreditoLista();
     $('input-abono-credito').value = c.saldo.toFixed(2);
     $('modal-detalle-credito').classList.remove('hidden');
+}
+// Lista de tickets del cliente: cada uno se puede tocar para pagarlo a el
+// en especifico. Antes era solo texto y el abono siempre caia donde el
+// orden por id (texto) decidiera, por eso al tocar el antiguo se pagaba
+// el reciente.
+function renderDetalleCreditoLista() {
+    const c = grupoCreditoActivo;
+    const listaEl = $('detalle-credito-lista');
+    if (!c || !listaEl) return;
+    listaEl.innerHTML = '';
+    c.ventas.forEach(v => {
+        const elegido = ventaCreditoElegidaId === v.id;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'w-full flex justify-between items-center gap-2 p-2 rounded-xl border text-left ' + (elegido ? 'border-emerald-600 bg-emerald-50' : 'border-gray-100 bg-gray-50');
+        b.innerHTML = `<span>${elegido ? '✓ ' : ''}Folio #${folioDe(v.id)} - ${escHtml(v.fecha || '')}</span><span class="font-bold ${elegido ? 'text-emerald-700' : 'text-gray-700'}">${money(v.saldoPendiente)}</span>`;
+        b.addEventListener('click', function () { elegirTicketCredito(v.id); });
+        listaEl.appendChild(b);
+    });
+    const pista = document.createElement('p');
+    pista.className = 'text-[11px] text-gray-400 pt-1';
+    pista.innerText = 'Toca un ticket para pagar ese en específico. Si no tocas ninguno, se paga primero el más antiguo.';
+    listaEl.appendChild(pista);
+}
+function elegirTicketCredito(id) {
+    ventaCreditoElegidaId = id;
+    const c = grupoCreditoActivo;
+    if (c) {
+        const v = c.ventas.find(x => x.id === id);
+        if (v) $('input-abono-credito').value = Number(v.saldoPendiente).toFixed(2);
+    }
+    renderDetalleCreditoLista();
 }
 
 function registrarPagoCredito() {
@@ -4512,9 +4617,16 @@ function registrarPagoCredito() {
     const montoInicial = monto;
     const idIngreso = generarIdUnico('ingreso'); // vincula el movimiento con los abonos aplicados a cada venta
 
+    const claveGrupo = grupoCreditoActivo ? grupoCreditoActivo.id : null;
     const ventasPendientes = transacciones
-        .filter(t => t.esCredito && t.saldoPendiente > 0 && (clienteCreditoActivoId != null ? String(t.clienteId) === String(clienteCreditoActivoId) : (t.clienteNombre || 'General') === clienteCreditoActivo))
-        .sort((a, b) => String(a.id).localeCompare(String(b.id))); // se paga primero lo más viejo
+        .filter(t => t.esCredito && t.saldoPendiente > 0 && (claveGrupo ? _claveCreditoCliente(t) === claveGrupo : (clienteCreditoActivoId != null ? String(t.clienteId) === String(clienteCreditoActivoId) : (t.clienteNombre || 'General') === clienteCreditoActivo)))
+        .sort((a, b) => (_tsVenta(a) - _tsVenta(b)) || (Number(a.folio) - Number(b.folio)) || String(a.id).localeCompare(String(b.id))); // se paga primero lo mas viejo (por fecha, no por id en texto)
+    // Si se toco un ticket en especifico, ese se paga primero.
+    if (ventaCreditoElegidaId) {
+        const i = ventasPendientes.findIndex(v => v.id === ventaCreditoElegidaId);
+        if (i > 0) { const sel = ventasPendientes.splice(i, 1)[0]; ventasPendientes.unshift(sel); }
+    }
+    const primerFolio = ventasPendientes.length ? folioDe(ventasPendientes[0].id) : '';
 
     for (const v of ventasPendientes) {
         if (monto <= 0) break;
@@ -4541,9 +4653,10 @@ function registrarPagoCredito() {
     }
 
     guardarTodo();
+    ventaCreditoElegidaId = null;
     cerrarModal('modal-detalle-credito');
     abrirModalCreditos();
-    if (window.toast) window.toast('Pago registrado correctamente');
+    if (window.toast) window.toast(cobrado > 0 ? ('Pago registrado: ' + money(cobrado) + (primerFolio ? ' al folio #' + primerFolio : '')) : 'Pago registrado correctamente');
 }
 
 // -------------------- INVENTARIO --------------------
@@ -5438,7 +5551,7 @@ function revertirAbonoCredito(t) {
         const nombre = t.clienteAbono || String(t.descripcion || '').replace(/^Abono\s+/, '');
         const ventas = transacciones
             .filter(v => v.esCredito && (v.clienteNombre || 'General') === nombre && Array.isArray(v.abonos) && v.abonos.some(a => !a.ingresoId))
-            .sort((a, b) => b.id - a.id);
+            .sort((a, b) => _tsVenta(b) - _tsVenta(a));
         for (const v of ventas) {
             for (let i = v.abonos.length - 1; i >= 0 && porRevertir > 0.004; i--) {
                 const a = v.abonos[i];
@@ -6737,6 +6850,7 @@ function limpiarTxt(s) {
 // Fecha corta y 100% ASCII para imprimir (evita cortes y caracteres raros de fechaBonita)
 function fechaCompactaImpresion(timestampMs) {
     const d = new Date(timestampMs);
+    if (isNaN(d.getTime())) return '';
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const yy = d.getFullYear();
@@ -6913,7 +7027,7 @@ async function enviarImpresionTicketESC_POS(t, opciones) {
 
     cmds.push(new Uint8Array([0x1B, 0x61, 0x00])); // Izquierda
     const folioTxt = configTicket.showFolio !== false ? `Folio #${folioDe(t.id)}` : '';
-    const fechaTxt = fechaCompactaImpresion(t.id);
+    const fechaTxt = fechaCompactaImpresion(_tsVenta(t) || Date.now());
     cmds.push(enc(`${padRight(folioTxt, 13)}${padLeft(fechaTxt, 19)}\n`));
     cmds.push(enc(`Cliente: ${t.clienteNombre || 'General'}\n`));
     if (configTicket.showDirCliente !== false) {

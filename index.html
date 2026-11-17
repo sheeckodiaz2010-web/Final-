@@ -298,6 +298,10 @@ button,input,select,textarea{font-family:inherit}
 #modal-compra .flex.gap-2>select{flex:1 1 0;min-width:0}
 #modal-compra .flex.gap-2>button{flex-shrink:0;min-width:84px;min-height:44px;position:relative;z-index:2}
 </style>
+<style>
+@keyframes giroImpresion { to { transform: rotate(360deg); } }
+#cargando-impresion .spinner-redondo { width:56px; height:56px; border-radius:50%; border:6px solid rgba(255,255,255,.25); border-top-color:#fff; animation:giroImpresion .8s linear infinite; }
+</style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 
@@ -6949,8 +6953,24 @@ function enviarComandosImpresora(cmds, opciones) {
     return encolarImpresion(() => enviarPaquetesImpresora(aPaquetes(cmds), 0, opciones || {}));
 }
 
+// Animación de carga mientras se imprime: círculo girando que aparece al imprimir y se quita al terminar
+let impresionesEnCurso = 0;
+function mostrarCargandoImpresion() {
+    impresionesEnCurso++;
+    const el = document.getElementById('cargando-impresion');
+    if (el) el.style.display = 'flex';
+}
+function ocultarCargandoImpresion() {
+    impresionesEnCurso = Math.max(0, impresionesEnCurso - 1);
+    if (impresionesEnCurso > 0) return;
+    const el = document.getElementById('cargando-impresion');
+    if (el) el.style.display = 'none';
+}
+
 async function enviarPaquetesImpresora(paquetes, desde, opciones) {
     const silencioso = !!opciones.silencioso;
+    mostrarCargandoImpresion();
+    try {
     // Si la conexion se cayo, intenta reconectar sola antes de pedir vincular de nuevo
     if (!(await asegurarImpresora())) {
         avisoImpresion(bluetoothDevice
@@ -6987,6 +7007,9 @@ async function enviarPaquetesImpresora(paquetes, desde, opciones) {
         return false;
     } finally {
         liberarPantalla();
+    }
+    } finally {
+        ocultarCargandoImpresion();
     }
 }
 
@@ -8923,4 +8946,8 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
   } catch (e) {}
 })();
 </script>
+<div id="cargando-impresion" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);align-items:center;justify-content:center;flex-direction:column;gap:14px;">
+    <div class="spinner-redondo"></div>
+    <div style="color:#fff;font-weight:800;font-size:15px;">Imprimiendo...</div>
+</div>
 </body></html>

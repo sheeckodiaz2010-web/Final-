@@ -316,10 +316,10 @@ button,input,select,textarea{font-family:inherit}
                     <label class="text-xs font-semibold text-gray-500">Teléfono</label>
                     <input type="tel" id="login-telefono" autocomplete="off" data-lpignore="true" placeholder="861 123 4567" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
                     <label class="text-xs font-semibold text-gray-500">Contraseña</label>
-                    <input type="password" id="login-password" autocomplete="off" data-lpignore="true" placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
+                    <input type="text" id="login-password" autocomplete="off" data-lpignore="true" placeholder="••••••••" style="-webkit-text-security:disc" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
                     <div id="login-confirmar-wrap" class="hidden">
                         <label class="text-xs font-semibold text-gray-500">Confirmar contraseña</label>
-                        <input type="password" id="login-password-confirmar" autocomplete="off" data-lpignore="true" placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
+                        <input type="text" id="login-password-confirmar" autocomplete="off" data-lpignore="true" placeholder="••••••••" style="-webkit-text-security:disc" class="w-full p-3 border rounded-xl text-sm mt-1 mb-3">
                     </div>
                     <p id="login-error" class="text-xs text-red-600 mb-2 hidden"></p>
                     <button onclick="intentarLogin()" id="login-btn" class="w-full text-white font-bold py-3 rounded-xl text-sm bg-blue-600">Iniciar sesión</button>
@@ -801,7 +801,7 @@ button,input,select,textarea{font-family:inherit}
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-semibold text-gray-500">Contraseña</label>
-                <input type="password" id="borrar-password" autocomplete="off" data-lpignore="true" class="w-full p-3 border rounded-xl text-sm" onkeydown="if(event.key==='Enter')validarBorrarTodo()">
+                <input type="text" id="borrar-password" autocomplete="off" data-lpignore="true" style="-webkit-text-security:disc" class="w-full p-3 border rounded-xl text-sm" onkeydown="if(event.key==='Enter')validarBorrarTodo()">
             </div>
             <p id="borrar-error" class="text-xs text-red-600 hidden"></p>
             <button onclick="validarBorrarTodo()" class="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl text-sm shadow-md">Continuar</button>

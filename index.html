@@ -302,6 +302,23 @@ button,input,select,textarea{font-family:inherit}
 @keyframes giroImpresion { to { transform: rotate(360deg); } }
 #cargando-impresion .spinner-redondo { width:56px; height:56px; border-radius:50%; border:6px solid rgba(255,255,255,.25); border-top-color:#fff; animation:giroImpresion .8s linear infinite; }
 </style>
+
+<style>
+/* INVENTARIO EFECTIVO */
+.inv-chip{padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid #e5e7eb;background:#fff;color:#374151;touch-action:manipulation}
+.inv-chip.activo{background:#0b1220;color:#fff;border-color:#0b1220}
+.inv-stepper{display:flex;align-items:center;gap:6px}
+.inv-btn{width:44px;height:44px;border-radius:12px;border:0;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex:none}
+.inv-btn:active{transform:scale(.94)}
+.inv-input{width:64px;height:44px;text-align:center;font-weight:900;font-size:17px;border:1.5px solid #d1d5db;border-radius:12px;background:#fff}
+.inv-input:focus{outline:none;border-color:#2563eb}
+.inv-prog{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.inv-prog>div{height:100%;background:linear-gradient(90deg,#10b981,#059669);transition:width .25s}
+.inv-diff-ok{color:#059669;font-weight:800}
+.inv-diff-bad{color:#dc2626;font-weight:800}
+.inv-card-contado{border-color:#a7f3d0 !important;background:#f0fdf4 !important}
+</style>
+
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24">
 
@@ -471,6 +488,11 @@ button,input,select,textarea{font-family:inherit}
                 </button>
             </div>
 
+            <button type="button" onclick="abrirModalCreditos()" class="w-full font-bold py-3 rounded-xl text-sm shadow-sm flex justify-between items-center px-4" style="min-height:48px;background:#f59e0b;color:#fff">
+                <span>💳 Créditos pendientes</span>
+                <span id="badge-creditos-total" class="font-black px-2.5 py-1 rounded-full text-xs" style="background:#fff;color:#92400e"></span>
+            </button>
+
             <div id="banner-fotos" style="display:none;font-size:12px;color:#2563eb;background:#eff6ff;border-radius:10px;padding:8px 12px;margin-bottom:8px;"></div>
             <div id="grid-venta" class="grid grid-cols-3 gap-2.5"><div class="bg-white border-2 border-dashed border-blue-200 p-3 rounded-2xl flex flex-col items-center justify-center text-center h-28 cursor-pointer"><span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold text-lg flex items-center justify-center mb-1">+</span><span class="text-xs font-bold text-blue-600">Producto</span></div><div class="bg-blue-900 text-white p-3 rounded-2xl flex flex-col justify-between h-28 cursor-pointer shadow-sm select-none">
                 <div class="text-[11px] font-bold leading-tight line-clamp-2">Snickers </div>
@@ -520,9 +542,15 @@ button,input,select,textarea{font-family:inherit}
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-bold">Artículos</h2>
                 <div class="flex items-center gap-2">
+                    <button onclick="exportarInventarioCSV()" title="Exportar inventario a CSV (Sheets)" class="bg-white border border-gray-200 text-gray-700 w-9 h-9 rounded-full font-bold text-base flex items-center justify-center shadow-sm">📤</button>
                     <button onclick="imprimirInventario()" title="Imprimir inventario" class="bg-white border border-gray-200 text-gray-700 w-9 h-9 rounded-full font-bold text-base flex items-center justify-center shadow-sm">🖨️</button>
                     <button onclick="abrirModalProducto()" class="bg-blue-600 text-white w-9 h-9 rounded-full font-bold text-lg flex items-center justify-center shadow-md" aria-label="Agregar">+</button>
                 </div>
+            </div>
+            <div id="inv-banner-sesion" class="hidden" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:14px;padding:10px 12px;font-size:12px;font-weight:700;color:#92400e"></div>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="invIniciarOContinuar()" class="bg-gray-900 text-white font-bold py-3 rounded-xl text-sm shadow-sm" style="min-height:48px">📋 Hacer inventario</button>
+                <button type="button" onclick="exportarInventarioCSV()" class="bg-white border border-gray-200 text-gray-800 font-bold py-3 rounded-xl text-sm shadow-sm" style="min-height:48px">📊 Exportar a Sheets</button>
             </div>
 
             <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
@@ -541,6 +569,48 @@ button,input,select,textarea{font-family:inherit}
             </div>
             <div class="flex justify-end mb-2"><button type="button" id="btn-sin-stock" onclick="toggleSinStock()" class="text-xs font-bold text-blue-700 bg-white border border-gray-200 rounded-xl px-3 py-2">Ver sin stock</button></div>
             <div id="lista-inventario" class="space-y-2"></div>
+        </div>
+
+        <!-- VISTA CONTEO INVENTARIO -->
+        <div id="vista-conteo" class="hidden space-y-3">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">📋 Conteo físico</h2>
+                <button type="button" onclick="cambiarVista('productos')" class="text-xs font-bold text-blue-700 bg-white border border-gray-200 rounded-xl px-3 py-2">← Inventario</button>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                <div class="flex justify-between items-baseline">
+                    <span class="text-xs text-gray-400 font-semibold" id="inv-conteo-progreso-txt">0 de 0 contados</span>
+                    <span class="text-xs font-bold text-gray-500" id="inv-conteo-tiempo"></span>
+                </div>
+                <div class="inv-prog"><div id="inv-conteo-barra" style="width:0%"></div></div>
+                <div class="flex gap-2 pt-1">
+                    <label class="flex items-center gap-2 text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 flex-1">
+                        <input type="checkbox" id="inv-conteo-ciego" onchange="invToggleCiego(this.checked)" style="width:18px;height:18px"> Conteo ciego (oculta sistema)
+                    </label>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="invResumen()" class="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm" style="min-height:48px">Ver resumen</button>
+                    <button type="button" onclick="invCancelarConteo()" class="bg-red-50 text-red-600 border border-red-200 font-bold py-3 px-4 rounded-xl text-sm" style="min-height:48px">Cancelar</button>
+                </div>
+            </div>
+            <div class="relative" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
+                <input autocomplete="off" type="text" id="buscador-conteo" placeholder="Buscar producto o código..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="invBuscarConteo(this.value)">
+                <div class="flex gap-2 mt-2 overflow-x-auto pb-1" style="scrollbar-width:none">
+                    <button type="button" class="inv-chip activo" data-f="todos" onclick="invSetFiltro('todos')">Todos</button>
+                    <button type="button" class="inv-chip" data-f="sin_contar" onclick="invSetFiltro('sin_contar')">Sin contar</button>
+                    <button type="button" class="inv-chip" data-f="con_diferencia" onclick="invSetFiltro('con_diferencia')">Con diferencia</button>
+                    <button type="button" class="inv-chip" data-f="contados" onclick="invSetFiltro('contados')">Contados</button>
+                </div>
+            </div>
+            <div id="lista-conteo" class="space-y-2"></div>
+            <div class="h-20"></div>
+            <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto px-4 pb-4 z-20" style="background:linear-gradient(180deg,transparent,#f9fafb 30%)">
+                <div class="flex gap-2">
+                    <button type="button" onclick="invExportarCSV()" class="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3.5 rounded-2xl text-sm shadow-md" style="min-height:52px">📊 CSV Sheets</button>
+                    <button type="button" onclick="invImprimirDiferencias()" class="flex-1 bg-white border border-gray-300 text-gray-800 font-bold py-3.5 rounded-2xl text-sm shadow-md" style="min-height:52px">🖨️ Ticket dif.</button>
+                    <button type="button" onclick="invResumen()" class="flex-1 bg-gray-900 text-white font-bold py-3.5 rounded-2xl text-sm shadow-md" style="min-height:52px">Resumen →</button>
+                </div>
+            </div>
         </div>
 
         <!-- VISTA TRANSACCIONES -->
@@ -614,10 +684,6 @@ button,input,select,textarea{font-family:inherit}
                 <button onclick="abrirModalClientes()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
                     <span style="display:block;min-width:0;"><span class="ajuste-label">Clientes</span><span class="ajuste-sub" id="total-clientes-badge">7 Clientes &gt;</span></span>
-                </button>
-                <button onclick="abrirModalCreditos()" class="ajuste-card">
-                    <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></span>
-                    <span style="display:block;min-width:0;"><span class="ajuste-label">Créditos</span><span class="ajuste-sub" id="badge-creditos-total" style="color:#d97706;"></span></span>
                 </button>
                 <button onclick="abrirConfigTicket()" class="ajuste-card">
                     <span class="ajuste-icono"><svg viewBox="0 0 24 24"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></svg></span>
@@ -1287,6 +1353,25 @@ button,input,select,textarea{font-family:inherit}
             <div class="flex gap-2">
                 <button onclick="cerrarModal('modal-confirmar-respaldo')" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-sm">Cancelar</button>
                 <button onclick="procesarExportarDatos()" class="flex-1 text-white font-bold py-3 rounded-xl text-sm shadow-sm bg-blue-600">Sí, guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal resumen conteo inventario -->
+    <div id="modal-inv-resumen" class="fixed inset-0 bg-black/50 z-[65] hidden flex flex-col justify-end max-w-md mx-auto">
+        <div class="bg-white rounded-t-3xl p-5 space-y-3 max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-base">📋 Resumen de conteo</h3>
+                <button onclick="cerrarModal('modal-inv-resumen')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
+            </div>
+            <div id="inv-resumen-contenido" class="space-y-3"></div>
+            <div class="space-y-2 pt-1">
+                <button type="button" onclick="invAplicarAjustes()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-md" style="min-height:52px">✅ Aplicar ajustes al stock</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="invExportarCSV()" class="bg-gray-100 text-gray-800 font-bold py-3 rounded-xl text-sm">📊 CSV Sheets</button>
+                    <button type="button" onclick="invImprimirDiferencias()" class="bg-gray-100 text-gray-800 font-bold py-3 rounded-xl text-sm">🖨️ Ticket</button>
+                </div>
+                <button type="button" onclick="cerrarModal('modal-inv-resumen')" class="w-full bg-white border border-gray-200 text-gray-600 font-bold py-3 rounded-xl text-sm">Seguir contando</button>
             </div>
         </div>
     </div>
@@ -3685,7 +3770,7 @@ function cambiarVista(v) {
     // LITE: al salir de Clientes el GPS se apaga de inmediato (antes solo lo paraba el observador o el temporizador).
     if (v !== 'clientes') { try { detenerGpsMapa(); _mapaVisible = false; } catch (e) {} }
     if (v === 'inicio' && typeof modoBotones === 'function' && !modoBotones()) v = 'clientes';
-    const vistas = ['inicio', 'clientes', 'venta', 'productos', 'transacciones', 'mas', 'estadisticas', 'promos'];
+    const vistas = ['inicio', 'clientes', 'venta', 'productos', 'conteo', 'transacciones', 'mas', 'estadisticas', 'promos'];
     vistas.forEach(vista => {
         const el = $(`vista-${vista}`);
         const nav = $(`nav-${vista}`);
@@ -3697,7 +3782,7 @@ function cambiarVista(v) {
     });
 
     // Estadísticas se abre desde Más; resaltar Más
-    const navKey = v === 'estadisticas' ? 'mas' : v;
+    const navKey = v === 'estadisticas' ? 'mas' : (v === 'conteo' ? 'productos' : v);
     const vistaActiva = $(`vista-${v}`);
     const navActivo = $(`nav-${navKey}`);
     if (vistaActiva) vistaActiva.classList.remove('hidden');
@@ -3706,12 +3791,13 @@ function cambiarVista(v) {
         navActivo.classList.remove('text-gray-700', 'font-medium');
     }
 
-    const labels = { inicio: 'Inicio', clientes: 'Clientes', mas: 'Ajustes', venta: 'Ventas', productos: 'Inventario', estadisticas: 'Estadísticas', promos: 'Promociones' };
+    const labels = { inicio: 'Inicio', clientes: 'Clientes', mas: 'Ajustes', venta: 'Ventas', productos: 'Inventario', conteo: 'Conteo físico', estadisticas: 'Estadísticas', promos: 'Promociones' };
     $('txt-modo').innerText = labels[v] || (v.charAt(0).toUpperCase() + v.slice(1));
 
     if (v === 'clientes') renderListaClientesInicio();
-    if (v === 'venta') renderVenta();
-    if (v === 'productos') renderInventario();
+    if (v === 'venta') { renderVenta(); try { actualizarBadgeCreditos(); } catch(e){} }
+    if (v === 'productos') { renderInventario(); invPintarBannerSesion(); }
+    if (v === 'conteo') invRenderConteo();
     if (v === 'transacciones') { limiteTrans = 80; inicializarFiltrosFechas(); renderTransacciones(); }
     if (v === 'mas') { actualizarContadorClientesUI(); actualizarBadgeCreditos(); }
     if (v === 'estadisticas') renderEstadisticas();
@@ -4540,7 +4626,8 @@ function actualizarBadgeCreditos() {
     const badge = $('badge-creditos-total');
     if (!badge) return;
     const total = obtenerCreditosPorCliente().reduce((a, c) => a + c.saldo, 0);
-    badge.innerText = total > 0 ? money(total) : '';
+    badge.innerText = total > 0 ? money(total) : 'Sin adeudo';
+    badge.style.opacity = total > 0 ? '1' : '.75';
 }
 
 function abrirModalCreditos() {
@@ -4926,6 +5013,446 @@ async function eliminarProductoDesdeModal() {
     renderInventario();
     renderVenta();
 }
+
+
+// -------------------- INVENTARIO EFECTIVO (conteo físico) --------------------
+const INV_CONTEO_KEY = 'digar_inventario_conteo_v1';
+let invConteo = null;
+let invConteoFiltro = 'todos';
+let invConteoBusqueda = '';
+let invConteoLimite = 80;
+let _invGuardarTimer = null;
+
+function invCargarSesion() {
+    try {
+        const raw = localStorage.getItem(INV_CONTEO_KEY);
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (!s || !s.snapshot || typeof s.snapshot !== 'object') return null;
+        return s;
+    } catch (e) { return null; }
+}
+function invGuardarSesion() {
+    try { localStorage.setItem(INV_CONTEO_KEY, JSON.stringify(invConteo)); } catch (e) {}
+}
+function invGuardarSesionPronto() {
+    if (_invGuardarTimer) return;
+    _invGuardarTimer = setTimeout(() => { _invGuardarTimer = null; invGuardarSesion(); }, 250);
+}
+function _invVaciarGuardado() { if (_invGuardarTimer) { clearTimeout(_invGuardarTimer); _invGuardarTimer = null; try { invGuardarSesion(); } catch(e){} } }
+try { window.addEventListener('pagehide', _invVaciarGuardado); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') _invVaciarGuardado(); }); } catch(e){}
+function invBorrarSesion() {
+    invConteo = null;
+    try { localStorage.removeItem(INV_CONTEO_KEY); } catch (e) {}
+    invPintarBannerSesion();
+}
+function invPintarBannerSesion() {
+    const el = $('inv-banner-sesion');
+    if (!el) return;
+    const s = invCargarSesion();
+    if (!s) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+    const total = Object.keys(s.snapshot || {}).length;
+    const contados = Object.values(s.conteos || {}).filter(v => v !== null && v !== undefined && v !== '').length;
+    const fecha = s.inicio ? new Date(s.inicio).toLocaleString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+    el.classList.remove('hidden');
+    el.innerHTML = `⏳ Inventario en curso (${contados}/${total} contados) · ${fecha} <button type="button" onclick="invContinuarConteo()" style="background:#92400e;color:#fff;border:0;border-radius:8px;padding:6px 10px;font-weight:800;font-size:11px;margin-left:6px">Continuar</button> <button type="button" onclick="invCancelarConteo()" style="background:transparent;color:#92400e;border:1px solid #92400e;border-radius:8px;padding:6px 8px;font-weight:800;font-size:11px;margin-left:4px">Cancelar</button>`;
+}
+async function invIniciarOContinuar() {
+    const s = invCargarSesion();
+    if (s) {
+        const total = Object.keys(s.snapshot || {}).length;
+        const contados = Object.values(s.conteos || {}).filter(v => v !== null && v !== undefined && v !== '').length;
+        if (!await confirmarPro(`Tienes un inventario en curso (${contados}/${total} contados).\n\n¿Quieres continuar donde ibas?`)) return;
+        invContinuarConteo();
+        return;
+    }
+    // Preguntar modo ciego
+    const ciego = await confirmarPro('¿Quieres hacer conteo ciego?\n\nSí = no verás el stock del sistema mientras cuentas (más exacto).\nNo = verás el stock del sistema para comparar.');
+    invIniciarConteo(!!ciego);
+}
+function invIniciarConteo(ciego) {
+    const snapshot = {};
+    const conteos = {};
+    productos.forEach(p => {
+        const id = String(p.id);
+        snapshot[id] = Number(p.stock) || 0;
+        conteos[id] = null;
+    });
+    invConteo = { idSesion: Date.now(), inicio: Date.now(), ciego: !!ciego, snapshot, conteos };
+    invConteoFiltro = 'todos';
+    invConteoBusqueda = '';
+    invConteoLimite = 80;
+    const b = $('buscador-conteo'); if (b) b.value = '';
+    invGuardarSesion();
+    invPintarBannerSesion();
+    cambiarVista('conteo');
+    if (window.toast) window.toast('Inventario iniciado. Cuenta y toca + o escribe la cantidad.');
+}
+function invContinuarConteo() {
+    const s = invCargarSesion();
+    if (!s) { invIniciarOContinuar(); return; }
+    invConteo = s;
+    // Añadir productos nuevos creados después de iniciar
+    let cambio = false;
+    productos.forEach(p => {
+        const id = String(p.id);
+        if (!(id in invConteo.snapshot)) { invConteo.snapshot[id] = Number(p.stock) || 0; invConteo.conteos[id] = null; cambio = true; }
+    });
+    if (cambio) invGuardarSesion();
+    const cb = $('inv-conteo-ciego'); if (cb) cb.checked = !!invConteo.ciego;
+    cambiarVista('conteo');
+}
+async function invCancelarConteo() {
+    const s = invCargarSesion() || invConteo;
+    if (!s) { invBorrarSesion(); return; }
+    const contados = Object.values(s.conteos || {}).filter(v => v !== null && v !== undefined && v !== '').length;
+    if (!await confirmarPro(`¿Cancelar el inventario?\n\nSe perderán ${contados} conteos guardados. El stock NO se cambia.`)) return;
+    invBorrarSesion();
+    cambiarVista('productos');
+    if (window.toast) window.toast('Inventario cancelado. Stock sin cambios.');
+}
+function invToggleCiego(v) {
+    if (!invConteo) invConteo = invCargarSesion();
+    if (!invConteo) return;
+    invConteo.ciego = !!v;
+    invGuardarSesionPronto();
+    invRenderConteo();
+}
+function invSetFiltro(f) {
+    invConteoFiltro = f;
+    invConteoLimite = 80;
+    document.querySelectorAll('#vista-conteo .inv-chip').forEach(c => c.classList.toggle('activo', c.dataset.f === f));
+    invRenderConteo();
+}
+const invBuscarDebounced = debounce(val => { invConteoBusqueda = val || ''; invConteoLimite = 80; invRenderConteo(); }, 180);
+function invBuscarConteo(val) { invBuscarDebounced(val); }
+
+function invSetConteo(prodId, valor) {
+    if (!invConteo) invConteo = invCargarSesion();
+    if (!invConteo) return;
+    const id = String(prodId);
+    if (valor === '' || valor === null || valor === undefined) invConteo.conteos[id] = null;
+    else {
+        const n = parseInt(valor, 10);
+        invConteo.conteos[id] = isNaN(n) ? null : Math.max(0, n);
+    }
+    invGuardarSesionPronto();
+    invActualizarFilaConteo(id);
+    invActualizarProgreso();
+}
+function invCambiarConteo(prodId, delta) {
+    if (!invConteo) invConteo = invCargarSesion();
+    if (!invConteo) return;
+    const id = String(prodId);
+    const actual = invConteo.conteos[id];
+    const base = (actual === null || actual === undefined || actual === '') ? 0 : Number(actual);
+    const nuevo = Math.max(0, base + delta);
+    invConteo.conteos[id] = nuevo;
+    invGuardarSesionPronto();
+    invActualizarFilaConteo(id);
+    invActualizarProgreso();
+}
+function invSetCero(prodId) { invSetConteo(prodId, 0); }
+
+function invActualizarProgreso() {
+    if (!invConteo) invConteo = invCargarSesion();
+    const txt = $('inv-conteo-progreso-txt');
+    const barra = $('inv-conteo-barra');
+    const tiempo = $('inv-conteo-tiempo');
+    if (!invConteo) { if (txt) txt.innerText = '0 de 0 contados'; if (barra) barra.style.width = '0%'; return; }
+    const total = Object.keys(invConteo.snapshot || {}).length;
+    const contados = Object.values(invConteo.conteos || {}).filter(v => v !== null && v !== undefined && v !== '').length;
+    if (txt) txt.innerText = `${contados} de ${total} contados`;
+    if (barra) barra.style.width = total ? Math.round(contados / total * 100) + '%' : '0%';
+    if (tiempo && invConteo.inicio) {
+        const mins = Math.max(0, Math.round((Date.now() - invConteo.inicio) / 60000));
+        tiempo.innerText = mins < 1 ? 'recién iniciado' : `${mins} min`;
+    }
+}
+function invActualizarFilaConteo(prodId) {
+    const id = String(prodId);
+    const fila = document.querySelector(`[data-inv-id="${id}"]`);
+    if (!fila) return;
+    const p = productos.find(x => String(x.id) === id);
+    if (!p) return;
+    const sistema = Number(invConteo.snapshot[id]) || 0;
+    const contadoRaw = invConteo.conteos[id];
+    const contado = (contadoRaw === null || contadoRaw === undefined || contadoRaw === '') ? null : Number(contadoRaw);
+    const inp = fila.querySelector('.inv-input');
+    if (inp && document.activeElement !== inp) inp.value = contado === null ? '' : contado;
+    const diffEl = fila.querySelector('[data-inv-diff]');
+    if (diffEl) {
+        if (contado === null) { diffEl.innerHTML = '<span class="text-gray-400">Sin contar</span>'; diffEl.className = 'text-xs'; }
+        else {
+            const d = contado - sistema;
+            if (d === 0) { diffEl.innerHTML = '✓ Igual'; diffEl.className = 'text-xs inv-diff-ok'; }
+            else if (d > 0) { diffEl.innerHTML = `+${d} sobra`; diffEl.className = 'text-xs inv-diff-bad'; }
+            else { diffEl.innerHTML = `${d} falta`; diffEl.className = 'text-xs inv-diff-bad'; }
+        }
+    }
+    fila.classList.toggle('inv-card-contado', contado !== null);
+    const btnCero = fila.querySelector('[data-inv-cero]');
+    if (btnCero) btnCero.style.opacity = contado === 0 ? '1' : '.55';
+}
+function invRenderConteo() {
+    if (!invConteo) invConteo = invCargarSesion();
+    if (!invConteo) { cambiarVista('productos'); return; }
+    const cb = $('inv-conteo-ciego'); if (cb) cb.checked = !!invConteo.ciego;
+    invActualizarProgreso();
+    const lista = $('lista-conteo');
+    if (!lista) return;
+    const q = (invConteoBusqueda || '').toLowerCase().trim();
+    let filtrados = productos.filter(p => {
+        const id = String(p.id);
+        const contadoRaw = invConteo.conteos[id];
+        const contado = (contadoRaw === null || contadoRaw === undefined || contadoRaw === '') ? null : Number(contadoRaw);
+        const sistema = Number(invConteo.snapshot[id]) || 0;
+        if (q && !(p.nombre.toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q))) return false;
+        if (invConteoFiltro === 'sin_contar') return contado === null;
+        if (invConteoFiltro === 'contados') return contado !== null;
+        if (invConteoFiltro === 'con_diferencia') return contado !== null && contado !== sistema;
+        return true;
+    });
+    filtrados.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
+    const totalF = filtrados.length;
+    const visibles = filtrados.slice(0, invConteoLimite);
+    const frag = document.createDocumentFragment();
+    if (!visibles.length) {
+        const d = document.createElement('div');
+        d.className = 'text-center text-sm text-gray-400 py-8';
+        d.innerText = invConteoFiltro === 'con_diferencia' ? 'Sin diferencias todavía 🎉' : 'Sin productos';
+        frag.appendChild(d);
+    }
+    visibles.forEach(p => {
+        const id = String(p.id);
+        const sistema = Number(invConteo.snapshot[id]) || 0;
+        const contadoRaw = invConteo.conteos[id];
+        const contado = (contadoRaw === null || contadoRaw === undefined || contadoRaw === '') ? null : Number(contadoRaw);
+        const div = document.createElement('div');
+        div.className = 'bg-white p-3 rounded-xl border border-gray-100 shadow-sm' + (contado !== null ? ' inv-card-contado' : '');
+        div.setAttribute('data-inv-id', id);
+        const sistemaTxt = invConteo.ciego ? '<span class="text-gray-400">Sistema: ••• (ciego)</span>' : `Sistema: <b>${sistema}</b>`;
+        let diffTxt = '<span class="text-gray-400">Sin contar</span>';
+        let diffCls = 'text-xs';
+        if (contado !== null) {
+            const d = contado - sistema;
+            if (d === 0) { diffTxt = '✓ Igual'; diffCls = 'text-xs inv-diff-ok'; }
+            else if (d > 0) { diffTxt = `+${d} sobra`; diffCls = 'text-xs inv-diff-bad'; }
+            else { diffTxt = `${d} falta`; diffCls = 'text-xs inv-diff-bad'; }
+        }
+        div.innerHTML = `
+            <div class="flex justify-between items-start gap-2">
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-gray-900 text-sm leading-tight">${escHtml(p.nombre)}</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5">${p.sku ? escHtml(p.sku) + ' · ' : ''}${sistemaTxt} · Venta ${money(p.precio)}</p>
+                    <p class="${diffCls} mt-1" data-inv-diff>${diffTxt}</p>
+                </div>
+                <button type="button" data-inv-cero onclick="invSetCero('${id}')" title="Marcar 0" style="flex:none;width:38px;height:38px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;font-size:11px;font-weight:900;color:#374151;opacity:${contado===0?'1':'.55'}">0</button>
+            </div>
+            <div class="inv-stepper mt-2">
+                <button type="button" class="inv-btn" style="background:#fee2e2;color:#b91c1c" onclick="invCambiarConteo('${id}',-1)" aria-label="Quitar uno">−</button>
+                <input type="number" inputmode="numeric" min="0" class="inv-input" placeholder="—" value="${contado===null?'':contado}" onchange="invSetConteo('${id}', this.value)" onfocus="this.select()">
+                <button type="button" class="inv-btn" style="background:#dcfce7;color:#166534" onclick="invCambiarConteo('${id}',1)" aria-label="Sumar uno">+</button>
+                <button type="button" class="inv-btn" style="background:#e0e7ff;color:#3730a3;font-size:14px;width:52px" onclick="invCambiarConteo('${id}',5)" aria-label="Sumar 5">+5</button>
+                <button type="button" class="inv-btn" style="background:#fef3c7;color:#92400e;font-size:14px;width:52px" onclick="invCambiarConteo('${id}',10)" aria-label="Sumar 10">+10</button>
+            </div>`;
+        frag.appendChild(div);
+    });
+    lista.innerHTML = '';
+    lista.appendChild(frag);
+    if (totalF > invConteoLimite) {
+        const mas = document.createElement('button'); mas.type = 'button';
+        mas.className = 'w-full py-3 rounded-xl text-sm font-bold bg-gray-100 text-gray-700';
+        mas.textContent = `Ver más (${totalF - invConteoLimite} restantes)`;
+        mas.addEventListener('click', () => { invConteoLimite += 80; invRenderConteo(); });
+        lista.appendChild(mas);
+    }
+}
+
+// ---- Resumen, diferencias, aplicar, exportar, imprimir ----
+function invCalcularDiferencias() {
+    const s = invConteo || invCargarSesion();
+    if (!s) return { filas: [], contados: 0, total: 0, sinContar: 0, conDif: 0, valorDifCosto: 0, valorDifVenta: 0 };
+    const filas = [];
+    let contados = 0, conDif = 0, valorDifCosto = 0, valorDifVenta = 0;
+    productos.forEach(p => {
+        const id = String(p.id);
+        const sistema = Number(s.snapshot[id]) || 0;
+        const cRaw = s.conteos[id];
+        const contado = (cRaw === null || cRaw === undefined || cRaw === '') ? null : Number(cRaw);
+        if (contado !== null) contados++;
+        if (contado !== null && contado !== sistema) {
+            const d = contado - sistema;
+            conDif++;
+            valorDifCosto += d * (Number(p.costo) || 0);
+            valorDifVenta += d * (Number(p.precio) || 0);
+            filas.push({ p, sistema, contado, dif: d });
+        }
+    });
+    filas.sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif));
+    return { filas, contados, total: productos.length, sinContar: productos.length - contados, conDif, valorDifCosto, valorDifVenta };
+}
+function invResumen() {
+    if (!invConteo) invConteo = invCargarSesion();
+    if (!invConteo) { if (window.toast) window.toast('No hay inventario en curso'); return; }
+    const r = invCalcularDiferencias();
+    const cont = $('inv-resumen-contenido');
+    if (!cont) return;
+    const fecha = invConteo.inicio ? new Date(invConteo.inicio).toLocaleString('es-MX') : '';
+    let htmlRes = `
+        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-3 text-sm space-y-1">
+            <div class="flex justify-between"><span class="text-gray-500">Inicio</span><b>${escHtml(fecha)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">Contados</span><b>${r.contados} / ${r.total}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">Sin contar</span><b>${r.sinContar}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">Con diferencia</span><b class="${r.conDif?'text-red-600':'text-emerald-600'}">${r.conDif}</b></div>
+            <div class="flex justify-between border-t pt-1"><span class="text-gray-500">Valor dif. (costo)</span><b>${money(r.valorDifCosto)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">Valor dif. (venta)</span><b>${money(r.valorDifVenta)}</b></div>
+        </div>`;
+    if (r.sinContar > 0) htmlRes += `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2">⚠️ Faltan ${r.sinContar} productos sin contar. Si aplicas ahora, solo se ajustarán los contados.</p>`;
+    if (!r.filas.length) htmlRes += `<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center font-bold">🎉 Sin diferencias en lo contado</p>`;
+    else {
+        htmlRes += `<div class="space-y-1.5">` + r.filas.slice(0, 60).map(f => `
+            <div class="flex justify-between items-center text-sm border border-gray-100 rounded-xl p-2.5">
+                <div class="flex-1 min-w-0"><p class="font-bold text-gray-900 truncate">${escHtml(f.p.nombre)}</p><p class="text-[11px] text-gray-500">Sistema ${f.sistema} → Contado ${f.contado}</p></div>
+                <span class="font-black ${f.dif>0?'text-red-600':'text-red-600'}">${f.dif>0?'+':''}${f.dif}</span>
+            </div>`).join('') + `</div>`;
+        if (r.filas.length > 60) htmlRes += `<p class="text-xs text-gray-400 text-center">Mostrando 60 de ${r.filas.length} diferencias (el CSV trae todas).</p>`;
+    }
+    cont.innerHTML = htmlRes;
+    $('modal-inv-resumen').classList.remove('hidden');
+}
+async function invAplicarAjustes() {
+    if (!invConteo) invConteo = invCargarSesion();
+    if (!invConteo) return;
+    const r = invCalcularDiferencias();
+    if (!r.filas.length && r.contados === 0) { if (window.toast) window.toast('No hay nada contado para aplicar'); return; }
+    const sin = r.sinContar;
+    const msg = `Se ajustará el stock de ${r.contados} productos contados.\n\n${r.conDif} tienen diferencia (valor costo ${money(r.valorDifCosto)}).` + (sin ? `\n\n⚠️ ${sin} productos NO se contaron y quedarán como están.` : '') + `\n\n¿Aplicar ajustes?`;
+    if (!await confirmarPro(msg)) return;
+    // Guardar historial antes de borrar
+    try {
+        const hist = JSON.parse(localStorage.getItem('digar_inventario_historial') || '[]');
+        hist.unshift({ fecha: new Date().toISOString(), inicio: invConteo.inicio, contados: r.contados, conDif: r.conDif, valorDifCosto: r.valorDifCosto, filas: r.filas.map(f => ({ nombre: f.p.nombre, sku: f.p.sku || '', sistema: f.sistema, contado: f.contado, dif: f.dif })) });
+        localStorage.setItem('digar_inventario_historial', JSON.stringify(hist.slice(0, 20)));
+    } catch (e) {}
+    // Aplicar
+    productos.forEach(p => {
+        const id = String(p.id);
+        const cRaw = invConteo.conteos[id];
+        if (cRaw === null || cRaw === undefined || cRaw === '') return;
+        p.stock = Math.max(0, Number(cRaw) || 0);
+    });
+    guardarTodo();
+    invBorrarSesion();
+    cerrarModal('modal-inv-resumen');
+    cambiarVista('productos');
+    renderInventario();
+    if (window.toast) window.toast(`✅ Stock actualizado: ${r.contados} contados, ${r.conDif} con ajuste.`);
+}
+function _csvEsc(v) {
+    const s = String(v == null ? '' : v);
+    return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function _descargarCSV(nombre, contenido) {
+    const blob = new Blob(["\uFEFF" + contenido], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return url;
+}
+async function _compartirOCsv(nombre, contenido) {
+    // Intenta compartir el archivo (Sheets/Drive/WhatsApp) si el teléfono lo permite
+    try {
+        const file = new File(["\uFEFF" + contenido], nombre, { type: 'text/csv;charset=utf-8' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'Inventario DIGAR' });
+            return true;
+        }
+    } catch (e) { if (e && e.name === 'AbortError') return true; }
+    _descargarCSV(nombre, contenido);
+    return true;
+}
+function invExportarCSV() {
+    const s = invConteo || invCargarSesion();
+    const fecha = hoy();
+    const nombre = `inventario_digar_${fecha}.csv`;
+    let csv;
+    if (s) {
+        const r = invCalcularDiferencias();
+        const mapaDif = {};
+        r.filas.forEach(f => { mapaDif[String(f.p.id)] = f; });
+        const header = ['Producto','SKU','Categoria','Stock sistema','Stock contado','Diferencia','Precio venta','Costo','Valor dif costo','Valor dif venta','Estado'];
+        const lines = [header.join(',')];
+        [...productos].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')).forEach(p => {
+            const id = String(p.id);
+            const sistema = Number(s.snapshot[id]) || 0;
+            const cRaw = s.conteos[id];
+            const contado = (cRaw === null || cRaw === undefined || cRaw === '') ? '' : Number(cRaw);
+            const dif = contado === '' ? '' : (Number(contado) - sistema);
+            const estado = contado === '' ? 'Sin contar' : (dif === 0 ? 'OK' : (dif > 0 ? 'Sobra' : 'Falta'));
+            const vdCosto = dif === '' ? '' : (dif * (Number(p.costo)||0)).toFixed(2);
+            const vdVenta = dif === '' ? '' : (dif * (Number(p.precio)||0)).toFixed(2);
+            lines.push([p.nombre, p.sku||'', p.categoria||'', sistema, contado, dif, (Number(p.precio)||0).toFixed(2), (Number(p.costo)||0).toFixed(2), vdCosto, vdVenta, estado].map(_csvEsc).join(','));
+        });
+        csv = lines.join('\n');
+    } else {
+        const header = ['Producto','SKU','Categoria','Stock','Precio venta','Costo','Valor stock costo','Valor stock venta','Margen %'];
+        const lines = [header.join(',')];
+        [...productos].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')).forEach(p => {
+            const stock = Number(p.stock)||0;
+            const margen = (Number(p.costo)||0) > 0 ? (((Number(p.precio)||0)-(Number(p.costo)||0))/(Number(p.costo)||0)*100).toFixed(1) : '';
+            lines.push([p.nombre, p.sku||'', p.categoria||'', stock, (Number(p.precio)||0).toFixed(2), (Number(p.costo)||0).toFixed(2), (stock*(Number(p.costo)||0)).toFixed(2), (stock*(Number(p.precio)||0)).toFixed(2), margen].map(_csvEsc).join(','));
+        });
+        csv = lines.join('\n');
+    }
+    _compartirOCsv(nombre, csv);
+    if (window.toast) window.toast('CSV listo. Ábrelo en Google Sheets (Archivo → Importar).');
+}
+function exportarInventarioCSV() { invExportarCSV(); }
+async function invImprimirDiferencias() {
+    const s = invConteo || invCargarSesion();
+    if (!s) { if (window.toast) window.toast('No hay inventario en curso para imprimir diferencias'); return; }
+    const r = invCalcularDiferencias();
+    const encoder = new TextEncoder();
+    const enc = (x) => encoder.encode(limpiarTxt(x));
+    const cmds = [ new Uint8Array([0x1B, 0x40]), new Uint8Array([0x1B, 0x61, 0x01]) ];
+    if (configTicket.showNombre !== false) {
+        const nombreLimpio = limpiarTxt(configTicket.negocio || '').trim();
+        cmds.push(enc(`\n********************************\n`));
+        if (nombreLimpio && nombreLimpio.length <= 16) {
+            cmds.push(new Uint8Array([0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11]));
+            cmds.push(enc(`${nombreLimpio}\n`));
+            cmds.push(new Uint8Array([0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00]));
+        } else cmds.push(enc(`${nombreLimpio}\n`));
+        cmds.push(enc(`********************************\n`));
+    } else cmds.push(enc(`\n`));
+    if (configTicket.direccion) cmds.push(enc(`${configTicket.direccion}\n`));
+    if (configTicket.telefono) cmds.push(enc(`Tel: ${configTicket.telefono}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`CONTEO INVENTARIO\n`));
+    cmds.push(enc(`${fechaCompactaImpresion(s.inicio || Date.now())}\n`));
+    cmds.push(enc(`Contados: ${r.contados}/${r.total} Dif: ${r.conDif}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(new Uint8Array([0x1B, 0x61, 0x00]));
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`${padRight('PRODUCTO', 14)}${padLeft('SIS', 4)}${padLeft('CONT', 5)}${padLeft('DIF', 5)}${padLeft('COSTO', 4)}\n`));
+    if (!r.filas.length) cmds.push(enc(`Sin diferencias\n`));
+    else r.filas.forEach(f => {
+        const nom = (f.p.nombre || '').slice(0, 14);
+        cmds.push(enc(`${padRight(nom, 14)}${padLeft(f.sistema, 4)}${padLeft(f.contado, 5)}${padLeft((f.dif>0?'+':'')+f.dif, 5)}${padLeft(money((Number(f.p.costo)||0)), 4)}\n`));
+    });
+    cmds.push(enc(`--------------------------------\n`));
+    cmds.push(enc(`Valor dif costo: ${money(r.valorDifCosto)}\n`));
+    cmds.push(enc(`Valor dif venta: ${money(r.valorDifVenta)}\n`));
+    cmds.push(enc(`================================\n`));
+    cmds.push(enc(`\n\n\n`));
+    await enviarComandosImpresora(cmds);
+}
+// Pintar banner al cargar
+try { document.addEventListener('DOMContentLoaded', () => { try { invPintarBannerSesion(); } catch(e){} }); } catch(e){}
+
 
 // -------------------- COMPRAS (3 pasos) --------------------
 function compraSubtotal() {

@@ -2421,7 +2421,7 @@ function gpsError(e) {
 }
 
 // ---- Piezas del mapa: memoria + cola de descarga con prioridad ----
-const MAPA_MEM_MAX = 300, MAPA_CONC = 6;
+const MAPA_MEM_MAX = 200, MAPA_CONC = 4;
 const _mapaMem = new Map(), _mapaVivos = new Set(), _mapaCola = [];
 let _mapaActivas = 0;
 function mapaEnUso() {
@@ -2448,7 +2448,7 @@ function mapaBombear() {
     while (_mapaActivas < MAPA_CONC && _mapaCola.length) {
         let bi = 0, bp = Infinity;
         for (let i = 0; i < _mapaCola.length; i++) {
-            const p = _mapaCola[i].owner.prioTile(_mapaCola[i]);
+            const p = _mapaCola[i]._prio !== undefined ? _mapaCola[i]._prio : _mapaCola[i].owner.prioTile(_mapaCola[i]);
             if (p < bp) { bp = p; bi = i; }
         }
         const t = _mapaCola.splice(bi, 1)[0];
@@ -2487,7 +2487,7 @@ class MapaDigar {
         this.tiles = new Map(); this.ghosts = []; this.pins = []; this.pinEls = []; this._idx = new Map();
         this.sel = null; this._selPrev = null; this.yo = null; this.yoEl = null; this.yoAccEl = null; this.yoAcc = 0;
         this.ptrs = new Map(); this.onPin = null; this.onTap = null; this._raf = 0; this.tap = null; this.pinched = false; this.pd = 0; this.tocado = false;
-        this.az = null; this.bx = 0; this.by = 0; this._rk = ''; this._pinsSucio = true; this._yoSucio = true; this._cx = 0; this._cy = 0; this._gt = 0;
+        this.az = null; this.bx = 0; this.by = 0; this._rk = ''; this._pinsSucio = true; this._yoSucio = true; this._cx = 0; this._cy = 0; this._gt = 0; this._powC = new Map(); this._pinXY = []; this._pinVis = []; this._roT = 0;
         el.classList.add('mapd');
         el.innerHTML = '<div class="mapd-grid"></div><div class="mapd-tl"></div><div class="mapd-pl"></div>' +
             '<div class="mapd-msg">Sin mapa guardado en esta zona. Se ven solo los pines.</div>' +
@@ -2503,11 +2503,12 @@ class MapaDigar {
         el.addEventListener('pointerup', e => this._up(e, false));
         el.addEventListener('pointercancel', e => this._up(e, true));
         el.addEventListener('wheel', e => { e.preventDefault(); this.zoomBy(e.deltaY < 0 ? 1 : -1); }, { passive: false });
-        if (window.ResizeObserver) new ResizeObserver(() => this._sched()).observe(el);
+        if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(this._roT); this._roT = setTimeout(() => this._sched(), 60); }).observe(el);
         _mapaVivos.add(this);
         this._sched();
     }
     _sched() { if (this._raf) return; this._raf = requestAnimationFrame(() => { this._raf = 0; this.render(); }); }
+    _pow(z) { let v = this._powC.get(z); if (v === undefined) { v = Math.pow(2, z); this._powC.set(z, v); } return v; }
     _ll(px, py) {
         const w = this.el.clientWidth, h = this.el.clientHeight, z = this.z;
         const ox = mapaLngX(this.c.lng, z) - w / 2, oy = mapaLatY(this.c.lat, z) - h / 2;
@@ -2573,7 +2574,7 @@ class MapaDigar {
             fr.appendChild(d); this.pinEls.push(d); this._idx.set(String(p.id), i);
         });
         this.pl.appendChild(fr);
-        this._selPrev = null; this._pinsSucio = true; this._yoSucio = true;
+        this._selPrev = null; this._pinsSucio = true; this._yoSucio = true; this._pinXY = []; this._pinVis = [];
         this._sched();
     }
     fit() {
@@ -2600,6 +2601,7 @@ class MapaDigar {
         this._rk = ''; this.el.classList.remove('sin-tiles'); this._sched();
     }
     prioTile(t) { return t.z !== this.z ? 1e9 : Math.hypot(t.tx + 0.5 - this._cx, t.ty + 0.5 - this._cy); }
+    _prioDe(tx, ty, z) { return z !== this.z ? 1e9 : Math.hypot(tx + 0.5 - this._cx, ty + 0.5 - this._cy); }
     _soltar(img) {
         const t = img._t;
         if (t) { t.cancel = true; if (t.ctrl && !img.dataset.ok) { try { t.ctrl.abort(); } catch (e) {} } }
@@ -2623,11 +2625,11 @@ class MapaDigar {
             const old = this.tl;
             old._z = this.az; old._bx = this.bx; old._by = this.by;
             this.ghosts.push(old);
-            while (this.ghosts.length > 2) this.ghosts.shift().remove();
+            while (this.ghosts.length > 1) this.ghosts.shift().remove();
             const nl = document.createElement('div'); nl.className = 'mapd-tl';
             this.el.insertBefore(nl, this.pl); this.tl = nl;
             this.tiles = new Map(); this._rk = '';
-            clearTimeout(this._gt); this._gt = setTimeout(() => this._quitarGhosts(true), 4000);
+            clearTimeout(this._gt); this._gt = setTimeout(() => this._quitarGhosts(true), 2500);
         }
         this._anclar(ox, oy);
     }
@@ -2638,6 +2640,7 @@ class MapaDigar {
         img.style.transform = 'translate(' + (tx * 256 - this.bx) + 'px,' + (ty * 256 - this.by) + 'px)';
         this.tl.appendChild(img); this.tiles.set(key, img);
         const t = { key: img.dataset.k, z, x: wx, y: ty, tx, ty, owner: this, cancel: false, ctrl: null, reint: 0 };
+        t._prio = this._prioDe(tx, ty, z);
         img._t = t;
         t.done = u => {
             if (t.cancel) return;
@@ -2654,7 +2657,7 @@ class MapaDigar {
         return img;
     }
     _piezas(ox, oy, w, h, z, max) {
-        const M = 128; // medio tramo extra alrededor para que al arrastrar no se vean huecos
+        const M = 192; // tramo extra alrededor para que al arrastrar no se vean huecos
         const x0 = Math.floor((ox - M) / 256), x1 = Math.floor((ox + w + M) / 256), y0 = Math.floor((oy - M) / 256), y1 = Math.floor((oy + h + M) / 256);
         const rk = x0 + ',' + x1 + ',' + y0 + ',' + y1 + ',' + z;
         if (rk === this._rk) return; // mismo bloque de piezas: no hay nada que revisar
@@ -2676,8 +2679,25 @@ class MapaDigar {
     _posPins(z) {
         this._pinsSucio = false;
         const bx = this.bx, by = this.by, ps = this.pins, els = this.pinEls;
-        for (let i = 0; i < ps.length; i++) {
-            els[i].style.transform = 'translate(' + Math.round(mapaLngX(ps[i].lng, z) - bx) + 'px,' + Math.round(mapaLatY(ps[i].lat, z) - by) + 'px)';
+        const n = ps.length;
+        if (this._pinXY.length !== n) { this._pinXY = new Array(n); this._pinVis = new Array(n).fill(false); }
+        for (let i = 0; i < n; i++) {
+            const x = mapaLngX(ps[i].lng, z), y = mapaLatY(ps[i].lat, z);
+            this._pinXY[i] = [x, y];
+            els[i].style.transform = 'translate(' + Math.round(x - bx) + 'px,' + Math.round(y - by) + 'px)';
+        }
+        this._cullPins();
+    }
+    _cullPins() {
+        const n = this.pinEls.length;
+        if (!n || !this._pinXY.length) return;
+        const w = this.el.clientWidth || 320, h = this.el.clientHeight || 320;
+        const ox = mapaLngX(this.c.lng, this.z) - w / 2, oy = mapaLatY(this.c.lat, this.z) - h / 2;
+        const x0 = ox - 60, x1 = ox + w + 60, y0 = oy - 60, y1 = oy + h + 60;
+        for (let i = 0; i < n; i++) {
+            const xy = this._pinXY[i]; if (!xy) continue;
+            const vis = xy[0] >= x0 && xy[0] <= x1 && xy[1] >= y0 && xy[1] <= y1;
+            if (vis !== this._pinVis[i]) { this._pinVis[i] = vis; this.pinEls[i].style.display = vis ? '' : 'none'; }
         }
     }
     _selPin() {
@@ -2705,7 +2725,7 @@ class MapaDigar {
     render() {
         const w = this.el.clientWidth, h = this.el.clientHeight;
         if (!w || !h) return;
-        const z = this.z, max = Math.pow(2, z);
+        const z = this.z, max = this._pow(z);
         const cx = mapaLngX(this.c.lng, z), cy = mapaLatY(this.c.lat, z), ox = cx - w / 2, oy = cy - h / 2;
         this._cx = cx / 256; this._cy = cy / 256;
         if (this.az !== z) this._cambiarZoom(ox, oy);
@@ -2716,11 +2736,12 @@ class MapaDigar {
         for (let i = this.ghosts.length - 1; i >= 0; i--) {
             const g = this.ghosts[i], dz = z - g._z;
             if (Math.abs(dz) > 2) { g.remove(); this.ghosts.splice(i, 1); continue; }
-            const s = Math.pow(2, dz);
+            const s = this._pow(dz);
             g.style.transform = 'translate3d(' + (s * g._bx - ox) + 'px,' + (s * g._by - oy) + 'px,0) scale(' + s + ')';
         }
         this._piezas(ox, oy, w, h, z, max);
         if (this._pinsSucio) this._posPins(z);
+        else if (this._pinXY.length) this._cullPins();
         this._selPin();
         this._posYo(z);
     }
@@ -2759,15 +2780,22 @@ function mapaClientesFiltrados() {
     const inp = $('buscador-clientes');
     const term = quitarAcentos(inp ? inp.value : '').trim();
     let lista = [...clientes];
-    if (term) lista = lista.filter(c => quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || '')).includes(term));
+    if (term) lista = lista.filter(c => {
+        if (!c._norm) c._norm = quitarAcentos(c.nombre + ' ' + (c.direccion || '') + ' ' + (c.telefono || ''));
+        return c._norm.includes(term);
+    });
     else if (diaFiltroClientes === 'sin') lista = lista.filter(c => !c.dias || c.dias.length === 0);
     else if (diaFiltroClientes !== 'todos') lista = lista.filter(c => (c.dias || []).includes(diaFiltroClientes) && tocaEstaSemana(c));
     return lista;
 }
 let filtroMapa = 'todos'; // todos | venta | pend | nocompro
 function setFiltroMapa(f) { filtroMapa = f; refrescarMapaClientes(false); }
+let _chipsSig = '';
 function pintarChipsMapa(n) {
     const box = $('mapa-chips'); if (!box) return;
+    const sig = n.venta + ',' + n.pend + ',' + n.nocompro + ',' + filtroMapa;
+    if (sig === _chipsSig && box.innerHTML) return;
+    _chipsSig = sig;
     const f = [['todos', 'Todos', '#6b7280', n.venta + n.pend + n.nocompro], ['venta', 'Con venta', '#16a34a', n.venta], ['pend', 'Sin venta', '#eab308', n.pend], ['nocompro', 'No compró', '#dc2626', n.nocompro]];
     box.innerHTML = f.map(x => {
         const on = filtroMapa === x[0];
@@ -2801,7 +2829,7 @@ function refrescarMapaClientes(forzarFit) {
         const e = estadoClienteHoy(c);
         return { id: c.id, lat: c.lat, lng: c.lng, color: MAPA_COL[e], txt: e === 'pend' ? '#1f2937' : '#fff', label: (c.nombre || '?').trim().charAt(0).toUpperCase() };
     });
-    const sigPins = JSON.stringify(arrPins);
+    const sigPins = arrPins.length + '|' + arrPins.map(p => p.id + ':' + p.lat + ':' + p.lng + ':' + p.color).join(',');
     if (sigPins !== mapaClientes._sig) { mapaClientes._sig = sigPins; mapaClientes.setPins(arrPins); }
     const inp = $('buscador-clientes');
     const firma = diaFiltroClientes + '|' + filtroMapa + '|' + (inp ? inp.value : '') + '|' + con.map(c => c.id).join(',');
@@ -2849,7 +2877,7 @@ function abrirPopupMapa(id, silencioso) {
         <button type="button" onclick="mapaAccion('ubicar','${idA}')" style="background:#f3f4f6;color:#374151;font-size:12px;font-weight:800;padding:10px;border-radius:12px">📍 Estoy aquí</button></div>`;
     box.classList.remove('hidden');
     if (!silencioso && mapaClientes && mapaTieneUbic(c)) mapaClientes.centrarArriba(c.lat, c.lng);
-    actualizarDistanciaPopup();
+    actualizarDistanciaPopup(true);
 }
 function mapaAccion(a, id) {
     if (a === 'venta') { seleccionarClienteVentaDesdeInicio(id); cambiarVista('venta'); }
@@ -2873,7 +2901,11 @@ function mapaDist(a, b) {
     return 2 * R * Math.asin(Math.sqrt(h));
 }
 function mapaDistTxt(m) { return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km'; }
-function actualizarDistanciaPopup() {
+let _distT = 0;
+function actualizarDistanciaPopup(forzar) {
+    const ahora = Date.now();
+    if (!forzar && ahora - _distT < 1000) return;
+    _distT = ahora;
     const el = $('mapa-popup-dist'); if (!el) return;
     const c = mapaSelId !== null ? buscarClientePorId(mapaSelId) : null;
     if (!c || !mapaTieneUbic(c)) { el.innerText = ''; return; }
@@ -2889,7 +2921,7 @@ function iniciarGpsMapa() {
     _watchId = navigator.geolocation.watchPosition(p => {
         const nueva = { lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy };
         const ahora = Date.now();
-        if (miPos && ahora - _gpsT < 1500 && mapaDist(miPos, nueva) < 4) return;
+        if (miPos && ahora - _gpsT < 3000 && mapaDist(miPos, nueva) < 8) return;
         _gpsT = ahora; miPos = nueva;
         const primera = mapaClientes && !mapaClientes.yo;
         if (mapaClientes) { mapaClientes.setYo(miPos.lat, miPos.lng, miPos.prec); if (primera && !mapaClientes.tocado) mapaClientes.fit(); }
@@ -8861,7 +8893,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-21-e';
+const APP_BUILD = '2026-11-21-f';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){

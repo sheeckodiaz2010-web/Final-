@@ -122,8 +122,7 @@ body{font-variant-numeric:tabular-nums;letter-spacing:-.005em;animation:appIn .3
 .rounded-xl{border-radius:14px}
 input,select,textarea{font-size:16px}
 .font-black,.font-extrabold{letter-spacing:-.01em}
-#banner-offline{position:fixed;top:var(--hdr-h,96px);left:0;right:0;z-index:25;padding:5px 12px;background:#b45309;color:#fff;font:700 12px/1.2 system-ui,sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s}
-#banner-offline.on{opacity:1}
+#banner-offline{display:none !important}
 .mapd{position:relative;overflow:hidden;touch-action:none;background:#e5e7eb;border:1px solid #d1d5db;border-radius:16px;-webkit-user-select:none;user-select:none}
 .mapd-grid{position:absolute;inset:0;background-image:linear-gradient(#d1d5db 1px,transparent 1px),linear-gradient(90deg,#d1d5db 1px,transparent 1px);background-size:48px 48px;opacity:.55}
 .mapd-tl,.mapd-pl{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform}
@@ -143,7 +142,7 @@ body.en-inicio{padding-bottom:0 !important}
 body.modo-botones nav.fixed.bottom-0{display:none !important}
 body.modo-botones #vista-venta .bottom-16{bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important}
 body.modo-botones #txt-modo{font-size:14px;font-weight:800}
-.home-grid{height:calc(100dvh - var(--hdr-h,96px) - 32px - env(safe-area-inset-bottom,0px));min-height:540px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.1fr 1fr .9fr;gap:14px}
+.home-grid{height:calc(100dvh - var(--hdr-h,96px) - 32px - env(safe-area-inset-bottom,0px));min-height:560px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.1fr 1fr 1fr .9fr;gap:12px}
 .tile-d{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 12px 16px;border:0;border-radius:28px;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.18);transition:transform .08s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0}
 .tile-d:active{transform:scale(.96)}
 .tile-d svg{width:56%;max-width:140px;flex:1;min-height:0;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -154,6 +153,10 @@ body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 .t-inventario{background:linear-gradient(160deg,#f0523d,#c8321f)}
 .t-trx{background:linear-gradient(160deg,#f7c04a,#e08a00)}
 .t-ajustes{background:linear-gradient(160deg,#a3adcf,#6f7aa8)}
+.t-creditos{background:linear-gradient(160deg,#fb923c,#ea580c)}
+.tb-a{color:#ea580c}
+#icono-offline{display:none;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:11px;font-weight:900;padding:4px 8px;border-radius:99px;white-space:nowrap}
+#icono-offline.on{display:inline-flex}
 .tbadge{position:absolute;top:12px;right:12px;background:#fff;font-weight:900;font-size:12px;padding:4px 9px;border-radius:99px}
 .tb-p{color:#5b2fd6}.tb-r{color:#c8321f}
 .mapd-pin{width:36px;height:36px;margin:-18px 0 0 -18px;font-size:14px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
@@ -362,6 +365,7 @@ button,input,select,textarea{font-family:inherit}
         <div class="flex items-center gap-2">
             <button type="button" id="btn-volver-inicio" onclick="cambiarVista('inicio')" style="display:none;align-items:center;gap:2px;margin-left:-6px;padding:6px 10px 6px 6px;font-size:17px;font-weight:800;color:#2563eb;min-height:40px;touch-action:manipulation;-webkit-tap-highlight-color:transparent">‹ Inicio</button>
             <span id="logo-digar" class="text-blue-600 font-black text-xl tracking-tight">DIGAR</span>
+            <span id="icono-offline" title="Sin conexión">📴 Sin internet</span>
             <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium" id="txt-modo" style="display:none">Inicio</span>
         </div>
         <button onclick="abrirModalSeleccionarCliente()" id="btn-cliente-header" style="display:none" class="text-xs font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
@@ -401,6 +405,11 @@ button,input,select,textarea{font-family:inherit}
                 <button type="button" class="tile-d t-trx" onclick="cambiarVista('promos')">
                     <svg viewBox="0 0 64 48"><path d="M8 24 28 4h24v24L32 44z"/><circle cx="42" cy="14" r="3"/><path d="M22 30l14-14"/></svg>
                     <div><div class="tn">Promociones</div><div class="td" id="ini-sub-promo"> </div></div>
+                </button>
+                <button type="button" class="tile-d t-creditos" onclick="abrirModalCreditos()">
+                    <span class="tbadge tb-a" id="badge-creditos-total" style="display:none"></span>
+                    <svg viewBox="0 0 64 48"><rect x="8" y="12" width="48" height="28" rx="4"/><path d="M8 22h48M16 32h12"/></svg>
+                    <div><div class="tn">Créditos</div><div class="td" id="ini-sub-cred"> </div></div>
                 </button>
             </div>
         </div>
@@ -487,11 +496,6 @@ button,input,select,textarea{font-family:inherit}
                     <span id="icono-vista-modo">🔲</span> <span id="texto-vista-modo" class="text-xs">Grid</span>
                 </button>
             </div>
-
-            <button type="button" onclick="abrirModalCreditos()" class="w-full font-bold py-3 rounded-xl text-sm shadow-sm flex justify-between items-center px-4" style="min-height:48px;background:#f59e0b;color:#fff">
-                <span>💳 Créditos pendientes</span>
-                <span id="badge-creditos-total" class="font-black px-2.5 py-1 rounded-full text-xs" style="background:#fff;color:#92400e"></span>
-            </button>
 
             <div id="banner-fotos" style="display:none;font-size:12px;color:#2563eb;background:#eff6ff;border-radius:10px;padding:8px 12px;margin-bottom:8px;"></div>
             <div id="grid-venta" class="grid grid-cols-3 gap-2.5"><div class="bg-white border-2 border-dashed border-blue-200 p-3 rounded-2xl flex flex-col items-center justify-center text-center h-28 cursor-pointer"><span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold text-lg flex items-center justify-center mb-1">+</span><span class="text-xs font-bold text-blue-600">Producto</span></div><div class="bg-blue-900 text-white p-3 rounded-2xl flex flex-col justify-between h-28 cursor-pointer shadow-sm select-none">
@@ -3795,14 +3799,14 @@ function cambiarVista(v) {
     $('txt-modo').innerText = labels[v] || (v.charAt(0).toUpperCase() + v.slice(1));
 
     if (v === 'clientes') renderListaClientesInicio();
-    if (v === 'venta') { renderVenta(); try { actualizarBadgeCreditos(); } catch(e){} }
+    if (v === 'venta') renderVenta();
     if (v === 'productos') { renderInventario(); invPintarBannerSesion(); }
     if (v === 'conteo') invRenderConteo();
     if (v === 'transacciones') { limiteTrans = 80; inicializarFiltrosFechas(); renderTransacciones(); }
     if (v === 'mas') { actualizarContadorClientesUI(); actualizarBadgeCreditos(); }
     if (v === 'estadisticas') renderEstadisticas();
     if (v === 'promos') pmRender();
-    if (v === 'inicio') renderInicio();
+    if (v === 'inicio') { renderInicio(); try { actualizarBadgeCreditos(); } catch(e){} }
     ajustarCabecera(v);
 }
 
@@ -4623,11 +4627,20 @@ function obtenerCreditosPorCliente() {
 }
 
 function actualizarBadgeCreditos() {
+    let total = 0;
+    try { total = obtenerCreditosPorCliente().reduce((a, c) => a + c.saldo, 0); } catch(e){}
     const badge = $('badge-creditos-total');
-    if (!badge) return;
-    const total = obtenerCreditosPorCliente().reduce((a, c) => a + c.saldo, 0);
-    badge.innerText = total > 0 ? money(total) : 'Sin adeudo';
-    badge.style.opacity = total > 0 ? '1' : '.75';
+    if (badge) {
+        if (badge.classList && badge.classList.contains('tbadge')) {
+            badge.style.display = total > 0 ? '' : 'none';
+            badge.textContent = total > 0 ? money(total) : '';
+        } else {
+            badge.innerText = total > 0 ? money(total) : 'Sin adeudo';
+            badge.style.opacity = total > 0 ? '1' : '.75';
+        }
+    }
+    const sub = $('ini-sub-cred');
+    if (sub) sub.textContent = total > 0 ? ('Total ' + money(total)) : 'Sin adeudo';
 }
 
 function abrirModalCreditos() {
@@ -9126,8 +9139,7 @@ document.addEventListener('visibilitychange', () => {
     ultimo.set(b,n);
   },true);
   // Aviso de conexión
-  var bo=document.createElement('div');bo.id='banner-offline';bo.textContent='Sin conexión · la app sigue funcionando';document.body.appendChild(bo);
-  function red(){bo.classList.toggle('on',!navigator.onLine)}
+  function red(){var ic=document.getElementById('icono-offline');if(ic)ic.classList.toggle('on',!navigator.onLine)}
   window.addEventListener('offline',red);
   window.addEventListener('online',function(){red();window.toast('Conexión restablecida')});
   red();
@@ -9262,6 +9274,7 @@ function renderInicio() {
         let ur = ''; try { ur = localStorage.getItem('digar_drive_ultimo') || ''; } catch (e) {}
         set('ini-sub-aju', (ur && typeof driveFmt === 'function') ? 'Respaldo: ' + driveFmt(ur) : 'Respaldo y más');
         let cred = 0; try { cred = obtenerCreditosPorCliente().length; } catch (e) {}
+        try { actualizarBadgeCreditos(); } catch(e){}
         const bc = document.getElementById('ini-bad-cli');
         if (bc) { bc.style.display = cred > 0 ? '' : 'none'; bc.textContent = cred + ' con crédito'; }
         const bajos = productos.filter(p => Number(p.stock) <= 5).length;
@@ -9430,36 +9443,52 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
 })();
 </script>
 <script id="sin-sugerencias">
-/* Que el telefono NO ofrezca contraseñas guardadas en buscadores y demas
-   campos de texto (2026-11-13): el campo se queda en solo lectura hasta el
-   momento del focus. Antes el readonly se quitaba en pointerdown/touchstart,
-   que ocurren ANTES del focus, asi que cuando Chrome decidia si mostrar
-   contraseñas el campo ya estaba editable y las ofrecia. Al quitarlo en el
-   focus, Chrome ya decidio no mostrar nada y el campo queda escribible.
-   Los campos de acceso (login) quedan fuera: ahi si se vale el autollenado. */
+/* Anti-sugerencias reforzado (2026-11-21 v2): buscadores sin contraseñas + auto-borrado a los 60 s sin uso.
+   - readonly hasta 200 ms después del focus (Chrome ya decidió no mostrar contraseñas)
+   - autocomplete off, data-form-type other, aria-autocomplete none, name único
+   - auto-borrado: si un buscador queda 60 s sin tocarse, se limpia solo */
 (function(){
   var ACCESO = { 'login-telefono': 1, 'login-password': 1, 'login-password-confirmar': 1, 'precios-cat-email': 1, 'precios-cat-pass': 1, 'nuevos-cat-email': 1, 'nuevos-cat-pass': 1, 'borrar-usuario': 1 };
+  function esBuscador(el){
+    var id = (el.id||'').toLowerCase();
+    if (id.indexOf('buscador')>=0 || id.indexOf('buscar')>=0) return true;
+    var ph = (el.getAttribute('placeholder')||'').toLowerCase();
+    return ph.indexOf('buscar')>=0;
+  }
   function proteger(el){
     if (!el || !el.tagName) return;
     if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return;
     if (el.id && ACCESO[el.id]) return;
     var ty = (el.getAttribute('type') || 'text').toLowerCase();
-    if (['checkbox', 'radio', 'file', 'range', 'hidden', 'button', 'submit', 'password', 'number', 'date'].indexOf(ty) >= 0) return;
+    if (['checkbox','radio','file','range','hidden','button','submit','password','number','date'].indexOf(ty) >= 0) return;
     if (el.dataset && el.dataset.sinSug) return;
     if (el.dataset) el.dataset.sinSug = '1';
-    el.setAttribute('autocomplete', 'off');
-    el.setAttribute('autocapitalize', 'off');
-    el.setAttribute('autocorrect', 'off');
-    el.setAttribute('spellcheck', 'false');
-    el.setAttribute('data-lpignore', 'true');
-    el.setAttribute('data-1p-ignore', 'true');
-    el.setAttribute('data-bwignore', 'true');
-    el.setAttribute('data-form-type', 'other');
-    el.setAttribute('readonly', 'readonly');
-    /* Solo en focus se quita el readonly: ahi Chrome ya paso el momento
-       en que decide ofrecer contraseñas. Jamas en pointerdown/touchstart. */
-    el.addEventListener('focus', function(){ el.removeAttribute('readonly'); });
-    el.addEventListener('blur', function(){ el.setAttribute('readonly', 'readonly'); });
+    try {
+      el.setAttribute('autocomplete','off');
+      el.setAttribute('autocapitalize','off');
+      el.setAttribute('autocorrect','off');
+      el.setAttribute('spellcheck','false');
+      el.setAttribute('aria-autocomplete','none');
+      el.setAttribute('data-lpignore','true');
+      el.setAttribute('data-1p-ignore','true');
+      el.setAttribute('data-bwignore','true');
+      el.setAttribute('data-form-type','other');
+      if (esBuscador(el)) {
+        el.setAttribute('enterkeyhint','search');
+        el.setAttribute('role','searchbox');
+        if (!el.getAttribute('name')) el.setAttribute('name','digar-q-'+(el.id||'buscador'));
+      }
+      el.setAttribute('readonly','readonly');
+      var tQuitar=null;
+      el.addEventListener('focus', function(){
+        clearTimeout(tQuitar);
+        tQuitar=setTimeout(function(){ try{ el.removeAttribute('readonly'); }catch(e){} }, 200);
+      });
+      el.addEventListener('blur', function(){
+        clearTimeout(tQuitar);
+        try{ el.setAttribute('readonly','readonly'); }catch(e){}
+      });
+    } catch(e){}
   }
   function todos(raiz){
     if (!raiz || !raiz.querySelectorAll) return;
@@ -9470,7 +9499,44 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
   try {
     new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if (n.nodeType === 1) todos(n); }); }); })
       .observe(document.documentElement, { childList: true, subtree: true });
-  } catch (e) {}
+  } catch(e){}
+  /* Auto-borrado de buscadores a los 60 s sin uso */
+  var timers={};
+  function programarBorrado(inp){
+    var id=inp.id||inp.getAttribute('name')||'buscador';
+    clearTimeout(timers[id]);
+    timers[id]=setTimeout(function(){
+      try{
+        if (!inp.value) return;
+        inp.value='';
+        inp.dispatchEvent(new Event('input',{bubbles:true}));
+        inp.dispatchEvent(new Event('change',{bubbles:true}));
+        try{ inp.blur(); }catch(e){}
+      }catch(e){}
+    }, 60000);
+  }
+  function engancharBorrado(inp){
+    if (!inp || inp.dataset.autoBorrado) return;
+    inp.dataset.autoBorrado='1';
+    ['input','focus','click','touchstart','keydown'].forEach(function(ev){
+      inp.addEventListener(ev, function(){ programarBorrado(inp); }, {passive:true});
+    });
+    inp.addEventListener('blur', function(){
+      var id=inp.id||inp.getAttribute('name')||'buscador';
+      clearTimeout(timers[id]);
+    });
+  }
+  function engancharTodos(raiz){
+    if (!raiz || !raiz.querySelectorAll) return;
+    raiz.querySelectorAll('input').forEach(function(el){
+      if (esBuscador(el)) engancharBorrado(el);
+    });
+  }
+  engancharTodos(document);
+  try {
+    new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if (n.nodeType===1) engancharTodos(n); }); }); })
+      .observe(document.documentElement, {childList:true, subtree:true});
+  } catch(e){}
 })();
 </script>
 <div id="cargando-impresion" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.55);align-items:center;justify-content:center;flex-direction:column;gap:14px;">

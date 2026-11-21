@@ -3663,7 +3663,7 @@ function pmCalc(items, opts) {
 function pmCalcBase(items, opts) {
     const res = { desc: 0, detalle: [] };
     if (!items || !items.length || !promos.length) return res;
-    const lista = opts && opts.ids ? promos.filter(p => opts.ids.includes(p.id)) : promos.filter(p => pmEstado(p).k === 'on');
+    const lista = opts && opts.ids ? promos.filter(p => opts.ids.some(i => String(i) === String(p.id))) : promos.filter(p => pmEstado(p).k === 'on');
     const tomados = new Set();
     lista.forEach(p => {
         const pids = p.ids.filter(i => !tomados.has(String(i)));
@@ -3713,23 +3713,29 @@ function pmRender() {
         const tiers = [...p.tiers].sort((a, b) => a.q - b.q);
         return `<div class="pm-card" style="${e.k === 'off' || e.k === 'exp' ? 'opacity:.7' : ''}">
           <div class="pm-row"><div style="min-width:0"><div class="pm-name">${pmEsc(p.name || nombres)}</div><div class="pm-sub">${nombres}</div></div>
-          <button type="button" class="pm-sw ${p.on ? 'on' : ''}" onclick="pmToggle(${p.id})" aria-label="Activar o pausar"></button></div>
+          <button type="button" class="pm-sw ${p.on ? 'on' : ''}" onclick="pmToggle(${JSON.stringify(String(p.id)).replace(/"/g,'&quot;')})" aria-label="Activar o pausar"></button></div>
           <div class="pm-tiers">${tiers.map(t => `<span class="pm-tier">${t.q} x ${money(t.p)}</span>`).join('')}</div>
           ${unico ? `<div class="pm-sub">Precio normal: ${money(unico)} c/u</div>` + tiers.map(t => `<div class="pm-save">${t.q} pzs: ahorras ${money(unico * t.q - t.p)}</div>`).join('') : '<div class="pm-sub">Precio normal varía por producto</div>'}
           <div class="pm-row" style="margin-top:10px;justify-content:flex-start;flex-wrap:wrap"><span class="pm-badge pm-${e.k}">${e.t}</span>${p.mix ? '<span class="pm-mix">Mezclables</span>' : ''}<span class="pm-sub" style="margin:0">${pmVig(p)}</span></div>
-          <div class="pm-acts"><button type="button" onclick="pmAbrir(${p.id})">Editar</button><button type="button" style="color:#dc2626" onclick="pmEliminar(${p.id})">Eliminar</button></div></div>`;
+          <div class="pm-acts"><button type="button" onclick="pmAbrir(${JSON.stringify(String(p.id)).replace(/"/g,'&quot;')})">Editar</button><button type="button" style="color:#dc2626" onclick="pmEliminar(${JSON.stringify(String(p.id)).replace(/"/g,'&quot;')})">Eliminar</button></div></div>`;
     }).join('');
 }
-function pmToggle(id) { const p = promos.find(x => x.id === id); if (!p) return; p.on = !p.on; guardarTodoPronto(); pmRender(); actualizarTotalesCarrito(); }
+function pmToggle(id) { const p = promos.find(x => String(x.id) === String(id)); if (!p) return; p.on = !p.on; guardarTodoPronto(); pmRender(); actualizarTotalesCarrito(); }
 async function pmEliminar(id) {
     if (!await confirmarPro('¿Eliminar esta promoción?')) return;
-    const _pm = promos.find(x => x.id === id); if (_pm) guardarEnPapelera('promo', _pm.nombre || 'Promoción', { ..._pm });
-    promos = promos.filter(x => x.id !== id); guardarTodoPronto(); pmRender(); actualizarTotalesCarrito();
+    const _pm = promos.find(x => String(x.id) === String(id)); if (_pm) guardarEnPapelera('promo', _pm.nombre || 'Promoción', { ..._pm });
+    promos = promos.filter(x => String(x.id) !== String(id)); guardarTodoPronto(); pmRender(); actualizarTotalesCarrito();
 }
 
 let pmEdit = null;
 function pmAbrir(id) {
-    pmEdit = id ? JSON.parse(JSON.stringify(promos.find(p => p.id === id))) : { id: 0, name: '', ids: [], mix: true, tiers: [{ q: 3, p: '' }], on: true, from: '', to: '' };
+    if (id) {
+        const encontrada = promos.find(p => String(p.id) === String(id));
+        if (!encontrada) { try { mostrarToast('Promoción no encontrada'); } catch(e){} return; }
+        pmEdit = JSON.parse(JSON.stringify(encontrada));
+    } else {
+        pmEdit = { id: 0, name: '', ids: [], mix: true, tiers: [{ q: 3, p: '' }], on: true, from: '', to: '' };
+    }
     pmForm(); $('pm-ov').classList.add('open');
 }
 function pmCerrar() { $('pm-ov').classList.remove('open'); pmEdit = null; }
@@ -3746,7 +3752,7 @@ function pmForm(err) {
     <label class="pm-lbl">Nombre (opcional)</label>
     <input class="pm-in" id="pm-n" autocomplete="off" placeholder="Ej. Mazapán 3x100" value="${pmEsc(p.name)}">
     <label class="pm-lbl">Productos incluidos (uno o varios)</label>
-    <div class="pm-chips">${sel.map(x => `<button type="button" class="pm-chip" onclick="pmQuitarProd('${x.id}')">${pmEsc(x.nombre)} ✕</button>`).join('')}</div>
+    <div class="pm-chips">${sel.map(x => `<button type="button" class="pm-chip" onclick="pmQuitarProd(${JSON.stringify(String(x.id)).replace(/"/g,'&quot;')})">${pmEsc(x.nombre)} ✕</button>`).join('')}</div>
     <input class="pm-in" id="pm-buscar" autocomplete="off" placeholder="🔍 Buscar producto para agregar..." style="margin-top:8px" oninput="pmBuscar()">
     <div class="pm-prods" id="pm-prods" style="display:none"></div>
     ${sel.length > 1 ? `<label class="pm-lbl">¿Se pueden mezclar?</label><div class="pm-opt"><button type="button" class="${p.mix ? 'on' : ''}" onclick="pmMix(true)">Sí, cualquier combinación</button><button type="button" class="${!p.mix ? 'on' : ''}" onclick="pmMix(false)">No, del mismo producto</button></div>` : ''}
@@ -3766,7 +3772,7 @@ function pmBuscar() {
     if (!q) { box.style.display = 'none'; return; }
     const res = productos.filter(x => !pmEdit.ids.some(i => String(i) === String(x.id)) && (x.nombre || '').toLowerCase().includes(q)).slice(0, 30);
     box.style.display = 'block';
-    box.innerHTML = res.length ? res.map(x => `<button type="button" onclick="pmAgregarProd('${x.id}')"><span>${pmEsc(x.nombre)}</span><span>${money(x.precio)}</span></button>`).join('') : '<div class="pm-sub" style="padding:10px">Sin resultados</div>';
+    box.innerHTML = res.length ? res.map(x => `<button type="button" onclick="pmAgregarProd(${JSON.stringify(String(x.id)).replace(/"/g,'&quot;')})"><span>${pmEsc(x.nombre)}</span><span>${money(x.precio)}</span></button>`).join('') : '<div class="pm-sub" style="padding:10px">Sin resultados</div>';
 }
 function pmAgregarProd(id) { pmLeer(); const p = pmProd(id); if (p) pmEdit.ids.push(p.id); pmForm(); }
 function pmQuitarProd(id) { pmLeer(); pmEdit.ids = pmEdit.ids.filter(i => String(i) !== String(id)); pmForm(); }
@@ -3781,7 +3787,7 @@ function pmGuardar() {
     if (new Set(e.tiers.map(t => t.q)).size < e.tiers.length) return pmForm('Hay dos escalones con las mismas piezas.');
     if (e.from && e.to && e.to < e.from) return pmForm('La fecha final es antes que la inicial.');
     if (e.ids.length < 2) e.mix = false;
-    if (e.id) promos = promos.map(p => p.id === e.id ? e : p);
+    if (e.id) promos = promos.map(p => String(p.id) === String(e.id) ? e : p);
     else { e.id = generarIdUnico('promo'); promos.unshift(e); }
     guardarTodoPronto(); pmCerrar(); pmRender(); actualizarTotalesCarrito();
 }
@@ -8855,7 +8861,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-21-c';
+const APP_BUILD = '2026-11-21-d';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){

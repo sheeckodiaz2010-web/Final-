@@ -1,61 +1,26 @@
-// Service Worker - DIGAR POS
-// Red primero (siempre intenta traer la versión más nueva) y, si no hay señal
-// o tarda demasiado, abre la copia guardada para que funcione sin conexión.
-// (los datos reales de tus ventas viven en localStorage, no aquí)
-const CACHE_NAME = 'digar-pos-v28';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-maskable-192.png',
-  './icon-maskable-512.png',
-  './asistente.js'
-];
-const ESPERA_RED_MS = 3000;
-
-self.addEventListener('install', (event) => {
+// Service worker mínimo de DIGAR POS (creado 2026-11-06: el archivo faltaba y
+// el registro en index.html fallaba). Cachea la app para uso sin internet;
+// los datos (ventas, clientes, inventario) viven en localStorage/IndexedDB,
+// NO en esta caché, así que actualizar la app no borra datos.
+const CACHE = 'digar-pos-v2';
+const ARCHIVOS = ['./', './index.html', './manifest.json', './icon-192.png'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).catch(() => {}));
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      // cache: 'reload' se salta el caché del navegador y baja archivos frescos
-      Promise.all(ASSETS.map((url) =>
-        fetch(new Request(url, { cache: 'reload' }))
-          .then((resp) => { if (resp.ok) return cache.put(url, resp); })
-          .catch(() => {})
-      ))
-    )
-  );
 });
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    try {
-      const controlador = new AbortController();
-      const timer = setTimeout(() => controlador.abort(), ESPERA_RED_MS);
-      const resp = await fetch(event.request, { cache: 'no-cache', signal: controlador.signal });
-      clearTimeout(timer);
-      if (resp && resp.ok) cache.put(event.request, resp.clone());
-      return resp;
-    } catch (e) {
-      const guardado = await cache.match(event.request, { ignoreSearch: true });
-      if (guardado) return guardado;
-      return (await cache.match('./index.html')) || Response.error();
-    }
-  })());
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return; // mapas, Firebase, etc.: a la red
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+      const copia = res.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copia)).catch(() => {});
+      return res;
+    }).catch(() => caches.match('./index.html')))
+  );
 });

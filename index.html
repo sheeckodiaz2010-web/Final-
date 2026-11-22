@@ -1,4 +1,4 @@
-<html lang="es"><head>
+<html lang="es" style="overscroll-behavior:none!important"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DIGAR POS</title>
@@ -341,7 +341,7 @@ button,input,select,textarea{font-family:inherit}
 </style>
 
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans pb-24">
+<body class="bg-gray-50 text-gray-800 font-sans pb-24" style="overscroll-behavior:none!important">
 
     <!-- PANTALLA DE ACCESO -->
     <div id="pantalla-login" class="fixed inset-0 z-[9999] bg-white flex items-center justify-center p-4">
@@ -8889,7 +8889,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-f';
+const APP_BUILD = '2026-11-22-g';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){
@@ -9678,7 +9678,7 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
      Solo bloquea si estás hasta arriba y jalas hacia abajo (gesto de refrescar).
      No toca el scroll normal: si scrollY>0 o el dedo sube, deja pasar todo. */
   var _ptrY0 = null;
-  function _enTop(){ try{ return ((window.scrollY||0) <= 0) && ((document.documentElement.scrollTop||0) <= 0) && ((document.body.scrollTop||0) <= 0); }catch(e){ return (window.scrollY||0) <= 0; } }
+  function _enTop(){ try{ return (window.scrollY||0) <= 0; }catch(e){ return true; } }
   document.addEventListener('touchstart', function(e){
     try{
       var t = (e.touches && e.touches[0]) || e;

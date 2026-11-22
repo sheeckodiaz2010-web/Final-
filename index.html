@@ -1219,7 +1219,7 @@ button,input,select,textarea{font-family:inherit}
                 </div>
                 <p id="drive-ultimo" style="font-size:11px;color:#6b7280;margin:0">Aún no hay respaldos en Drive.</p>
                 <input id="drive-url" type="url" inputmode="url" autocomplete="off" placeholder="Enlace de tu Apps Script (termina en /exec)" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
-                <input id="drive-clave" type="password" autocomplete="new-password" placeholder="Clave secreta" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
+                <input id="drive-clave" type="text" autocomplete="off" data-lpignore="true" data-form-type="other" style="-webkit-text-security:disc" placeholder="Clave secreta" onchange="driveGuardarCfg()" style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:13px;background:#fff">
                 <div style="display:flex;gap:8px;align-items:center">
                     <span style="font-size:12px;font-weight:700;color:#374151;flex:none">Respaldar cada</span>
                     <select id="drive-horas" onchange="driveGuardarCfg()" style="flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:10px;font-size:13px;background:#fff">
@@ -1322,7 +1322,7 @@ button,input,select,textarea{font-family:inherit}
             <div id="precios-cat-login" class="hidden space-y-2 border-t pt-3">
                 <p class="text-[11px] text-gray-400">Para cambiar el catálogo entra con tu cuenta de administrador. La contraseña no se guarda.</p>
                 <input type="email" id="precios-cat-email" placeholder="Correo del administrador" autocomplete="username" class="w-full p-3 border rounded-xl text-sm">
-                <input type="password" id="precios-cat-pass" placeholder="Contraseña" autocomplete="current-password" class="w-full p-3 border rounded-xl text-sm">
+                <input type="text" id="precios-cat-pass" placeholder="Contraseña" autocomplete="off" data-lpignore="true" data-form-type="other" style="-webkit-text-security:disc" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <button id="btn-aplicar-precios-cat" onclick="enviarPreciosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Actualizar catálogo con estos precios</button>
         </div>
@@ -1340,7 +1340,7 @@ button,input,select,textarea{font-family:inherit}
             <div id="nuevos-cat-login" class="hidden space-y-2 border-t pt-3">
                 <p class="text-[11px] text-gray-400">Entra con tu cuenta de administrador del catálogo. La contraseña no se guarda.</p>
                 <input type="email" id="nuevos-cat-email" placeholder="Correo del administrador" autocomplete="username" class="w-full p-3 border rounded-xl text-sm">
-                <input type="password" id="nuevos-cat-pass" placeholder="Contraseña" autocomplete="current-password" class="w-full p-3 border rounded-xl text-sm">
+                <input type="text" id="nuevos-cat-pass" placeholder="Contraseña" autocomplete="off" data-lpignore="true" data-form-type="other" style="-webkit-text-security:disc" class="w-full p-3 border rounded-xl text-sm">
             </div>
             <button id="btn-enviar-nuevos-cat" onclick="enviarNuevosCatalogo()" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Enviar al catálogo</button>
         </div>
@@ -8888,7 +8888,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-b';
+const APP_BUILD = '2026-11-22-c';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){
@@ -9568,7 +9568,7 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
 })();
 </script>
 <script id="sin-sugerencias">
-/* Anti-sugerencias reforzado (2026-11-21 v2): buscadores sin contraseñas + auto-borrado a los 60 s sin uso.
+/* Anti-sugerencias definitivo (2026-11-22 v3): sin campos password reales en la página + buscadores type search + auto-borrado 60 s.
    - readonly hasta 200 ms después del focus (Chrome ya decidió no mostrar contraseñas)
    - autocomplete off, data-form-type other, aria-autocomplete none, name único
    - auto-borrado: si un buscador queda 60 s sin tocarse, se limpia solo */
@@ -9605,16 +9605,7 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
         el.setAttribute('role','searchbox');
         if (!el.getAttribute('name')) el.setAttribute('name','digar-q-'+(el.id||'buscador'));
       }
-      el.setAttribute('readonly','readonly');
-      var tQuitar=null;
-      el.addEventListener('focus', function(){
-        clearTimeout(tQuitar);
-        tQuitar=setTimeout(function(){ try{ el.removeAttribute('readonly'); }catch(e){} }, 200);
-      });
-      el.addEventListener('blur', function(){
-        clearTimeout(tQuitar);
-        try{ el.setAttribute('readonly','readonly'); }catch(e){}
-      });
+      el.setAttribute('autofill','off');
     } catch(e){}
   }
   function todos(raiz){

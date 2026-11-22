@@ -45,7 +45,7 @@
 <!-- FIX 14: bloque Tailwind v3.4.17 eliminado; quedo solo v3.4.19 (sus clases son un superconjunto verificado). --><style>.btn-mg{padding:.5rem 0;border-radius:.75rem;font-size:.75rem;font-weight:700;border:1px solid #e5e7eb;background:#f9fafb;color:#4b5563}.btn-mg.activo{border:2px solid #9333ea;background:#faf5ff;color:#7e22ce}</style>
 <style>
 .ajuste-card{display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-height:112px;min-width:0;padding:16px 16px 14px;text-align:left;background:#fff;border:1px solid #eef0f6;border-radius:22px;box-shadow:0 1px 2px rgba(15,23,42,.04);color:#2b3140;-webkit-tap-highlight-color:transparent;transition:transform .08s ease;}
-.ajuste-card:active{transform:scale(.97);}
+.ajuste-card:active{opacity:.92;}
 .ajuste-icono{width:30px;height:30px;display:block;}
 .ajuste-icono svg{width:30px;height:30px;display:block;fill:currentColor;}
 .ajuste-label{display:block;font-size:15px;font-weight:800;line-height:1.2;}
@@ -68,8 +68,8 @@ html{-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility;-webkit-fon
 button,a,[onclick],input,select,textarea,label{touch-action:manipulation}
 body{background:#f3f4f6}
 /* Respuesta táctil inmediata en todo lo tocable */
-button,[onclick]{transition:transform .12s cubic-bezier(.2,.8,.2,1),opacity .12s,background-color .15s,box-shadow .15s}
-button:active,[onclick]:not(.fixed):active{transform:scale(.97);opacity:.92}
+button,[onclick]{transition:opacity .12s,background-color .15s,box-shadow .15s}
+button:active,[onclick]:not(.fixed):active{opacity:.92}
 /* Cambio de pestaña: entrada suave */
 @keyframes vistaIn{from{opacity:0}to{opacity:1}}
 /* vistaIn desactivado: repintaba la vista completa en cada cambio */
@@ -146,7 +146,7 @@ body.modo-botones #vista-venta .bottom-16{bottom:calc(12px + env(safe-area-inset
 body.modo-botones #txt-modo{font-size:14px;font-weight:800}
 .home-grid{height:calc(100dvh - var(--hdr-h,96px) - 32px - env(safe-area-inset-bottom,0px));min-height:560px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.1fr 1fr 1fr .9fr;gap:12px}
 .tile-d{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 12px 16px;border:0;border-radius:28px;color:#fff;box-shadow:0 6px 16px rgba(0,0,0,.18);transition:transform .08s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0}
-.tile-d:active{transform:scale(.96)}
+.tile-d:active{opacity:.92}
 .tile-d svg{width:56%;max-width:140px;flex:1;min-height:0;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .tile-d .tn{font-size:22px;font-weight:900;letter-spacing:-.01em;margin-top:8px;text-align:center}
 .tile-d .td{font-size:13px;font-weight:700;opacity:.92;margin-top:2px;text-align:center}
@@ -329,7 +329,7 @@ button,input,select,textarea{font-family:inherit}
 .inv-chip.activo{background:#0b1220;color:#fff;border-color:#0b1220}
 .inv-stepper{display:flex;align-items:center;gap:6px}
 .inv-btn{width:44px;height:44px;border-radius:12px;border:0;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex:none}
-.inv-btn:active{transform:scale(.94)}
+.inv-btn:active{opacity:.92}
 .inv-input{width:64px;height:44px;text-align:center;font-weight:900;font-size:17px;border:1.5px solid #d1d5db;border-radius:12px;background:#fff}
 .inv-input:focus{outline:none;border-color:#2563eb}
 .inv-prog{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
@@ -8888,7 +8888,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-c';
+const APP_BUILD = '2026-11-22-d';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){

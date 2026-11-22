@@ -455,7 +455,7 @@ button,input,select,textarea{font-family:inherit}
             </button>
             <div id="barra-buscar-clientes" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
                 <div class="relative">
-                    <input autocomplete="off" type="text" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
+                    <input autocomplete="off" type="search" id="buscador-clientes" placeholder="Buscar cliente..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
                 </div>
                 <div id="chips-dias-clientes" style="padding-top:8px;padding-bottom:2px"></div>
             </div>
@@ -507,7 +507,7 @@ button,input,select,textarea{font-family:inherit}
             <div class="flex gap-2 items-center" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
                 <div class="relative flex-1">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">🔍</span>
-                    <input autocomplete="off" type="text" id="buscador-venta" placeholder="Buscar producto..." class="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="toggleLimpiarBuscadorVenta()">
+                    <input autocomplete="off" type="search" id="buscador-venta" placeholder="Buscar producto..." class="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="toggleLimpiarBuscadorVenta()">
                     <button id="btn-limpiar-buscador-venta" onclick="limpiarBuscadorVenta()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 hidden" type="button" aria-label="Limpiar búsqueda">✕</button>
                 </div>
                 <button onclick="alternarModoVista()" id="btn-modo-vista" style="display:none" class="bg-white border border-gray-200 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 shadow-sm flex items-center gap-1 active:scale-95 transition">
@@ -587,7 +587,7 @@ button,input,select,textarea{font-family:inherit}
             </div>
 
             <div class="relative" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
-                <input autocomplete="off" type="text" id="buscador-inventario" placeholder="Ítem, valor o código" class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
+                <input autocomplete="off" type="search" id="buscador-inventario" placeholder="Ítem, valor o código" class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm">
             </div>
             <div class="flex justify-end mb-2"><button type="button" id="btn-sin-stock" onclick="toggleSinStock()" class="text-xs font-bold text-blue-700 bg-white border border-gray-200 rounded-xl px-3 py-2">Ver sin stock</button></div>
             <div id="lista-inventario" class="space-y-2"></div>
@@ -616,7 +616,7 @@ button,input,select,textarea{font-family:inherit}
                 </div>
             </div>
             <div class="relative" style="position:sticky;top:var(--hdr-h,96px);z-index:15;background:#f9fafb;padding:8px 0 6px;margin-top:-4px">
-                <input autocomplete="off" type="text" id="buscador-conteo" placeholder="Buscar producto o código..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="invBuscarConteo(this.value)">
+                <input autocomplete="off" type="search" id="buscador-conteo" placeholder="Buscar producto o código..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600 shadow-sm" oninput="invBuscarConteo(this.value)">
                 <div class="flex gap-2 mt-2 overflow-x-auto pb-1" style="scrollbar-width:none">
                     <button type="button" class="inv-chip activo" data-f="todos" onclick="invSetFiltro('todos')">Todos</button>
                     <button type="button" class="inv-chip" data-f="sin_contar" onclick="invSetFiltro('sin_contar')">Sin contar</button>
@@ -909,7 +909,7 @@ button,input,select,textarea{font-family:inherit}
                 <button onclick="cerrarSelectorCliente()" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
             <button onclick="abrirClienteRapido()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">➕ Agregar cliente rápido</button>
-            <input autocomplete="off" type="text" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
+            <input autocomplete="off" type="search" id="buscador-seleccion-cliente" oninput="renderSeleccionClientes(this.value)" placeholder="Buscar cliente..." class="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-600">
             <div id="lista-clientes-seleccion" class="space-y-2 overflow-y-auto" style="flex:1;min-height:0"></div>
         </div>
     </div>
@@ -1304,7 +1304,7 @@ button,input,select,textarea{font-family:inherit}
                 <h3 class="font-bold text-base" id="asignar-cat-titulo">Productos</h3>
                 <button onclick="cerrarModal('modal-asignar-cat')" class="text-gray-400 font-bold text-xl" aria-label="Cerrar">×</button>
             </div>
-            <input autocomplete="off" id="asignar-cat-buscar" type="text" placeholder="Buscar producto..." oninput="renderAsignarCategoria()" class="w-full p-3 border rounded-xl text-sm">
+            <input autocomplete="off" id="asignar-cat-buscar" type="search" placeholder="Buscar producto..." oninput="renderAsignarCategoria()" class="w-full p-3 border rounded-xl text-sm">
             <div id="asignar-cat-lista" class="overflow-y-auto flex-1"></div>
             <button onclick="guardarAsignacionCategoria()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm shadow-sm">Guardar</button>
         </div>
@@ -1711,7 +1711,7 @@ button,input,select,textarea{font-family:inherit}
             <button onclick="toggleAgregarEditVenta()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-2xl text-sm">➕ Agregar producto</button>
 
             <div id="edit-venta-panel-agregar" class="hidden space-y-2 border rounded-2xl p-3 bg-gray-50">
-                <input autocomplete="off" type="text" id="edit-venta-buscar" oninput="renderListaAgregarEdit()" placeholder="🔍 Buscar producto o código" class="w-full p-3 border rounded-xl text-sm bg-white">
+                <input autocomplete="off" type="search" id="edit-venta-buscar" oninput="renderListaAgregarEdit()" placeholder="🔍 Buscar producto o código" class="w-full p-3 border rounded-xl text-sm bg-white">
                 <div id="edit-venta-lista-agregar" class="space-y-1.5 max-h-56 overflow-y-auto"></div>
             </div>
 
@@ -3784,7 +3784,7 @@ function pmForm(err) {
     <input class="pm-in" id="pm-n" autocomplete="off" placeholder="Ej. Mazapán 3x100" value="${pmEsc(p.name)}">
     <label class="pm-lbl">Productos incluidos (uno o varios)</label>
     <div class="pm-chips">${sel.map(x => `<button type="button" class="pm-chip" onclick="pmQuitarProd(${JSON.stringify(String(x.id)).replace(/"/g,'&quot;')})">${pmEsc(x.nombre)} ✕</button>`).join('')}</div>
-    <input class="pm-in" id="pm-buscar" autocomplete="off" placeholder="🔍 Buscar producto para agregar..." style="margin-top:8px" oninput="pmBuscar()">
+    <input class="pm-in" id="pm-buscar" type="search" autocomplete="off" placeholder="🔍 Buscar producto para agregar..." style="margin-top:8px" oninput="pmBuscar()">
     <div class="pm-prods" id="pm-prods" style="display:none"></div>
     ${sel.length > 1 ? `<label class="pm-lbl">¿Se pueden mezclar?</label><div class="pm-opt"><button type="button" class="${p.mix ? 'on' : ''}" onclick="pmMix(true)">Sí, cualquier combinación</button><button type="button" class="${!p.mix ? 'on' : ''}" onclick="pmMix(false)">No, del mismo producto</button></div>` : ''}
     <label class="pm-lbl">Escalones de precio</label>
@@ -8893,7 +8893,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-21-f';
+const APP_BUILD = '2026-11-22-a';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){
@@ -9604,7 +9604,9 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
       el.setAttribute('data-bwignore','true');
       el.setAttribute('data-form-type','other');
       if (esBuscador(el)) {
+        try { if ((el.getAttribute('type')||'text').toLowerCase() !== 'search') el.setAttribute('type','search'); } catch(e){}
         el.setAttribute('enterkeyhint','search');
+        el.setAttribute('inputmode','search');
         el.setAttribute('role','searchbox');
         if (!el.getAttribute('name')) el.setAttribute('name','digar-q-'+(el.id||'buscador'));
       }

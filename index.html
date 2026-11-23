@@ -340,6 +340,13 @@ button,input,select,textarea{font-family:inherit}
 .inv-card-contado{border-color:#a7f3d0 !important;background:#f0fdf4 !important}
 </style>
 
+<style id="sin-animacion-vistas">
+body{animation:none!important}
+.tile-d,button,[onclick],nav.fixed.bottom-0 button,nav.fixed.bottom-0 button svg{transition:none!important}
+.tile-d:active,button:active,[onclick]:not(.fixed):active{opacity:1!important}
+.tile-d:active{transform:none!important}
+#vista-inicio,#vista-venta,#vista-productos,#vista-clientes,#vista-transacciones,#vista-mas{animation:none!important;transition:none!important}
+</style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans pb-24" style="overscroll-behavior:none!important">
 
@@ -8889,7 +8896,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-k';
+const APP_BUILD = '2026-11-22-l';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){

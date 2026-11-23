@@ -3,7 +3,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DIGAR POS</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#dbe7fb">
+    <meta name="theme-color" content="#111827">
     <meta name="color-scheme" content="only light">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -381,7 +381,7 @@ body{animation:none!important}
 
     <!-- BARRA SUPERIOR + HEADER (juntos y fijos arriba, así el reloj siempre se ve) -->
     <div id="barra-superior-fija" style="position:sticky;top:0;z-index:30;">
-    <div class="bg-gray-900 text-white text-xs text-left" style="padding-top:16px;padding-bottom:16px;padding-left:12px;padding-right:12px;">
+    <div class="bg-gray-900 text-white text-xs text-left" style="padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:16px;padding-left:12px;padding-right:12px;">
         <div id="reloj-app" style="display:flex;justify-content:space-between;align-items:center;width:100%;white-space:nowrap;gap:12px;font-size:15px;font-weight:800;letter-spacing:.2px;font-variant-numeric:tabular-nums;" aria-label="Hora actual"></div>
     </div>
 
@@ -8896,7 +8896,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-l';
+const APP_BUILD = '2026-11-22-m';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){

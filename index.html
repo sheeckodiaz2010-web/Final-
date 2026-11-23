@@ -91,7 +91,7 @@ nav.fixed.bottom-0 button.text-blue-600 svg{transform:translateY(-1px) scale(1.1
 .shadow-sm{box-shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08)!important}
 input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.18);border-color:#2563eb!important;transition:box-shadow .15s}
 /* Sin content-visibility/contain en Ventas: en Motorola trababa el scroll al tocar la imagen */
-#grid-venta,#lista-inventario{touch-action:pan-y}
+#grid-venta,#lista-inventario{touch-action:pan-y!important}#grid-venta *,#lista-inventario *{touch-action:pan-y!important}#grid-venta img{-webkit-user-drag:none!important;user-select:none!important;pointer-events:none!important}
 /* Toast profesional (reemplaza alert) */
 #toast-pro{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:88%;padding:11px 16px;border-radius:14px;background:#111827;color:#fff;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;z-index:9999;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);text-align:center}
 #toast-pro.on{opacity:1;transform:translate(-50%,0)}
@@ -3949,7 +3949,6 @@ function bindProductoToque(el, prodId) {
     const end = (e) => {
         parar();
         const fueTap = activo && !largo;
-        if (fueTap && e.cancelable) e.preventDefault();
         if (fueTap) {
             if (modoVistaCatalogo) {
                 seleccionarProducto(prodId);
@@ -3965,7 +3964,8 @@ function bindProductoToque(el, prodId) {
     // Después de un toque de dedo, Android a veces inventa también eventos de mouse: se ignoran para no agregar 2 veces
     const mouseValido = () => Date.now() - ultimoToqueTs > 1000;
     el.addEventListener('touchstart', e => { ultimoToqueTs = Date.now(); start(e); }, { passive: true });
-    el.addEventListener('touchend', e => { ultimoToqueTs = Date.now(); end(e); });
+    el.addEventListener('touchend', e => { ultimoToqueTs = Date.now(); end(e); }, { passive: true });
+    try { el.style.touchAction = 'pan-y'; } catch (err) {}
     el.addEventListener('touchmove', move, { passive: true });
     el.addEventListener('touchcancel', cancel, { passive: true });
     el.addEventListener('mousedown', e => { if (mouseValido()) start(e); });
@@ -8889,7 +8889,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-i';
+const APP_BUILD = '2026-11-22-j';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){
@@ -9685,15 +9685,7 @@ function abrirAvisoPrivacidad() { var m = document.getElementById('modal-privaci
       _ptrY0 = t ? t.clientY : null;
     }catch(err){ _ptrY0 = null; }
   }, {capture:true, passive:true});
-  document.addEventListener('touchmove', function(e){
-    try{
-      if (_ptrY0 == null) return;
-      if (!_enTop()) return;
-      var t = (e.touches && e.touches[0]) || e;
-      if (!t) return;
-      if (t.clientY > _ptrY0 + 8 && e.cancelable) e.preventDefault();
-    }catch(err){}
-  }, {capture:true, passive:false});
+  /* Guarda JS desactivada: trababa el scroll en Ventas. Solo CSS overscroll. */
   document.addEventListener('touchend', function(){ _ptrY0 = null; }, {capture:true, passive:true});
   document.addEventListener('touchcancel', function(){ _ptrY0 = null; }, {capture:true, passive:true});
   /* Teclado: no brincar la pantalla al tocar fuera de un campo */

@@ -1042,10 +1042,12 @@ body{animation:none!important}
                 </div>
                 <div class="space-y-2">
                     <label class="text-xs font-semibold text-gray-500">Agregar producto:</label>
+                    <input type="search" id="buscar-prod-compra" placeholder="Buscar producto..." autocomplete="off" oninput="filtrarProductosCompra()" class="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-600">
                     <div class="flex gap-2">
                         <select id="select-prod-compra" class="flex-1 p-2.5 bg-gray-50 border rounded-xl text-xs font-semibold focus:outline-none focus:border-purple-600"></select>
                         <button type="button" onclick="agregarItemAFacturaCompra()" class="bg-purple-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm">Añadir</button>
                     </div>
+                    <p id="compra-buscar-info" class="text-[10px] text-gray-400"></p>
                     <button type="button" onclick="crearProductoNuevoDesdeCompra()" class="w-full text-center text-xs text-purple-600 font-bold underline">+ Crear producto nuevo</button>
                 </div>
                 <div>
@@ -5596,6 +5598,7 @@ function abrirModalCompra() {
     if ($('compra-proveedor-input')) $('compra-proveedor-input').value = '';
     if ($('compra-ieps-input')) $('compra-ieps-input').value = '0';
     if ($('compra-iva-input')) $('compra-iva-input').value = '0';
+    if ($('buscar-prod-compra')) $('buscar-prod-compra').value = '';
     poblarSelectProductosCompra();
     renderFacturaCompra();
     compraMostrarPaso(1);
@@ -5635,13 +5638,26 @@ function compraIrPaso(n) {
     compraMostrarPaso(n);
 }
 
-function poblarSelectProductosCompra() {
+function poblarSelectProductosCompra(filtro) {
     const select = $('select-prod-compra');
     if (!select) return;
+    const q = (filtro || '').trim().toLowerCase();
+    const lista = q ? productos.filter(p => (p.nombre || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q)) : productos;
     select.innerHTML = '';
-    productos.forEach(p => {
-        select.innerHTML += `<option value="${p.id}">${escHtml(p.nombre)} (Costo: ${money(p.costo || 0)})</option>`;
-    });
+    if (lista.length === 0) {
+        select.innerHTML = '<option value="">Sin resultados</option>';
+    } else {
+        lista.forEach(p => {
+            select.innerHTML += `<option value="${p.id}">${escHtml(p.nombre)} (Costo: ${money(p.costo || 0)})</option>`;
+        });
+    }
+    const info = $('compra-buscar-info');
+    if (info) info.innerText = q ? `${lista.length} de ${productos.length} productos` : `${productos.length} productos`;
+}
+
+function filtrarProductosCompra() {
+    const q = $('buscar-prod-compra') ? $('buscar-prod-compra').value : '';
+    poblarSelectProductosCompra(q);
 }
 
 function agregarItemAFacturaCompra() {
@@ -8896,7 +8912,7 @@ function procesarCodigoQRPedido(texto) {
 
 // -------------------- REGISTRO SERVICE WORKER (PWA) + AVISO DE ACTUALIZACIÓN --------------------
 // Al publicar una versión nueva se cambia APP_BUILD; la app lo compara con el del servidor y avisa.
-const APP_BUILD = '2026-11-22-n';
+const APP_BUILD = '2026-11-26-a';
 let _actPreguntando = false, _actUltima = 0, _actAplicando = false, _actUltimoChequeo = 0, _actDisponible = false, _actVersionServidor = '';
 const _urlApp = () => location.href.split('#')[0].split('?')[0];
 function _actPaso(txt, pct){
